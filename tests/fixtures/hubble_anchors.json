@@ -1,0 +1,5194 @@
+[
+  [
+    {
+      "text": "Downloaded from https://www.pnas.org by 45.113.94.70 on January 5, 2026 from IP address 45.113.94.70.",
+      "page": 0,
+      "box": {
+        "top": 931,
+        "left": 15,
+        "bottom": 456,
+        "right": 31
+      }
+    },
+    {
+      "text": "168",
+      "page": 0,
+      "box": {
+        "top": 105,
+        "left": 195,
+        "bottom": 113,
+        "right": 222
+      }
+    },
+    {
+      "text": "ASTRONOMY: E. HUBBLE",
+      "page": 0,
+      "box": {
+        "top": 103,
+        "left": 418,
+        "bottom": 114,
+        "right": 660
+      }
+    },
+    {
+      "text": "PROC. N. A. S.",
+      "page": 0,
+      "box": {
+        "top": 103,
+        "left": 763,
+        "bottom": 114,
+        "right": 879
+      }
+    },
+    {
+      "text": "appearance the spectrum is very much like spectra of the Milky Way",
+      "page": 0,
+      "box": {
+        "top": 133,
+        "left": 195,
+        "bottom": 147,
+        "right": 880
+      }
+    },
+    {
+      "text": "clouds in Sagittarius and Cygnus, and is also similar to spectra of binary",
+      "page": 0,
+      "box": {
+        "top": 149,
+        "left": 195,
+        "bottom": 164,
+        "right": 881
+      }
+    },
+    {
+      "text": "stars of the W Ursae Majoris type, where the widening and depth of the",
+      "page": 0,
+      "box": {
+        "top": 167,
+        "left": 195,
+        "bottom": 180,
+        "right": 880
+      }
+    },
+    {
+      "text": "lines are affected by the rapid rotation of the stars involved.",
+      "page": 0,
+      "box": {
+        "top": 183,
+        "left": 194,
+        "bottom": 196,
+        "right": 755
+      }
+    },
+    {
+      "text": "The wide shallow absorption lines observed in the spectrum of N. G. C.",
+      "page": 0,
+      "box": {
+        "top": 200,
+        "left": 217,
+        "bottom": 214,
+        "right": 879
+      }
+    },
+    {
+      "text": "7619 have been noticed in the spectra of other extra-galactic nebulae, and",
+      "page": 0,
+      "box": {
+        "top": 216,
+        "left": 196,
+        "bottom": 230,
+        "right": 880
+      }
+    },
+    {
+      "text": "may be due to a dispersion in velocity and a blending of the spectral types",
+      "page": 0,
+      "box": {
+        "top": 234,
+        "left": 196,
+        "bottom": 246,
+        "right": 880
+      }
+    },
+    {
+      "text": "of the many stars which presumably exist in the central parts of these",
+      "page": 0,
+      "box": {
+        "top": 250,
+        "left": 195,
+        "bottom": 264,
+        "right": 880
+      }
+    },
+    {
+      "text": "nebulae. The lack of depth in the absorption lines seems to be more",
+      "page": 0,
+      "box": {
+        "top": 266,
+        "left": 196,
+        "bottom": 280,
+        "right": 882
+      }
+    },
+    {
+      "text": "pronounced among the smaller and fainter nebulae, and in N. G. C. 7619",
+      "page": 0,
+      "box": {
+        "top": 282,
+        "left": 196,
+        "bottom": 297,
+        "right": 880
+      }
+    },
+    {
+      "text": "the absorption is very weak.",
+      "page": 0,
+      "box": {
+        "top": 301,
+        "left": 195,
+        "bottom": 313,
+        "right": 459
+      }
+    },
+    {
+      "text": "It is hoped that velocities of more of these interesting objects will soon",
+      "page": 0,
+      "box": {
+        "top": 317,
+        "left": 216,
+        "bottom": 330,
+        "right": 881
+      }
+    },
+    {
+      "text": "be available.",
+      "page": 0,
+      "box": {
+        "top": 334,
+        "left": 195,
+        "bottom": 345,
+        "right": 311
+      }
+    },
+    {
+      "text": "A RELATION BETWEEN DISTANCE AND RADIAL VELOCITY",
+      "page": 0,
+      "box": {
+        "top": 403,
+        "left": 209,
+        "bottom": 415,
+        "right": 870
+      }
+    },
+    {
+      "text": "AMONG EXTRA-GALACTIC NEBULAE",
+      "page": 0,
+      "box": {
+        "top": 420,
+        "left": 333,
+        "bottom": 431,
+        "right": 743
+      }
+    },
+    {
+      "text": "BY EDWIN HUBBLE",
+      "page": 0,
+      "box": {
+        "top": 446,
+        "left": 449,
+        "bottom": 457,
+        "right": 629
+      }
+    },
+    {
+      "text": "MOUNT WILSON OBSERVATORY, CARNEGIE INSTITUTION OF WASHINGTON",
+      "page": 0,
+      "box": {
+        "top": 470,
+        "left": 255,
+        "bottom": 480,
+        "right": 823
+      }
+    },
+    {
+      "text": "Communicated January 17, 1929",
+      "page": 0,
+      "box": {
+        "top": 492,
+        "left": 401,
+        "bottom": 503,
+        "right": 668
+      }
+    },
+    {
+      "text": "Determinations of the motion of the sun with respect to the extra-",
+      "page": 0,
+      "box": {
+        "top": 518,
+        "left": 218,
+        "bottom": 532,
+        "right": 883
+      }
+    },
+    {
+      "text": "galactic nebulae have involved a K term of several hundred kilometers",
+      "page": 0,
+      "box": {
+        "top": 534,
+        "left": 196,
+        "bottom": 549,
+        "right": 882
+      }
+    },
+    {
+      "text": "which appears to be variable. Explanations of this paradox have been",
+      "page": 0,
+      "box": {
+        "top": 550,
+        "left": 196,
+        "bottom": 567,
+        "right": 883
+      }
+    },
+    {
+      "text": "sought in a correlation between apparent radial velocities and distances,",
+      "page": 0,
+      "box": {
+        "top": 567,
+        "left": 197,
+        "bottom": 582,
+        "right": 880
+      }
+    },
+    {
+      "text": "but so far the results have not been convincing. The present paper is a",
+      "page": 0,
+      "box": {
+        "top": 585,
+        "left": 197,
+        "bottom": 598,
+        "right": 884
+      }
+    },
+    {
+      "text": "re-examination of the question, based on only those nebular distances",
+      "page": 0,
+      "box": {
+        "top": 600,
+        "left": 196,
+        "bottom": 616,
+        "right": 883
+      }
+    },
+    {
+      "text": "which are believed to be fairly reliable.",
+      "page": 0,
+      "box": {
+        "top": 619,
+        "left": 197,
+        "bottom": 632,
+        "right": 558
+      }
+    },
+    {
+      "text": "Distances of extra-galactic nebulae depend ultimately upon the appli-",
+      "page": 0,
+      "box": {
+        "top": 635,
+        "left": 220,
+        "bottom": 648,
+        "right": 883
+      }
+    },
+    {
+      "text": "cation of absolute-luminosity criteria to involved stars whose types can",
+      "page": 0,
+      "box": {
+        "top": 652,
+        "left": 197,
+        "bottom": 665,
+        "right": 884
+      }
+    },
+    {
+      "text": "be recognized. These include, among others, Cepheid variables, novae,",
+      "page": 0,
+      "box": {
+        "top": 668,
+        "left": 197,
+        "bottom": 682,
+        "right": 882
+      }
+    },
+    {
+      "text": "and blue stars involved in emission nebulosity. Numerical values depend",
+      "page": 0,
+      "box": {
+        "top": 684,
+        "left": 198,
+        "bottom": 698,
+        "right": 883
+      }
+    },
+    {
+      "text": "upon the zero point of the period-luminosity relation among Cepheids,",
+      "page": 0,
+      "box": {
+        "top": 700,
+        "left": 198,
+        "bottom": 716,
+        "right": 882
+      }
+    },
+    {
+      "text": "the other criteria merely check the order of the distances. This method",
+      "page": 0,
+      "box": {
+        "top": 717,
+        "left": 198,
+        "bottom": 732,
+        "right": 884
+      }
+    },
+    {
+      "text": "is restricted to the few nebulae which are well resolved by existing instru-",
+      "page": 0,
+      "box": {
+        "top": 734,
+        "left": 198,
+        "bottom": 747,
+        "right": 883
+      }
+    },
+    {
+      "text": "ments. A study of these nebulae, together with those in which any stars",
+      "page": 0,
+      "box": {
+        "top": 750,
+        "left": 198,
+        "bottom": 764,
+        "right": 883
+      }
+    },
+    {
+      "text": "at all can be recognized, indicates the probability of an approximately",
+      "page": 0,
+      "box": {
+        "top": 767,
+        "left": 198,
+        "bottom": 780,
+        "right": 885
+      }
+    },
+    {
+      "text": "uniform upper limit to the absolute luminosity of stars, in the late-type",
+      "page": 0,
+      "box": {
+        "top": 783,
+        "left": 198,
+        "bottom": 797,
+        "right": 883
+      }
+    },
+    {
+      "text": "spirals and irregular nebulae at least, of the order of M (photographic)",
+      "page": 0,
+      "box": {
+        "top": 799,
+        "left": 198,
+        "bottom": 813,
+        "right": 855
+      }
+    },
+    {
+      "text": "-6.3.1 The apparent luminosities of the brightest stars in such nebulae",
+      "page": 0,
+      "box": {
+        "top": 815,
+        "left": 200,
+        "bottom": 829,
+        "right": 883
+      }
+    },
+    {
+      "text": "are thus criteria which, although rough and to be applied with caution,",
+      "page": 0,
+      "box": {
+        "top": 832,
+        "left": 197,
+        "bottom": 845,
+        "right": 883
+      }
+    },
+    {
+      "text": "=",
+      "page": 0,
+      "box": {
+        "top": 803,
+        "left": 866,
+        "bottom": 806,
+        "right": 882
+      }
+    },
+    {
+      "text": "Check for",
+      "page": 0,
+      "box": {
+        "top": 63,
+        "left": 882,
+        "bottom": 68,
+        "right": 926
+      }
+    },
+    {
+      "text": "updates",
+      "page": 0,
+      "box": {
+        "top": 68,
+        "left": 885,
+        "bottom": 75,
+        "right": 922
+      }
+    },
+    {
+      "text": "Downloaded from https://www.pnas.org by 45.113.94.70 on January 5, 2026 from IP address 45.113.94.70.",
+      "page": 1,
+      "box": {
+        "top": 931,
+        "left": 15,
+        "bottom": 456,
+        "right": 31
+      }
+    },
+    {
+      "text": "VOL. 15, 1929",
+      "page": 1,
+      "box": {
+        "top": 109,
+        "left": 119,
+        "bottom": 119,
+        "right": 227
+      }
+    },
+    {
+      "text": "ASTRONOMY: E. HUBBLE",
+      "page": 1,
+      "box": {
+        "top": 109,
+        "left": 343,
+        "bottom": 118,
+        "right": 584
+      }
+    },
+    {
+      "text": "169",
+      "page": 1,
+      "box": {
+        "top": 110,
+        "left": 777,
+        "bottom": 118,
+        "right": 805
+      }
+    },
+    {
+      "text": "furnish reasonable estimates of the distances of all extra-galactic systems",
+      "page": 1,
+      "box": {
+        "top": 135,
+        "left": 117,
+        "bottom": 151,
+        "right": 804
+      }
+    },
+    {
+      "text": "in which even a few stars can be detected.",
+      "page": 1,
+      "box": {
+        "top": 154,
+        "left": 118,
+        "bottom": 165,
+        "right": 507
+      }
+    },
+    {
+      "text": "TABLE 1",
+      "page": 1,
+      "box": {
+        "top": 185,
+        "left": 410,
+        "bottom": 192,
+        "right": 478
+      }
+    },
+    {
+      "text": "m",
+      "page": 1,
+      "box": {
+        "top": 228,
+        "left": 316,
+        "bottom": 232,
+        "right": 329
+      }
+    },
+    {
+      "text": "-",
+      "page": 1,
+      "box": {
+        "top": 284,
+        "left": 518,
+        "bottom": 286,
+        "right": 534
+      }
+    },
+    {
+      "text": "NEBULAE WHOSE DISTANCES HAVE BEEN ESTIMATED FROM STARS INVOLVED OR FROM",
+      "page": 1,
+      "box": {
+        "top": 197,
+        "left": 117,
+        "bottom": 207,
+        "right": 804
+      }
+    },
+    {
+      "text": "MEAN LUMINOSITIES IN A CLUSTER",
+      "page": 1,
+      "box": {
+        "top": 212,
+        "left": 294,
+        "bottom": 220,
+        "right": 592
+      }
+    },
+    {
+      "text": "OBJECT",
+      "page": 1,
+      "box": {
+        "top": 227,
+        "left": 179,
+        "bottom": 234,
+        "right": 226
+      }
+    },
+    {
+      "text": "T",
+      "page": 1,
+      "box": {
+        "top": 228,
+        "left": 423,
+        "bottom": 233,
+        "right": 432
+      }
+    },
+    {
+      "text": "mt",
+      "page": 1,
+      "box": {
+        "top": 227,
+        "left": 650,
+        "bottom": 237,
+        "right": 669
+      }
+    },
+    {
+      "text": "M",
+      "page": 1,
+      "box": {
+        "top": 226,
+        "left": 761,
+        "bottom": 234,
+        "right": 777
+      }
+    },
+    {
+      "text": "S. Mag.",
+      "page": 1,
+      "box": {
+        "top": 238,
+        "left": 166,
+        "bottom": 249,
+        "right": 228
+      }
+    },
+    {
+      "text": "0.032",
+      "page": 1,
+      "box": {
+        "top": 239,
+        "left": 408,
+        "bottom": 247,
+        "right": 453
+      }
+    },
+    {
+      "text": "+ 170",
+      "page": 1,
+      "box": {
+        "top": 239,
+        "left": 519,
+        "bottom": 248,
+        "right": 570
+      }
+    },
+    {
+      "text": "1.5",
+      "page": 1,
+      "box": {
+        "top": 239,
+        "left": 651,
+        "bottom": 247,
+        "right": 678
+      }
+    },
+    {
+      "text": "-16.0",
+      "page": 1,
+      "box": {
+        "top": 239,
+        "left": 751,
+        "bottom": 248,
+        "right": 803
+      }
+    },
+    {
+      "text": "L. Mag.",
+      "page": 1,
+      "box": {
+        "top": 252,
+        "left": 165,
+        "bottom": 263,
+        "right": 228
+      }
+    },
+    {
+      "text": "0.034",
+      "page": 1,
+      "box": {
+        "top": 252,
+        "left": 408,
+        "bottom": 261,
+        "right": 452
+      }
+    },
+    {
+      "text": "+ 290",
+      "page": 1,
+      "box": {
+        "top": 251,
+        "left": 519,
+        "bottom": 262,
+        "right": 570
+      }
+    },
+    {
+      "text": "0.5",
+      "page": 1,
+      "box": {
+        "top": 253,
+        "left": 650,
+        "bottom": 261,
+        "right": 679
+      }
+    },
+    {
+      "text": "17.2",
+      "page": 1,
+      "box": {
+        "top": 253,
+        "left": 768,
+        "bottom": 261,
+        "right": 803
+      }
+    },
+    {
+      "text": "N. G. C. 6822",
+      "page": 1,
+      "box": {
+        "top": 266,
+        "left": 118,
+        "bottom": 275,
+        "right": 229
+      }
+    },
+    {
+      "text": "0.214",
+      "page": 1,
+      "box": {
+        "top": 267,
+        "left": 407,
+        "bottom": 275,
+        "right": 454
+      }
+    },
+    {
+      "text": "130",
+      "page": 1,
+      "box": {
+        "top": 266,
+        "left": 543,
+        "bottom": 275,
+        "right": 570
+      }
+    },
+    {
+      "text": "9.0",
+      "page": 1,
+      "box": {
+        "top": 266,
+        "left": 650,
+        "bottom": 275,
+        "right": 678
+      }
+    },
+    {
+      "text": "12.7",
+      "page": 1,
+      "box": {
+        "top": 266,
+        "left": 768,
+        "bottom": 275,
+        "right": 804
+      }
+    },
+    {
+      "text": "598",
+      "page": 1,
+      "box": {
+        "top": 280,
+        "left": 202,
+        "bottom": 288,
+        "right": 228
+      }
+    },
+    {
+      "text": "0.263",
+      "page": 1,
+      "box": {
+        "top": 280,
+        "left": 407,
+        "bottom": 289,
+        "right": 453
+      }
+    },
+    {
+      "text": "70",
+      "page": 1,
+      "box": {
+        "top": 280,
+        "left": 552,
+        "bottom": 288,
+        "right": 570
+      }
+    },
+    {
+      "text": "7.0",
+      "page": 1,
+      "box": {
+        "top": 280,
+        "left": 650,
+        "bottom": 288,
+        "right": 678
+      }
+    },
+    {
+      "text": "15.1",
+      "page": 1,
+      "box": {
+        "top": 281,
+        "left": 768,
+        "bottom": 288,
+        "right": 802
+      }
+    },
+    {
+      "text": "221",
+      "page": 1,
+      "box": {
+        "top": 294,
+        "left": 201,
+        "bottom": 301,
+        "right": 227
+      }
+    },
+    {
+      "text": "0.275",
+      "page": 1,
+      "box": {
+        "top": 293,
+        "left": 407,
+        "bottom": 303,
+        "right": 452
+      }
+    },
+    {
+      "text": "185",
+      "page": 1,
+      "box": {
+        "top": 294,
+        "left": 543,
+        "bottom": 302,
+        "right": 570
+      }
+    },
+    {
+      "text": "8.8",
+      "page": 1,
+      "box": {
+        "top": 294,
+        "left": 649,
+        "bottom": 302,
+        "right": 679
+      }
+    },
+    {
+      "text": "13.4",
+      "page": 1,
+      "box": {
+        "top": 294,
+        "left": 768,
+        "bottom": 303,
+        "right": 804
+      }
+    },
+    {
+      "text": "224",
+      "page": 1,
+      "box": {
+        "top": 307,
+        "left": 201,
+        "bottom": 316,
+        "right": 229
+      }
+    },
+    {
+      "text": "0.275",
+      "page": 1,
+      "box": {
+        "top": 307,
+        "left": 407,
+        "bottom": 317,
+        "right": 453
+      }
+    },
+    {
+      "text": "220",
+      "page": 1,
+      "box": {
+        "top": 308,
+        "left": 542,
+        "bottom": 316,
+        "right": 570
+      }
+    },
+    {
+      "text": "5.0",
+      "page": 1,
+      "box": {
+        "top": 308,
+        "left": 650,
+        "bottom": 316,
+        "right": 678
+      }
+    },
+    {
+      "text": "17.2",
+      "page": 1,
+      "box": {
+        "top": 308,
+        "left": 767,
+        "bottom": 316,
+        "right": 803
+      }
+    },
+    {
+      "text": "5457",
+      "page": 1,
+      "box": {
+        "top": 321,
+        "left": 193,
+        "bottom": 329,
+        "right": 228
+      }
+    },
+    {
+      "text": "17.0",
+      "page": 1,
+      "box": {
+        "top": 321,
+        "left": 300,
+        "bottom": 331,
+        "right": 336
+      }
+    },
+    {
+      "text": "0.45",
+      "page": 1,
+      "box": {
+        "top": 322,
+        "left": 407,
+        "bottom": 330,
+        "right": 444
+      }
+    },
+    {
+      "text": "+ 200",
+      "page": 1,
+      "box": {
+        "top": 321,
+        "left": 517,
+        "bottom": 332,
+        "right": 570
+      }
+    },
+    {
+      "text": "9.9",
+      "page": 1,
+      "box": {
+        "top": 322,
+        "left": 650,
+        "bottom": 330,
+        "right": 678
+      }
+    },
+    {
+      "text": "13.3",
+      "page": 1,
+      "box": {
+        "top": 321,
+        "left": 767,
+        "bottom": 331,
+        "right": 803
+      }
+    },
+    {
+      "text": "4736",
+      "page": 1,
+      "box": {
+        "top": 335,
+        "left": 192,
+        "bottom": 344,
+        "right": 228
+      }
+    },
+    {
+      "text": "17.3",
+      "page": 1,
+      "box": {
+        "top": 335,
+        "left": 301,
+        "bottom": 344,
+        "right": 337
+      }
+    },
+    {
+      "text": "0.5",
+      "page": 1,
+      "box": {
+        "top": 336,
+        "left": 407,
+        "bottom": 344,
+        "right": 436
+      }
+    },
+    {
+      "text": "+ 290",
+      "page": 1,
+      "box": {
+        "top": 334,
+        "left": 517,
+        "bottom": 345,
+        "right": 570
+      }
+    },
+    {
+      "text": "8.4",
+      "page": 1,
+      "box": {
+        "top": 335,
+        "left": 649,
+        "bottom": 344,
+        "right": 679
+      }
+    },
+    {
+      "text": "15.1",
+      "page": 1,
+      "box": {
+        "top": 335,
+        "left": 767,
+        "bottom": 344,
+        "right": 802
+      }
+    },
+    {
+      "text": "5194",
+      "page": 1,
+      "box": {
+        "top": 349,
+        "left": 193,
+        "bottom": 357,
+        "right": 230
+      }
+    },
+    {
+      "text": "17.3",
+      "page": 1,
+      "box": {
+        "top": 349,
+        "left": 301,
+        "bottom": 357,
+        "right": 336
+      }
+    },
+    {
+      "text": "0.5",
+      "page": 1,
+      "box": {
+        "top": 349,
+        "left": 406,
+        "bottom": 357,
+        "right": 435
+      }
+    },
+    {
+      "text": "+ 270",
+      "page": 1,
+      "box": {
+        "top": 348,
+        "left": 517,
+        "bottom": 359,
+        "right": 570
+      }
+    },
+    {
+      "text": "7.4",
+      "page": 1,
+      "box": {
+        "top": 349,
+        "left": 649,
+        "bottom": 357,
+        "right": 679
+      }
+    },
+    {
+      "text": "16.1",
+      "page": 1,
+      "box": {
+        "top": 349,
+        "left": 767,
+        "bottom": 357,
+        "right": 802
+      }
+    },
+    {
+      "text": "4449",
+      "page": 1,
+      "box": {
+        "top": 363,
+        "left": 192,
+        "bottom": 371,
+        "right": 228
+      }
+    },
+    {
+      "text": "17.8",
+      "page": 1,
+      "box": {
+        "top": 363,
+        "left": 301,
+        "bottom": 371,
+        "right": 336
+      }
+    },
+    {
+      "text": "0.63",
+      "page": 1,
+      "box": {
+        "top": 363,
+        "left": 407,
+        "bottom": 372,
+        "right": 443
+      }
+    },
+    {
+      "text": "+ 200",
+      "page": 1,
+      "box": {
+        "top": 362,
+        "left": 517,
+        "bottom": 372,
+        "right": 569
+      }
+    },
+    {
+      "text": "9.5",
+      "page": 1,
+      "box": {
+        "top": 363,
+        "left": 649,
+        "bottom": 371,
+        "right": 678
+      }
+    },
+    {
+      "text": "14.5",
+      "page": 1,
+      "box": {
+        "top": 363,
+        "left": 767,
+        "bottom": 371,
+        "right": 803
+      }
+    },
+    {
+      "text": "4214",
+      "page": 1,
+      "box": {
+        "top": 376,
+        "left": 192,
+        "bottom": 385,
+        "right": 230
+      }
+    },
+    {
+      "text": "18.3",
+      "page": 1,
+      "box": {
+        "top": 377,
+        "left": 301,
+        "bottom": 385,
+        "right": 336
+      }
+    },
+    {
+      "text": "0.8",
+      "page": 1,
+      "box": {
+        "top": 377,
+        "left": 406,
+        "bottom": 385,
+        "right": 436
+      }
+    },
+    {
+      "text": "+ 300",
+      "page": 1,
+      "box": {
+        "top": 375,
+        "left": 518,
+        "bottom": 386,
+        "right": 568
+      }
+    },
+    {
+      "text": "11.3",
+      "page": 1,
+      "box": {
+        "top": 377,
+        "left": 642,
+        "bottom": 385,
+        "right": 677
+      }
+    },
+    {
+      "text": "13.2",
+      "page": 1,
+      "box": {
+        "top": 377,
+        "left": 767,
+        "bottom": 385,
+        "right": 802
+      }
+    },
+    {
+      "text": "3031",
+      "page": 1,
+      "box": {
+        "top": 390,
+        "left": 192,
+        "bottom": 398,
+        "right": 228
+      }
+    },
+    {
+      "text": "18.5",
+      "page": 1,
+      "box": {
+        "top": 390,
+        "left": 301,
+        "bottom": 399,
+        "right": 336
+      }
+    },
+    {
+      "text": "0.9",
+      "page": 1,
+      "box": {
+        "top": 391,
+        "left": 406,
+        "bottom": 399,
+        "right": 436
+      }
+    },
+    {
+      "text": "30",
+      "page": 1,
+      "box": {
+        "top": 390,
+        "left": 550,
+        "bottom": 399,
+        "right": 570
+      }
+    },
+    {
+      "text": "8.3",
+      "page": 1,
+      "box": {
+        "top": 390,
+        "left": 648,
+        "bottom": 399,
+        "right": 678
+      }
+    },
+    {
+      "text": "16.4",
+      "page": 1,
+      "box": {
+        "top": 390,
+        "left": 767,
+        "bottom": 399,
+        "right": 803
+      }
+    },
+    {
+      "text": "3627",
+      "page": 1,
+      "box": {
+        "top": 404,
+        "left": 192,
+        "bottom": 412,
+        "right": 229
+      }
+    },
+    {
+      "text": "18.5",
+      "page": 1,
+      "box": {
+        "top": 404,
+        "left": 301,
+        "bottom": 413,
+        "right": 336
+      }
+    },
+    {
+      "text": "0.9",
+      "page": 1,
+      "box": {
+        "top": 405,
+        "left": 407,
+        "bottom": 413,
+        "right": 436
+      }
+    },
+    {
+      "text": "+ 650",
+      "page": 1,
+      "box": {
+        "top": 403,
+        "left": 517,
+        "bottom": 413,
+        "right": 569
+      }
+    },
+    {
+      "text": "9.1",
+      "page": 1,
+      "box": {
+        "top": 404,
+        "left": 649,
+        "bottom": 412,
+        "right": 677
+      }
+    },
+    {
+      "text": "15.7",
+      "page": 1,
+      "box": {
+        "top": 404,
+        "left": 766,
+        "bottom": 413,
+        "right": 803
+      }
+    },
+    {
+      "text": "4826",
+      "page": 1,
+      "box": {
+        "top": 418,
+        "left": 192,
+        "bottom": 426,
+        "right": 228
+      }
+    },
+    {
+      "text": "18.5",
+      "page": 1,
+      "box": {
+        "top": 418,
+        "left": 301,
+        "bottom": 426,
+        "right": 337
+      }
+    },
+    {
+      "text": "0.9",
+      "page": 1,
+      "box": {
+        "top": 418,
+        "left": 407,
+        "bottom": 426,
+        "right": 435
+      }
+    },
+    {
+      "text": "+ 150",
+      "page": 1,
+      "box": {
+        "top": 417,
+        "left": 517,
+        "bottom": 428,
+        "right": 569
+      }
+    },
+    {
+      "text": "9.0",
+      "page": 1,
+      "box": {
+        "top": 418,
+        "left": 649,
+        "bottom": 426,
+        "right": 677
+      }
+    },
+    {
+      "text": "15.7",
+      "page": 1,
+      "box": {
+        "top": 418,
+        "left": 766,
+        "bottom": 426,
+        "right": 803
+      }
+    },
+    {
+      "text": "5236",
+      "page": 1,
+      "box": {
+        "top": 432,
+        "left": 193,
+        "bottom": 440,
+        "right": 229
+      }
+    },
+    {
+      "text": "18.5",
+      "page": 1,
+      "box": {
+        "top": 432,
+        "left": 301,
+        "bottom": 440,
+        "right": 336
+      }
+    },
+    {
+      "text": "0.9",
+      "page": 1,
+      "box": {
+        "top": 432,
+        "left": 407,
+        "bottom": 440,
+        "right": 436
+      }
+    },
+    {
+      "text": "+ 500",
+      "page": 1,
+      "box": {
+        "top": 430,
+        "left": 517,
+        "bottom": 441,
+        "right": 569
+      }
+    },
+    {
+      "text": "10.4",
+      "page": 1,
+      "box": {
+        "top": 431,
+        "left": 641,
+        "bottom": 440,
+        "right": 678
+      }
+    },
+    {
+      "text": "14.4",
+      "page": 1,
+      "box": {
+        "top": 432,
+        "left": 766,
+        "bottom": 440,
+        "right": 802
+      }
+    },
+    {
+      "text": "1068",
+      "page": 1,
+      "box": {
+        "top": 445,
+        "left": 194,
+        "bottom": 454,
+        "right": 229
+      }
+    },
+    {
+      "text": "18.7",
+      "page": 1,
+      "box": {
+        "top": 445,
+        "left": 300,
+        "bottom": 454,
+        "right": 336
+      }
+    },
+    {
+      "text": "1.0",
+      "page": 1,
+      "box": {
+        "top": 446,
+        "left": 408,
+        "bottom": 454,
+        "right": 434
+      }
+    },
+    {
+      "text": "+ 920",
+      "page": 1,
+      "box": {
+        "top": 444,
+        "left": 517,
+        "bottom": 455,
+        "right": 570
+      }
+    },
+    {
+      "text": "9.1",
+      "page": 1,
+      "box": {
+        "top": 445,
+        "left": 649,
+        "bottom": 453,
+        "right": 676
+      }
+    },
+    {
+      "text": "15.9",
+      "page": 1,
+      "box": {
+        "top": 446,
+        "left": 766,
+        "bottom": 454,
+        "right": 802
+      }
+    },
+    {
+      "text": "5055",
+      "page": 1,
+      "box": {
+        "top": 459,
+        "left": 194,
+        "bottom": 467,
+        "right": 230
+      }
+    },
+    {
+      "text": "19.0",
+      "page": 1,
+      "box": {
+        "top": 459,
+        "left": 301,
+        "bottom": 467,
+        "right": 336
+      }
+    },
+    {
+      "text": "1.1",
+      "page": 1,
+      "box": {
+        "top": 459,
+        "left": 408,
+        "bottom": 467,
+        "right": 434
+      }
+    },
+    {
+      "text": "+ 450",
+      "page": 1,
+      "box": {
+        "top": 458,
+        "left": 517,
+        "bottom": 469,
+        "right": 568
+      }
+    },
+    {
+      "text": "9.6",
+      "page": 1,
+      "box": {
+        "top": 459,
+        "left": 648,
+        "bottom": 467,
+        "right": 676
+      }
+    },
+    {
+      "text": "15.6",
+      "page": 1,
+      "box": {
+        "top": 459,
+        "left": 766,
+        "bottom": 467,
+        "right": 801
+      }
+    },
+    {
+      "text": "7331",
+      "page": 1,
+      "box": {
+        "top": 473,
+        "left": 193,
+        "bottom": 481,
+        "right": 228
+      }
+    },
+    {
+      "text": "19.0",
+      "page": 1,
+      "box": {
+        "top": 473,
+        "left": 301,
+        "bottom": 482,
+        "right": 336
+      }
+    },
+    {
+      "text": "1.1",
+      "page": 1,
+      "box": {
+        "top": 473,
+        "left": 408,
+        "bottom": 481,
+        "right": 434
+      }
+    },
+    {
+      "text": "+ 500",
+      "page": 1,
+      "box": {
+        "top": 471,
+        "left": 517,
+        "bottom": 482,
+        "right": 568
+      }
+    },
+    {
+      "text": "10.4",
+      "page": 1,
+      "box": {
+        "top": 472,
+        "left": 641,
+        "bottom": 481,
+        "right": 676
+      }
+    },
+    {
+      "text": "14.8",
+      "page": 1,
+      "box": {
+        "top": 473,
+        "left": 766,
+        "bottom": 482,
+        "right": 802
+      }
+    },
+    {
+      "text": "4258",
+      "page": 1,
+      "box": {
+        "top": 487,
+        "left": 192,
+        "bottom": 494,
+        "right": 229
+      }
+    },
+    {
+      "text": "19.5",
+      "page": 1,
+      "box": {
+        "top": 487,
+        "left": 301,
+        "bottom": 494,
+        "right": 336
+      }
+    },
+    {
+      "text": "1.4",
+      "page": 1,
+      "box": {
+        "top": 487,
+        "left": 408,
+        "bottom": 495,
+        "right": 435
+      }
+    },
+    {
+      "text": "+ 500",
+      "page": 1,
+      "box": {
+        "top": 485,
+        "left": 517,
+        "bottom": 496,
+        "right": 568
+      }
+    },
+    {
+      "text": "8.7",
+      "page": 1,
+      "box": {
+        "top": 486,
+        "left": 648,
+        "bottom": 494,
+        "right": 677
+      }
+    },
+    {
+      "text": "17.0",
+      "page": 1,
+      "box": {
+        "top": 486,
+        "left": 766,
+        "bottom": 495,
+        "right": 802
+      }
+    },
+    {
+      "text": "4151",
+      "page": 1,
+      "box": {
+        "top": 501,
+        "left": 192,
+        "bottom": 509,
+        "right": 228
+      }
+    },
+    {
+      "text": "20.0",
+      "page": 1,
+      "box": {
+        "top": 501,
+        "left": 299,
+        "bottom": 509,
+        "right": 336
+      }
+    },
+    {
+      "text": "1.7",
+      "page": 1,
+      "box": {
+        "top": 501,
+        "left": 408,
+        "bottom": 509,
+        "right": 435
+      }
+    },
+    {
+      "text": "+ 960",
+      "page": 1,
+      "box": {
+        "top": 501,
+        "left": 517,
+        "bottom": 509,
+        "right": 568
+      }
+    },
+    {
+      "text": "12.0",
+      "page": 1,
+      "box": {
+        "top": 500,
+        "left": 641,
+        "bottom": 508,
+        "right": 676
+      }
+    },
+    {
+      "text": "14.2",
+      "page": 1,
+      "box": {
+        "top": 501,
+        "left": 767,
+        "bottom": 509,
+        "right": 802
+      }
+    },
+    {
+      "text": "4382",
+      "page": 1,
+      "box": {
+        "top": 515,
+        "left": 192,
+        "bottom": 522,
+        "right": 228
+      }
+    },
+    {
+      "text": "2.0",
+      "page": 1,
+      "box": {
+        "top": 515,
+        "left": 406,
+        "bottom": 523,
+        "right": 436
+      }
+    },
+    {
+      "text": "+ 500",
+      "page": 1,
+      "box": {
+        "top": 513,
+        "left": 517,
+        "bottom": 523,
+        "right": 568
+      }
+    },
+    {
+      "text": "10.0",
+      "page": 1,
+      "box": {
+        "top": 514,
+        "left": 641,
+        "bottom": 522,
+        "right": 676
+      }
+    },
+    {
+      "text": "16.5",
+      "page": 1,
+      "box": {
+        "top": 515,
+        "left": 766,
+        "bottom": 523,
+        "right": 802
+      }
+    },
+    {
+      "text": "4472",
+      "page": 1,
+      "box": {
+        "top": 528,
+        "left": 192,
+        "bottom": 536,
+        "right": 228
+      }
+    },
+    {
+      "text": "2.0",
+      "page": 1,
+      "box": {
+        "top": 528,
+        "left": 406,
+        "bottom": 536,
+        "right": 434
+      }
+    },
+    {
+      "text": "+ 850",
+      "page": 1,
+      "box": {
+        "top": 526,
+        "left": 517,
+        "bottom": 538,
+        "right": 568
+      }
+    },
+    {
+      "text": "8.8",
+      "page": 1,
+      "box": {
+        "top": 528,
+        "left": 648,
+        "bottom": 536,
+        "right": 677
+      }
+    },
+    {
+      "text": "17.7",
+      "page": 1,
+      "box": {
+        "top": 528,
+        "left": 766,
+        "bottom": 536,
+        "right": 802
+      }
+    },
+    {
+      "text": "4486",
+      "page": 1,
+      "box": {
+        "top": 541,
+        "left": 191,
+        "bottom": 550,
+        "right": 228
+      }
+    },
+    {
+      "text": "2.0",
+      "page": 1,
+      "box": {
+        "top": 541,
+        "left": 406,
+        "bottom": 550,
+        "right": 434
+      }
+    },
+    {
+      "text": "+ 800",
+      "page": 1,
+      "box": {
+        "top": 540,
+        "left": 516,
+        "bottom": 551,
+        "right": 568
+      }
+    },
+    {
+      "text": "9.7",
+      "page": 1,
+      "box": {
+        "top": 542,
+        "left": 648,
+        "bottom": 549,
+        "right": 676
+      }
+    },
+    {
+      "text": "16.8",
+      "page": 1,
+      "box": {
+        "top": 542,
+        "left": 766,
+        "bottom": 550,
+        "right": 803
+      }
+    },
+    {
+      "text": "4649",
+      "page": 1,
+      "box": {
+        "top": 556,
+        "left": 192,
+        "bottom": 564,
+        "right": 228
+      }
+    },
+    {
+      "text": "2.0",
+      "page": 1,
+      "box": {
+        "top": 556,
+        "left": 406,
+        "bottom": 563,
+        "right": 435
+      }
+    },
+    {
+      "text": "+1090",
+      "page": 1,
+      "box": {
+        "top": 555,
+        "left": 517,
+        "bottom": 565,
+        "right": 569
+      }
+    },
+    {
+      "text": "9.5",
+      "page": 1,
+      "box": {
+        "top": 555,
+        "left": 648,
+        "bottom": 563,
+        "right": 676
+      }
+    },
+    {
+      "text": "17.0",
+      "page": 1,
+      "box": {
+        "top": 555,
+        "left": 766,
+        "bottom": 564,
+        "right": 802
+      }
+    },
+    {
+      "text": "Mean",
+      "page": 1,
+      "box": {
+        "top": 572,
+        "left": 116,
+        "bottom": 580,
+        "right": 163
+      }
+    },
+    {
+      "text": "-15.5",
+      "page": 1,
+      "box": {
+        "top": 571,
+        "left": 750,
+        "bottom": 581,
+        "right": 802
+      }
+    },
+    {
+      "text": "\u0e22",
+      "page": 1,
+      "box": {
+        "top": 621,
+        "left": 134,
+        "bottom": 627,
+        "right": 142
+      }
+    },
+    {
+      "text": "m_{s}= photographic magnitude of brightest stars involved.",
+      "page": 1,
+      "box": {
+        "top": 591,
+        "left": 132,
+        "bottom": 603,
+        "right": 622
+      }
+    },
+    {
+      "text": "r= distance in units of 106 parsecs. The first two are Shapley's values.",
+      "page": 1,
+      "box": {
+        "top": 605,
+        "left": 135,
+        "bottom": 616,
+        "right": 740
+      }
+    },
+    {
+      "text": "= measured velocities in km./sec. N. G. C. 6822, 221, 224 and 5457 are recent",
+      "page": 1,
+      "box": {
+        "top": 618,
+        "left": 168,
+        "bottom": 629,
+        "right": 802
+      }
+    },
+    {
+      "text": "determinations by Humason.",
+      "page": 1,
+      "box": {
+        "top": 632,
+        "left": 209,
+        "bottom": 643,
+        "right": 451
+      }
+    },
+    {
+      "text": "m_{t}= Holetschek's visual magnitude as corrected by Hopmann. The first three",
+      "page": 1,
+      "box": {
+        "top": 646,
+        "left": 132,
+        "bottom": 656,
+        "right": 803
+      }
+    },
+    {
+      "text": "objects were not measured by Holetschek, and the values of me represent",
+      "page": 1,
+      "box": {
+        "top": 660,
+        "left": 209,
+        "bottom": 671,
+        "right": 801
+      }
+    },
+    {
+      "text": "estimates by the author based upon such data as are available.",
+      "page": 1,
+      "box": {
+        "top": 673,
+        "left": 209,
+        "bottom": 684,
+        "right": 727
+      }
+    },
+    {
+      "text": "M_{t}=",
+      "page": 1,
+      "box": {
+        "top": 685,
+        "left": 132,
+        "bottom": 695,
+        "right": 186
+      }
+    },
+    {
+      "text": "total visual absolute magnitude computed from m, and r.",
+      "page": 1,
+      "box": {
+        "top": 688,
+        "left": 197,
+        "bottom": 698,
+        "right": 651
+      }
+    },
+    {
+      "text": "Finally, the nebulae themselves appear to be of a definite order of",
+      "page": 1,
+      "box": {
+        "top": 718,
+        "left": 138,
+        "bottom": 731,
+        "right": 804
+      }
+    },
+    {
+      "text": "absolute luminosity, exhibiting a range of four or five magnitudes about",
+      "page": 1,
+      "box": {
+        "top": 735,
+        "left": 117,
+        "bottom": 748,
+        "right": 802
+      }
+    },
+    {
+      "text": "an average value M(visual)=-15.2.^{1} The application of this statistical",
+      "page": 1,
+      "box": {
+        "top": 749,
+        "left": 116,
+        "bottom": 766,
+        "right": 802
+      }
+    },
+    {
+      "text": "average to individual cases can rarely be used to advantage, but where",
+      "page": 1,
+      "box": {
+        "top": 767,
+        "left": 116,
+        "bottom": 782,
+        "right": 801
+      }
+    },
+    {
+      "text": "considerable numbers are involved, and especially in the various clusters",
+      "page": 1,
+      "box": {
+        "top": 785,
+        "left": 116,
+        "bottom": 797,
+        "right": 801
+      }
+    },
+    {
+      "text": "of nebulae, mean apparent luminosities of the nebulae themselves offer",
+      "page": 1,
+      "box": {
+        "top": 799,
+        "left": 117,
+        "bottom": 814,
+        "right": 802
+      }
+    },
+    {
+      "text": "reliable estimates of the mean distances.",
+      "page": 1,
+      "box": {
+        "top": 817,
+        "left": 116,
+        "bottom": 828,
+        "right": 489
+      }
+    },
+    {
+      "text": "Radial velocities of 46 extra-galactic nebulae are now available, but",
+      "page": 1,
+      "box": {
+        "top": 834,
+        "left": 138,
+        "bottom": 846,
+        "right": 802
+      }
+    },
+    {
+      "text": "Downloaded from https://www.pnas.org by 45.113.94.70 on January 5, 2026 from IP address 45.113.94.70.",
+      "page": 2,
+      "box": {
+        "top": 931,
+        "left": 15,
+        "bottom": 456,
+        "right": 31
+      }
+    },
+    {
+      "text": "170",
+      "page": 2,
+      "box": {
+        "top": 101,
+        "left": 197,
+        "bottom": 109,
+        "right": 224
+      }
+    },
+    {
+      "text": "ASTRONOMY: E. HUBBLE",
+      "page": 2,
+      "box": {
+        "top": 99,
+        "left": 419,
+        "bottom": 112,
+        "right": 661
+      }
+    },
+    {
+      "text": "PROC. N. A. S.",
+      "page": 2,
+      "box": {
+        "top": 101,
+        "left": 764,
+        "bottom": 110,
+        "right": 881
+      }
+    },
+    {
+      "text": "individual distances are estimated for only 24. For one other, N. G. C.",
+      "page": 2,
+      "box": {
+        "top": 129,
+        "left": 196,
+        "bottom": 143,
+        "right": 882
+      }
+    },
+    {
+      "text": "3521, an estimate could probably be made, but no photographs are avail-",
+      "page": 2,
+      "box": {
+        "top": 146,
+        "left": 197,
+        "bottom": 159,
+        "right": 882
+      }
+    },
+    {
+      "text": "able at Mount Wilson. The data are given in table 1. The first seven",
+      "page": 2,
+      "box": {
+        "top": 162,
+        "left": 197,
+        "bottom": 176,
+        "right": 883
+      }
+    },
+    {
+      "text": "distances are the most reliable, depending, except for M 32 the companion of",
+      "page": 2,
+      "box": {
+        "top": 179,
+        "left": 197,
+        "bottom": 192,
+        "right": 885
+      }
+    },
+    {
+      "text": "M 31, upon extensive investigations of many stars involved. The next",
+      "page": 2,
+      "box": {
+        "top": 196,
+        "left": 197,
+        "bottom": 209,
+        "right": 883
+      }
+    },
+    {
+      "text": "thirteen distances, depending upon the criterion of a uniform upper limit",
+      "page": 2,
+      "box": {
+        "top": 212,
+        "left": 197,
+        "bottom": 226,
+        "right": 883
+      }
+    },
+    {
+      "text": "of stellar luminosity, are subject to considerable probable errors but are",
+      "page": 2,
+      "box": {
+        "top": 229,
+        "left": 197,
+        "bottom": 242,
+        "right": 883
+      }
+    },
+    {
+      "text": "believed to be the most reasonable values at present available. The last",
+      "page": 2,
+      "box": {
+        "top": 245,
+        "left": 197,
+        "bottom": 259,
+        "right": 883
+      }
+    },
+    {
+      "text": "four objects appear to be in the Virgo Cluster. The distance assigned",
+      "page": 2,
+      "box": {
+        "top": 262,
+        "left": 197,
+        "bottom": 275,
+        "right": 883
+      }
+    },
+    {
+      "text": "to the cluster, 2\\times10^{6} parsecs, is derived from the distribution of nebular",
+      "page": 2,
+      "box": {
+        "top": 278,
+        "left": 197,
+        "bottom": 291,
+        "right": 883
+      }
+    },
+    {
+      "text": "luminosities, together with luminosities of stars in some of the later-type",
+      "page": 2,
+      "box": {
+        "top": 295,
+        "left": 197,
+        "bottom": 308,
+        "right": 884
+      }
+    },
+    {
+      "text": "spirals, and differs somewhat from the Harvard estimate of ten million",
+      "page": 2,
+      "box": {
+        "top": 312,
+        "left": 198,
+        "bottom": 325,
+        "right": 883
+      }
+    },
+    {
+      "text": "light years.2",
+      "page": 2,
+      "box": {
+        "top": 328,
+        "left": 197,
+        "bottom": 342,
+        "right": 309
+      }
+    },
+    {
+      "text": "The data in the table indicate a linear correlation between distances and",
+      "page": 2,
+      "box": {
+        "top": 345,
+        "left": 220,
+        "bottom": 356,
+        "right": 883
+      }
+    },
+    {
+      "text": "velocities, whether the latter are used directly or corrected for solar motion,",
+      "page": 2,
+      "box": {
+        "top": 362,
+        "left": 198,
+        "bottom": 375,
+        "right": 883
+      }
+    },
+    {
+      "text": "according to the older solutions. This suggests a new solution for the solar",
+      "page": 2,
+      "box": {
+        "top": 376,
+        "left": 199,
+        "bottom": 393,
+        "right": 884
+      }
+    },
+    {
+      "text": "motion in which the distances are introduced as coefficients of the K term,",
+      "page": 2,
+      "box": {
+        "top": 395,
+        "left": 199,
+        "bottom": 406,
+        "right": 883
+      }
+    },
+    {
+      "text": "i. e., the velocities are assumed to vary directly with the distances, and",
+      "page": 2,
+      "box": {
+        "top": 411,
+        "left": 198,
+        "bottom": 425,
+        "right": 885
+      }
+    },
+    {
+      "text": "hence K represents the velocity at unit distance due to this effect. The",
+      "page": 2,
+      "box": {
+        "top": 426,
+        "left": 198,
+        "bottom": 442,
+        "right": 885
+      }
+    },
+    {
+      "text": "equations of condition then take the form",
+      "page": 2,
+      "box": {
+        "top": 444,
+        "left": 199,
+        "bottom": 458,
+        "right": 582
+      }
+    },
+    {
+      "text": "rK+X~cos~\\alpha~cos~\\delta+Y~sin~\\alpha~cos~\\delta+Z~sin~\\delta=v.",
+      "page": 2,
+      "box": {
+        "top": 473,
+        "left": 295,
+        "bottom": 488,
+        "right": 787
+      }
+    },
+    {
+      "text": "Two solutions have been made, one using the 24 nebulae individually,",
+      "page": 2,
+      "box": {
+        "top": 503,
+        "left": 200,
+        "bottom": 516,
+        "right": 885
+      }
+    },
+    {
+      "text": "the other combining them into 9 groups according to proximity in direc-",
+      "page": 2,
+      "box": {
+        "top": 519,
+        "left": 199,
+        "bottom": 532,
+        "right": 885
+      }
+    },
+    {
+      "text": "tion and in distance. The results are",
+      "page": 2,
+      "box": {
+        "top": 536,
+        "left": 200,
+        "bottom": 547,
+        "right": 552
+      }
+    },
+    {
+      "text": "24 OBJECTS",
+      "page": 2,
+      "box": {
+        "top": 564,
+        "left": 385,
+        "bottom": 572,
+        "right": 458
+      }
+    },
+    {
+      "text": "-65\\pm50",
+      "page": 2,
+      "box": {
+        "top": 576,
+        "left": 367,
+        "bottom": 588,
+        "right": 468
+      }
+    },
+    {
+      "text": "+226\\pm95",
+      "page": 2,
+      "box": {
+        "top": 589,
+        "left": 367,
+        "bottom": 600,
+        "right": 470
+      }
+    },
+    {
+      "text": "-105+40",
+      "page": 2,
+      "box": {
+        "top": 599,
+        "left": 366,
+        "bottom": 611,
+        "right": 466
+      }
+    },
+    {
+      "text": "KANK HAK",
+      "page": 2,
+      "box": {
+        "top": 575,
+        "left": 308,
+        "bottom": 677,
+        "right": 330
+      }
+    },
+    {
+      "text": "9 GROUPS",
+      "page": 2,
+      "box": {
+        "top": 564,
+        "left": 549,
+        "bottom": 572,
+        "right": 611
+      }
+    },
+    {
+      "text": "+3\\pm70",
+      "page": 2,
+      "box": {
+        "top": 575,
+        "left": 527,
+        "bottom": 586,
+        "right": 637
+      }
+    },
+    {
+      "text": "+230\\pm120",
+      "page": 2,
+      "box": {
+        "top": 589,
+        "left": 527,
+        "bottom": 600,
+        "right": 638
+      }
+    },
+    {
+      "text": "-133 \u00b1 70",
+      "page": 2,
+      "box": {
+        "top": 604,
+        "left": 530,
+        "bottom": 613,
+        "right": 635
+      }
+    },
+    {
+      "text": "+513 \u00b1 60 km./sec. per 10^{6} parsecs.",
+      "page": 2,
+      "box": {
+        "top": 617,
+        "left": 531,
+        "bottom": 629,
+        "right": 832
+      }
+    },
+    {
+      "text": "+465",
+      "page": 2,
+      "box": {
+        "top": 618,
+        "left": 369,
+        "bottom": 629,
+        "right": 412
+      }
+    },
+    {
+      "text": "50",
+      "page": 2,
+      "box": {
+        "top": 618,
+        "left": 447,
+        "bottom": 628,
+        "right": 465
+      }
+    },
+    {
+      "text": "286\u00b0",
+      "page": 2,
+      "box": {
+        "top": 638,
+        "left": 383,
+        "bottom": 647,
+        "right": 421
+      }
+    },
+    {
+      "text": "+40^{\\circ}",
+      "page": 2,
+      "box": {
+        "top": 648,
+        "left": 366,
+        "bottom": 660,
+        "right": 421
+      }
+    },
+    {
+      "text": "306 km./sec.",
+      "page": 2,
+      "box": {
+        "top": 665,
+        "left": 384,
+        "bottom": 676,
+        "right": 483
+      }
+    },
+    {
+      "text": "269\u00b0",
+      "page": 2,
+      "box": {
+        "top": 637,
+        "left": 545,
+        "bottom": 646,
+        "right": 582
+      }
+    },
+    {
+      "text": "+33^{\\circ}",
+      "page": 2,
+      "box": {
+        "top": 648,
+        "left": 528,
+        "bottom": 662,
+        "right": 584
+      }
+    },
+    {
+      "text": "247 km./sec.",
+      "page": 2,
+      "box": {
+        "top": 665,
+        "left": 545,
+        "bottom": 675,
+        "right": 645
+      }
+    },
+    {
+      "text": "For such scanty material, so poorly distributed, the results are fairly",
+      "page": 2,
+      "box": {
+        "top": 692,
+        "left": 223,
+        "bottom": 708,
+        "right": 888
+      }
+    },
+    {
+      "text": "definite. Differences between the two solutions are due largely to the",
+      "page": 2,
+      "box": {
+        "top": 710,
+        "left": 202,
+        "bottom": 722,
+        "right": 888
+      }
+    },
+    {
+      "text": "four Virgo nebulae, which, being the most distant objects and all sharing",
+      "page": 2,
+      "box": {
+        "top": 725,
+        "left": 201,
+        "bottom": 740,
+        "right": 888
+      }
+    },
+    {
+      "text": "the peculiar motion of the cluster, unduly influence the value of K and",
+      "page": 2,
+      "box": {
+        "top": 741,
+        "left": 202,
+        "bottom": 758,
+        "right": 888
+      }
+    },
+    {
+      "text": "hence of V_{0}. New data on more distant objects will be required to reduce",
+      "page": 2,
+      "box": {
+        "top": 758,
+        "left": 202,
+        "bottom": 773,
+        "right": 888
+      }
+    },
+    {
+      "text": "the effect of such peculiar motion. Meanwhile round numbers, inter-",
+      "page": 2,
+      "box": {
+        "top": 774,
+        "left": 202,
+        "bottom": 790,
+        "right": 888
+      }
+    },
+    {
+      "text": "mediate between the two solutions, will represent the probable order of",
+      "page": 2,
+      "box": {
+        "top": 791,
+        "left": 202,
+        "bottom": 806,
+        "right": 889
+      }
+    },
+    {
+      "text": "the values. For instance, let A=277^{\\circ} D=+36^{\\circ} (Gal. long.=32^{\\circ},",
+      "page": 2,
+      "box": {
+        "top": 804,
+        "left": 202,
+        "bottom": 821,
+        "right": 888
+      }
+    },
+    {
+      "text": "lat.=+18^{\\circ}) , V_{0}=280~km./sec. , K=+500 km./sec. per million par-",
+      "page": 2,
+      "box": {
+        "top": 823,
+        "left": 197,
+        "bottom": 839,
+        "right": 887
+      }
+    },
+    {
+      "text": "Downloaded from https://www.pnas.org by 45.113.94.70 on January 5, 2026 from IP address 45.113.94.70.",
+      "page": 3,
+      "box": {
+        "top": 931,
+        "left": 15,
+        "bottom": 456,
+        "right": 31
+      }
+    },
+    {
+      "text": "VOL. 15, 1929",
+      "page": 3,
+      "box": {
+        "top": 108,
+        "left": 120,
+        "bottom": 118,
+        "right": 230
+      }
+    },
+    {
+      "text": "ASTRONOMY: E. HUBBLE",
+      "page": 3,
+      "box": {
+        "top": 108,
+        "left": 346,
+        "bottom": 118,
+        "right": 586
+      }
+    },
+    {
+      "text": "171",
+      "page": 3,
+      "box": {
+        "top": 110,
+        "left": 781,
+        "bottom": 117,
+        "right": 807
+      }
+    },
+    {
+      "text": "secs. Mr. Str\u00f6mberg has very kindly checked the general order of these",
+      "page": 3,
+      "box": {
+        "top": 137,
+        "left": 121,
+        "bottom": 150,
+        "right": 808
+      }
+    },
+    {
+      "text": "values by independent solutions for different groupings of the data.",
+      "page": 3,
+      "box": {
+        "top": 154,
+        "left": 121,
+        "bottom": 167,
+        "right": 743
+      }
+    },
+    {
+      "text": "A constant term, introduced into the equations, was found to be small",
+      "page": 3,
+      "box": {
+        "top": 170,
+        "left": 142,
+        "bottom": 183,
+        "right": 807
+      }
+    },
+    {
+      "text": "and negative. This seems to dispose of the necessity for the old constant",
+      "page": 3,
+      "box": {
+        "top": 187,
+        "left": 121,
+        "bottom": 200,
+        "right": 807
+      }
+    },
+    {
+      "text": "K term. Solutions of this sort have been published by Lundmark, who",
+      "page": 3,
+      "box": {
+        "top": 203,
+        "left": 120,
+        "bottom": 216,
+        "right": 807
+      }
+    },
+    {
+      "text": "replaced the old K by k+lr+mr^{2}. His favored solution gave k=513,",
+      "page": 3,
+      "box": {
+        "top": 216,
+        "left": 121,
+        "bottom": 232,
+        "right": 806
+      }
+    },
+    {
+      "text": "as against the former value of the order of 700, and hence offered little",
+      "page": 3,
+      "box": {
+        "top": 234,
+        "left": 120,
+        "bottom": 249,
+        "right": 807
+      }
+    },
+    {
+      "text": "advantage.",
+      "page": 3,
+      "box": {
+        "top": 253,
+        "left": 121,
+        "bottom": 266,
+        "right": 220
+      }
+    },
+    {
+      "text": "TABLE 2",
+      "page": 3,
+      "box": {
+        "top": 277,
+        "left": 413,
+        "bottom": 284,
+        "right": 482
+      }
+    },
+    {
+      "text": "NEBULAE WHOSE DISTANCES ARE ESTIMATED FROM RADIAL VELOCITIES",
+      "page": 3,
+      "box": {
+        "top": 291,
+        "left": 156,
+        "bottom": 300,
+        "right": 760
+      }
+    },
+    {
+      "text": "OBJECT",
+      "page": 3,
+      "box": {
+        "top": 307,
+        "left": 197,
+        "bottom": 313,
+        "right": 243
+      }
+    },
+    {
+      "text": "T",
+      "page": 3,
+      "box": {
+        "top": 306,
+        "left": 563,
+        "bottom": 311,
+        "right": 572
+      }
+    },
+    {
+      "text": "m:",
+      "page": 3,
+      "box": {
+        "top": 307,
+        "left": 662,
+        "bottom": 315,
+        "right": 682
+      }
+    },
+    {
+      "text": "M_{t}",
+      "page": 3,
+      "box": {
+        "top": 304,
+        "left": 769,
+        "bottom": 315,
+        "right": 791
+      }
+    },
+    {
+      "text": "N. G. C. 278",
+      "page": 3,
+      "box": {
+        "top": 318,
+        "left": 121,
+        "bottom": 328,
+        "right": 232
+      }
+    },
+    {
+      "text": "+ 650",
+      "page": 3,
+      "box": {
+        "top": 317,
+        "left": 307,
+        "bottom": 328,
+        "right": 358
+      }
+    },
+    {
+      "text": "-110",
+      "page": 3,
+      "box": {
+        "top": 318,
+        "left": 432,
+        "bottom": 327,
+        "right": 475
+      }
+    },
+    {
+      "text": "1.52",
+      "page": 3,
+      "box": {
+        "top": 318,
+        "left": 547,
+        "bottom": 326,
+        "right": 583
+      }
+    },
+    {
+      "text": "12.0",
+      "page": 3,
+      "box": {
+        "top": 318,
+        "left": 655,
+        "bottom": 327,
+        "right": 691
+      }
+    },
+    {
+      "text": "- 13.9",
+      "page": 3,
+      "box": {
+        "top": 318,
+        "left": 755,
+        "bottom": 327,
+        "right": 808
+      }
+    },
+    {
+      "text": "404",
+      "page": 3,
+      "box": {
+        "top": 333,
+        "left": 205,
+        "bottom": 340,
+        "right": 233
+      }
+    },
+    {
+      "text": "25",
+      "page": 3,
+      "box": {
+        "top": 332,
+        "left": 339,
+        "bottom": 340,
+        "right": 359
+      }
+    },
+    {
+      "text": "- 65",
+      "page": 3,
+      "box": {
+        "top": 332,
+        "left": 432,
+        "bottom": 341,
+        "right": 475
+      }
+    },
+    {
+      "text": "11.1",
+      "page": 3,
+      "box": {
+        "top": 332,
+        "left": 655,
+        "bottom": 340,
+        "right": 690
+      }
+    },
+    {
+      "text": "584",
+      "page": 3,
+      "box": {
+        "top": 347,
+        "left": 206,
+        "bottom": 354,
+        "right": 233
+      }
+    },
+    {
+      "text": "+1800",
+      "page": 3,
+      "box": {
+        "top": 346,
+        "left": 307,
+        "bottom": 355,
+        "right": 359
+      }
+    },
+    {
+      "text": "+ 75",
+      "page": 3,
+      "box": {
+        "top": 346,
+        "left": 433,
+        "bottom": 355,
+        "right": 475
+      }
+    },
+    {
+      "text": "3.45",
+      "page": 3,
+      "box": {
+        "top": 346,
+        "left": 545,
+        "bottom": 354,
+        "right": 583
+      }
+    },
+    {
+      "text": "10.9",
+      "page": 3,
+      "box": {
+        "top": 346,
+        "left": 655,
+        "bottom": 354,
+        "right": 691
+      }
+    },
+    {
+      "text": "16.8",
+      "page": 3,
+      "box": {
+        "top": 345,
+        "left": 771,
+        "bottom": 355,
+        "right": 807
+      }
+    },
+    {
+      "text": "936",
+      "page": 3,
+      "box": {
+        "top": 359,
+        "left": 205,
+        "bottom": 368,
+        "right": 232
+      }
+    },
+    {
+      "text": "+1300",
+      "page": 3,
+      "box": {
+        "top": 360,
+        "left": 308,
+        "bottom": 369,
+        "right": 358
+      }
+    },
+    {
+      "text": "+115",
+      "page": 3,
+      "box": {
+        "top": 359,
+        "left": 433,
+        "bottom": 369,
+        "right": 475
+      }
+    },
+    {
+      "text": "2.37",
+      "page": 3,
+      "box": {
+        "top": 360,
+        "left": 546,
+        "bottom": 368,
+        "right": 584
+      }
+    },
+    {
+      "text": "11.1",
+      "page": 3,
+      "box": {
+        "top": 360,
+        "left": 655,
+        "bottom": 368,
+        "right": 690
+      }
+    },
+    {
+      "text": "15.7",
+      "page": 3,
+      "box": {
+        "top": 360,
+        "left": 771,
+        "bottom": 368,
+        "right": 808
+      }
+    },
+    {
+      "text": "1023",
+      "page": 3,
+      "box": {
+        "top": 374,
+        "left": 197,
+        "bottom": 382,
+        "right": 233
+      }
+    },
+    {
+      "text": "+ 300",
+      "page": 3,
+      "box": {
+        "top": 372,
+        "left": 307,
+        "bottom": 384,
+        "right": 358
+      }
+    },
+    {
+      "text": "10",
+      "page": 3,
+      "box": {
+        "top": 374,
+        "left": 457,
+        "bottom": 382,
+        "right": 475
+      }
+    },
+    {
+      "text": "0.62",
+      "page": 3,
+      "box": {
+        "top": 374,
+        "left": 546,
+        "bottom": 382,
+        "right": 582
+      }
+    },
+    {
+      "text": "10.2",
+      "page": 3,
+      "box": {
+        "top": 374,
+        "left": 655,
+        "bottom": 381,
+        "right": 689
+      }
+    },
+    {
+      "text": "13.8",
+      "page": 3,
+      "box": {
+        "top": 373,
+        "left": 772,
+        "bottom": 382,
+        "right": 808
+      }
+    },
+    {
+      "text": "-",
+      "page": 3,
+      "box": {
+        "top": 336,
+        "left": 307,
+        "bottom": 338,
+        "right": 321
+      }
+    },
+    {
+      "text": "12.5",
+      "page": 3,
+      "box": {
+        "top": 390,
+        "left": 655,
+        "bottom": 398,
+        "right": 690
+      }
+    },
+    {
+      "text": "-",
+      "page": 3,
+      "box": {
+        "top": 407,
+        "left": 431,
+        "bottom": 409,
+        "right": 446
+      }
+    },
+    {
+      "text": "1700",
+      "page": 3,
+      "box": {
+        "top": 390,
+        "left": 197,
+        "bottom": 399,
+        "right": 233
+      }
+    },
+    {
+      "text": "2681",
+      "page": 3,
+      "box": {
+        "top": 404,
+        "left": 196,
+        "bottom": 412,
+        "right": 232
+      }
+    },
+    {
+      "text": "2683",
+      "page": 3,
+      "box": {
+        "top": 418,
+        "left": 196,
+        "bottom": 426,
+        "right": 233
+      }
+    },
+    {
+      "text": "2841",
+      "page": 3,
+      "box": {
+        "top": 432,
+        "left": 196,
+        "bottom": 440,
+        "right": 233
+      }
+    },
+    {
+      "text": "3034",
+      "page": 3,
+      "box": {
+        "top": 445,
+        "left": 196,
+        "bottom": 453,
+        "right": 234
+      }
+    },
+    {
+      "text": "+ 800",
+      "page": 3,
+      "box": {
+        "top": 389,
+        "left": 307,
+        "bottom": 399,
+        "right": 357
+      }
+    },
+    {
+      "text": "+ 700",
+      "page": 3,
+      "box": {
+        "top": 403,
+        "left": 307,
+        "bottom": 413,
+        "right": 357
+      }
+    },
+    {
+      "text": "+ 400",
+      "page": 3,
+      "box": {
+        "top": 417,
+        "left": 308,
+        "bottom": 427,
+        "right": 358
+      }
+    },
+    {
+      "text": "+ 600",
+      "page": 3,
+      "box": {
+        "top": 431,
+        "left": 307,
+        "bottom": 441,
+        "right": 359
+      }
+    },
+    {
+      "text": "+ 290",
+      "page": 3,
+      "box": {
+        "top": 445,
+        "left": 307,
+        "bottom": 454,
+        "right": 358
+      }
+    },
+    {
+      "text": "+220",
+      "page": 3,
+      "box": {
+        "top": 389,
+        "left": 433,
+        "bottom": 399,
+        "right": 475
+      }
+    },
+    {
+      "text": "10",
+      "page": 3,
+      "box": {
+        "top": 404,
+        "left": 457,
+        "bottom": 412,
+        "right": 475
+      }
+    },
+    {
+      "text": "+ 65",
+      "page": 3,
+      "box": {
+        "top": 417,
+        "left": 433,
+        "bottom": 427,
+        "right": 475
+      }
+    },
+    {
+      "text": "20",
+      "page": 3,
+      "box": {
+        "top": 432,
+        "left": 456,
+        "bottom": 440,
+        "right": 475
+      }
+    },
+    {
+      "text": "-105",
+      "page": 3,
+      "box": {
+        "top": 444,
+        "left": 432,
+        "bottom": 454,
+        "right": 476
+      }
+    },
+    {
+      "text": "1.16",
+      "page": 3,
+      "box": {
+        "top": 390,
+        "left": 547,
+        "bottom": 398,
+        "right": 582
+      }
+    },
+    {
+      "text": "1.42",
+      "page": 3,
+      "box": {
+        "top": 403,
+        "left": 547,
+        "bottom": 412,
+        "right": 582
+      }
+    },
+    {
+      "text": "0.67",
+      "page": 3,
+      "box": {
+        "top": 417,
+        "left": 545,
+        "bottom": 426,
+        "right": 583
+      }
+    },
+    {
+      "text": "10.7",
+      "page": 3,
+      "box": {
+        "top": 404,
+        "left": 655,
+        "bottom": 412,
+        "right": 691
+      }
+    },
+    {
+      "text": "9.9",
+      "page": 3,
+      "box": {
+        "top": 417,
+        "left": 662,
+        "bottom": 426,
+        "right": 690
+      }
+    },
+    {
+      "text": "12.8",
+      "page": 3,
+      "box": {
+        "top": 390,
+        "left": 771,
+        "bottom": 398,
+        "right": 808
+      }
+    },
+    {
+      "text": "15.0",
+      "page": 3,
+      "box": {
+        "top": 403,
+        "left": 771,
+        "bottom": 411,
+        "right": 807
+      }
+    },
+    {
+      "text": "14.3",
+      "page": 3,
+      "box": {
+        "top": 417,
+        "left": 771,
+        "bottom": 426,
+        "right": 806
+      }
+    },
+    {
+      "text": "16.1",
+      "page": 3,
+      "box": {
+        "top": 431,
+        "left": 771,
+        "bottom": 439,
+        "right": 806
+      }
+    },
+    {
+      "text": "15.5",
+      "page": 3,
+      "box": {
+        "top": 444,
+        "left": 771,
+        "bottom": 453,
+        "right": 807
+      }
+    },
+    {
+      "text": "1.24",
+      "page": 3,
+      "box": {
+        "top": 431,
+        "left": 547,
+        "bottom": 439,
+        "right": 583
+      }
+    },
+    {
+      "text": "9.4",
+      "page": 3,
+      "box": {
+        "top": 432,
+        "left": 662,
+        "bottom": 439,
+        "right": 691
+      }
+    },
+    {
+      "text": "0.79",
+      "page": 3,
+      "box": {
+        "top": 444,
+        "left": 545,
+        "bottom": 453,
+        "right": 583
+      }
+    },
+    {
+      "text": "9.0",
+      "page": 3,
+      "box": {
+        "top": 445,
+        "left": 663,
+        "bottom": 453,
+        "right": 691
+      }
+    },
+    {
+      "text": "3115",
+      "page": 3,
+      "box": {
+        "top": 461,
+        "left": 196,
+        "bottom": 470,
+        "right": 233
+      }
+    },
+    {
+      "text": "9.5",
+      "page": 3,
+      "box": {
+        "top": 461,
+        "left": 661,
+        "bottom": 469,
+        "right": 691
+      }
+    },
+    {
+      "text": "1.00",
+      "page": 3,
+      "box": {
+        "top": 461,
+        "left": 547,
+        "bottom": 470,
+        "right": 582
+      }
+    },
+    {
+      "text": "1.74",
+      "page": 3,
+      "box": {
+        "top": 475,
+        "left": 547,
+        "bottom": 484,
+        "right": 582
+      }
+    },
+    {
+      "text": "10.0",
+      "page": 3,
+      "box": {
+        "top": 475,
+        "left": 655,
+        "bottom": 483,
+        "right": 690
+      }
+    },
+    {
+      "text": "3368",
+      "page": 3,
+      "box": {
+        "top": 475,
+        "left": 196,
+        "bottom": 484,
+        "right": 233
+      }
+    },
+    {
+      "text": "3379",
+      "page": 3,
+      "box": {
+        "top": 489,
+        "left": 196,
+        "bottom": 498,
+        "right": 232
+      }
+    },
+    {
+      "text": "3489",
+      "page": 3,
+      "box": {
+        "top": 503,
+        "left": 196,
+        "bottom": 511,
+        "right": 234
+      }
+    },
+    {
+      "text": "+ 600",
+      "page": 3,
+      "box": {
+        "top": 461,
+        "left": 308,
+        "bottom": 471,
+        "right": 358
+      }
+    },
+    {
+      "text": "+ 940",
+      "page": 3,
+      "box": {
+        "top": 476,
+        "left": 308,
+        "bottom": 485,
+        "right": 359
+      }
+    },
+    {
+      "text": "+ 810",
+      "page": 3,
+      "box": {
+        "top": 488,
+        "left": 307,
+        "bottom": 499,
+        "right": 358
+      }
+    },
+    {
+      "text": "+ 600",
+      "page": 3,
+      "box": {
+        "top": 502,
+        "left": 307,
+        "bottom": 512,
+        "right": 357
+      }
+    },
+    {
+      "text": "15.5",
+      "page": 3,
+      "box": {
+        "top": 461,
+        "left": 771,
+        "bottom": 470,
+        "right": 806
+      }
+    },
+    {
+      "text": "16.2",
+      "page": 3,
+      "box": {
+        "top": 475,
+        "left": 772,
+        "bottom": 484,
+        "right": 806
+      }
+    },
+    {
+      "text": "16.4",
+      "page": 3,
+      "box": {
+        "top": 489,
+        "left": 771,
+        "bottom": 497,
+        "right": 808
+      }
+    },
+    {
+      "text": "14.0",
+      "page": 3,
+      "box": {
+        "top": 503,
+        "left": 772,
+        "bottom": 511,
+        "right": 807
+      }
+    },
+    {
+      "text": "1.49",
+      "page": 3,
+      "box": {
+        "top": 489,
+        "left": 547,
+        "bottom": 497,
+        "right": 582
+      }
+    },
+    {
+      "text": "+105",
+      "page": 3,
+      "box": {
+        "top": 461,
+        "left": 434,
+        "bottom": 470,
+        "right": 476
+      }
+    },
+    {
+      "text": "+ 70",
+      "page": 3,
+      "box": {
+        "top": 474,
+        "left": 432,
+        "bottom": 485,
+        "right": 475
+      }
+    },
+    {
+      "text": "+ 65",
+      "page": 3,
+      "box": {
+        "top": 489,
+        "left": 433,
+        "bottom": 498,
+        "right": 475
+      }
+    },
+    {
+      "text": "+ 50",
+      "page": 3,
+      "box": {
+        "top": 502,
+        "left": 432,
+        "bottom": 512,
+        "right": 474
+      }
+    },
+    {
+      "text": "+ 95",
+      "page": 3,
+      "box": {
+        "top": 519,
+        "left": 432,
+        "bottom": 529,
+        "right": 474
+      }
+    },
+    {
+      "text": "+ 35",
+      "page": 3,
+      "box": {
+        "top": 532,
+        "left": 432,
+        "bottom": 543,
+        "right": 475
+      }
+    },
+    {
+      "text": "95",
+      "page": 3,
+      "box": {
+        "top": 547,
+        "left": 456,
+        "bottom": 555,
+        "right": 475
+      }
+    },
+    {
+      "text": "9.4",
+      "page": 3,
+      "box": {
+        "top": 488,
+        "left": 662,
+        "bottom": 497,
+        "right": 691
+      }
+    },
+    {
+      "text": "1.10",
+      "page": 3,
+      "box": {
+        "top": 503,
+        "left": 547,
+        "bottom": 511,
+        "right": 582
+      }
+    },
+    {
+      "text": "11.2",
+      "page": 3,
+      "box": {
+        "top": 503,
+        "left": 655,
+        "bottom": 511,
+        "right": 690
+      }
+    },
+    {
+      "text": "1.27",
+      "page": 3,
+      "box": {
+        "top": 519,
+        "left": 547,
+        "bottom": 527,
+        "right": 582
+      }
+    },
+    {
+      "text": "10.1",
+      "page": 3,
+      "box": {
+        "top": 518,
+        "left": 654,
+        "bottom": 527,
+        "right": 689
+      }
+    },
+    {
+      "text": "15.4",
+      "page": 3,
+      "box": {
+        "top": 519,
+        "left": 771,
+        "bottom": 527,
+        "right": 808
+      }
+    },
+    {
+      "text": "3521",
+      "page": 3,
+      "box": {
+        "top": 519,
+        "left": 196,
+        "bottom": 528,
+        "right": 232
+      }
+    },
+    {
+      "text": "3623",
+      "page": 3,
+      "box": {
+        "top": 533,
+        "left": 196,
+        "bottom": 542,
+        "right": 233
+      }
+    },
+    {
+      "text": "1.53",
+      "page": 3,
+      "box": {
+        "top": 533,
+        "left": 547,
+        "bottom": 541,
+        "right": 582
+      }
+    },
+    {
+      "text": "9.9",
+      "page": 3,
+      "box": {
+        "top": 533,
+        "left": 663,
+        "bottom": 541,
+        "right": 689
+      }
+    },
+    {
+      "text": "+ 730",
+      "page": 3,
+      "box": {
+        "top": 519,
+        "left": 307,
+        "bottom": 530,
+        "right": 358
+      }
+    },
+    {
+      "text": "+ 800",
+      "page": 3,
+      "box": {
+        "top": 533,
+        "left": 307,
+        "bottom": 543,
+        "right": 358
+      }
+    },
+    {
+      "text": "+ 800",
+      "page": 3,
+      "box": {
+        "top": 546,
+        "left": 307,
+        "bottom": 557,
+        "right": 357
+      }
+    },
+    {
+      "text": "+ 580",
+      "page": 3,
+      "box": {
+        "top": 560,
+        "left": 306,
+        "bottom": 571,
+        "right": 357
+      }
+    },
+    {
+      "text": "4111",
+      "page": 3,
+      "box": {
+        "top": 548,
+        "left": 196,
+        "bottom": 555,
+        "right": 232
+      }
+    },
+    {
+      "text": "1.79",
+      "page": 3,
+      "box": {
+        "top": 547,
+        "left": 547,
+        "bottom": 555,
+        "right": 581
+      }
+    },
+    {
+      "text": "10.1",
+      "page": 3,
+      "box": {
+        "top": 547,
+        "left": 655,
+        "bottom": 555,
+        "right": 689
+      }
+    },
+    {
+      "text": "16.0",
+      "page": 3,
+      "box": {
+        "top": 533,
+        "left": 771,
+        "bottom": 541,
+        "right": 806
+      }
+    },
+    {
+      "text": "16.1",
+      "page": 3,
+      "box": {
+        "top": 547,
+        "left": 771,
+        "bottom": 555,
+        "right": 807
+      }
+    },
+    {
+      "text": "14.3",
+      "page": 3,
+      "box": {
+        "top": 560,
+        "left": 771,
+        "bottom": 568,
+        "right": 808
+      }
+    },
+    {
+      "text": "4526",
+      "page": 3,
+      "box": {
+        "top": 561,
+        "left": 196,
+        "bottom": 569,
+        "right": 233
+      }
+    },
+    {
+      "text": "20",
+      "page": 3,
+      "box": {
+        "top": 561,
+        "left": 456,
+        "bottom": 569,
+        "right": 475
+      }
+    },
+    {
+      "text": "1.20",
+      "page": 3,
+      "box": {
+        "top": 561,
+        "left": 547,
+        "bottom": 569,
+        "right": 583
+      }
+    },
+    {
+      "text": "11.1",
+      "page": 3,
+      "box": {
+        "top": 560,
+        "left": 655,
+        "bottom": 569,
+        "right": 689
+      }
+    },
+    {
+      "text": "4565",
+      "page": 3,
+      "box": {
+        "top": 577,
+        "left": 196,
+        "bottom": 586,
+        "right": 233
+      }
+    },
+    {
+      "text": "2.35",
+      "page": 3,
+      "box": {
+        "top": 576,
+        "left": 546,
+        "bottom": 585,
+        "right": 583
+      }
+    },
+    {
+      "text": "15.9",
+      "page": 3,
+      "box": {
+        "top": 577,
+        "left": 771,
+        "bottom": 585,
+        "right": 807
+      }
+    },
+    {
+      "text": "11.0",
+      "page": 3,
+      "box": {
+        "top": 576,
+        "left": 655,
+        "bottom": 586,
+        "right": 690
+      }
+    },
+    {
+      "text": "9.1",
+      "page": 3,
+      "box": {
+        "top": 591,
+        "left": 662,
+        "bottom": 598,
+        "right": 690
+      }
+    },
+    {
+      "text": "4594",
+      "page": 3,
+      "box": {
+        "top": 592,
+        "left": 196,
+        "bottom": 599,
+        "right": 233
+      }
+    },
+    {
+      "text": "+1100",
+      "page": 3,
+      "box": {
+        "top": 577,
+        "left": 307,
+        "bottom": 587,
+        "right": 357
+      }
+    },
+    {
+      "text": "+1140",
+      "page": 3,
+      "box": {
+        "top": 591,
+        "left": 307,
+        "bottom": 600,
+        "right": 358
+      }
+    },
+    {
+      "text": "+ 900",
+      "page": 3,
+      "box": {
+        "top": 604,
+        "left": 307,
+        "bottom": 615,
+        "right": 358
+      }
+    },
+    {
+      "text": "+ 650",
+      "page": 3,
+      "box": {
+        "top": 618,
+        "left": 307,
+        "bottom": 628,
+        "right": 358
+      }
+    },
+    {
+      "text": "75",
+      "page": 3,
+      "box": {
+        "top": 577,
+        "left": 456,
+        "bottom": 585,
+        "right": 475
+      }
+    },
+    {
+      "text": "+ 25",
+      "page": 3,
+      "box": {
+        "top": 590,
+        "left": 432,
+        "bottom": 600,
+        "right": 475
+      }
+    },
+    {
+      "text": "-130",
+      "page": 3,
+      "box": {
+        "top": 604,
+        "left": 434,
+        "bottom": 613,
+        "right": 473
+      }
+    },
+    {
+      "text": "-215",
+      "page": 3,
+      "box": {
+        "top": 618,
+        "left": 432,
+        "bottom": 627,
+        "right": 475
+      }
+    },
+    {
+      "text": "2.23",
+      "page": 3,
+      "box": {
+        "top": 591,
+        "left": 546,
+        "bottom": 599,
+        "right": 582
+      }
+    },
+    {
+      "text": "2.06",
+      "page": 3,
+      "box": {
+        "top": 604,
+        "left": 545,
+        "bottom": 613,
+        "right": 581
+      }
+    },
+    {
+      "text": "17.6",
+      "page": 3,
+      "box": {
+        "top": 590,
+        "left": 771,
+        "bottom": 599,
+        "right": 806
+      }
+    },
+    {
+      "text": "15.5",
+      "page": 3,
+      "box": {
+        "top": 604,
+        "left": 771,
+        "bottom": 613,
+        "right": 807
+      }
+    },
+    {
+      "text": "5005",
+      "page": 3,
+      "box": {
+        "top": 605,
+        "left": 197,
+        "bottom": 613,
+        "right": 232
+      }
+    },
+    {
+      "text": "11.1",
+      "page": 3,
+      "box": {
+        "top": 604,
+        "left": 655,
+        "bottom": 612,
+        "right": 690
+      }
+    },
+    {
+      "text": "5866",
+      "page": 3,
+      "box": {
+        "top": 619,
+        "left": 197,
+        "bottom": 627,
+        "right": 232
+      }
+    },
+    {
+      "text": "1.73",
+      "page": 3,
+      "box": {
+        "top": 619,
+        "left": 547,
+        "bottom": 627,
+        "right": 582
+      }
+    },
+    {
+      "text": "11.7",
+      "page": 3,
+      "box": {
+        "top": 618,
+        "left": 655,
+        "bottom": 627,
+        "right": 691
+      }
+    },
+    {
+      "text": "-14.5",
+      "page": 3,
+      "box": {
+        "top": 619,
+        "left": 754,
+        "bottom": 626,
+        "right": 808
+      }
+    },
+    {
+      "text": "Mean",
+      "page": 3,
+      "box": {
+        "top": 636,
+        "left": 121,
+        "bottom": 644,
+        "right": 167
+      }
+    },
+    {
+      "text": "10.5",
+      "page": 3,
+      "box": {
+        "top": 635,
+        "left": 655,
+        "bottom": 643,
+        "right": 691
+      }
+    },
+    {
+      "text": "-15.3",
+      "page": 3,
+      "box": {
+        "top": 635,
+        "left": 754,
+        "bottom": 643,
+        "right": 807
+      }
+    },
+    {
+      "text": "The residuals for the two solutions given above average 150 and 110",
+      "page": 3,
+      "box": {
+        "top": 666,
+        "left": 143,
+        "bottom": 678,
+        "right": 807
+      }
+    },
+    {
+      "text": "km./sec. and should represent the average peculiar motions of the in-",
+      "page": 3,
+      "box": {
+        "top": 682,
+        "left": 122,
+        "bottom": 696,
+        "right": 806
+      }
+    },
+    {
+      "text": "dividual nebulae and of the groups, respectively. In order to exhibit",
+      "page": 3,
+      "box": {
+        "top": 699,
+        "left": 122,
+        "bottom": 712,
+        "right": 807
+      }
+    },
+    {
+      "text": "the results in a graphical form, the solar motion has been eliminated from",
+      "page": 3,
+      "box": {
+        "top": 714,
+        "left": 122,
+        "bottom": 729,
+        "right": 806
+      }
+    },
+    {
+      "text": "the observed velocities and the remainders, the distance terms plus the",
+      "page": 3,
+      "box": {
+        "top": 731,
+        "left": 122,
+        "bottom": 744,
+        "right": 807
+      }
+    },
+    {
+      "text": "residuals, have been plotted against the distances. The run of the re-",
+      "page": 3,
+      "box": {
+        "top": 748,
+        "left": 122,
+        "bottom": 761,
+        "right": 805
+      }
+    },
+    {
+      "text": "siduals is about as smooth as can be expected, and in general the form of",
+      "page": 3,
+      "box": {
+        "top": 765,
+        "left": 122,
+        "bottom": 778,
+        "right": 810
+      }
+    },
+    {
+      "text": "the solutions appears to be adequate.",
+      "page": 3,
+      "box": {
+        "top": 781,
+        "left": 122,
+        "bottom": 796,
+        "right": 464
+      }
+    },
+    {
+      "text": "The 22 nebulae for which distances are not available can be treated in",
+      "page": 3,
+      "box": {
+        "top": 798,
+        "left": 143,
+        "bottom": 809,
+        "right": 808
+      }
+    },
+    {
+      "text": "two ways. First, the mean distance of the group derived from the mean",
+      "page": 3,
+      "box": {
+        "top": 813,
+        "left": 121,
+        "bottom": 830,
+        "right": 808
+      }
+    },
+    {
+      "text": "apparent magnitudes can be compared with the mean of the velocities",
+      "page": 3,
+      "box": {
+        "top": 829,
+        "left": 122,
+        "bottom": 846,
+        "right": 805
+      }
+    },
+    {
+      "text": "Downloaded from https://www.pnas.org by 45.113.94.70 on January 5, 2026 from IP address 45.113.94.70.",
+      "page": 4,
+      "box": {
+        "top": 931,
+        "left": 15,
+        "bottom": 456,
+        "right": 31
+      }
+    },
+    {
+      "text": "172",
+      "page": 4,
+      "box": {
+        "top": 108,
+        "left": 198,
+        "bottom": 115,
+        "right": 225
+      }
+    },
+    {
+      "text": "ASTRONOMY: E. HUBBLE",
+      "page": 4,
+      "box": {
+        "top": 107,
+        "left": 421,
+        "bottom": 116,
+        "right": 662
+      }
+    },
+    {
+      "text": "PROC. N. A. S.",
+      "page": 4,
+      "box": {
+        "top": 108,
+        "left": 766,
+        "bottom": 116,
+        "right": 882
+      }
+    },
+    {
+      "text": "corrected for solar motion. The result, 745 km./sec. for a distance of",
+      "page": 4,
+      "box": {
+        "top": 135,
+        "left": 197,
+        "bottom": 149,
+        "right": 884
+      }
+    },
+    {
+      "text": "1.4\\times10^{6} parsecs, falls between the two previous solutions and indicates",
+      "page": 4,
+      "box": {
+        "top": 151,
+        "left": 199,
+        "bottom": 166,
+        "right": 882
+      }
+    },
+    {
+      "text": "a value for K of 530 as against the proposed value, 500 km./sec.",
+      "page": 4,
+      "box": {
+        "top": 169,
+        "left": 197,
+        "bottom": 182,
+        "right": 797
+      }
+    },
+    {
+      "text": "Secondly, the scatter of the individual nebulae can be examined by",
+      "page": 4,
+      "box": {
+        "top": 186,
+        "left": 218,
+        "bottom": 199,
+        "right": 883
+      }
+    },
+    {
+      "text": "assuming the relation between distances and velocities as previously",
+      "page": 4,
+      "box": {
+        "top": 203,
+        "left": 197,
+        "bottom": 216,
+        "right": 883
+      }
+    },
+    {
+      "text": "determined. Distances can then be calculated from the velocities cor-",
+      "page": 4,
+      "box": {
+        "top": 220,
+        "left": 197,
+        "bottom": 231,
+        "right": 882
+      }
+    },
+    {
+      "text": "rected for solar motion, and absolute magnitudes can be derived from the",
+      "page": 4,
+      "box": {
+        "top": 237,
+        "left": 196,
+        "bottom": 249,
+        "right": 883
+      }
+    },
+    {
+      "text": "apparent magnitudes. The results are given in table 2 and may be",
+      "page": 4,
+      "box": {
+        "top": 253,
+        "left": 197,
+        "bottom": 266,
+        "right": 884
+      }
+    },
+    {
+      "text": "compared with the distribution of absolute magnitudes among the nebulae",
+      "page": 4,
+      "box": {
+        "top": 270,
+        "left": 197,
+        "bottom": 283,
+        "right": 883
+      }
+    },
+    {
+      "text": "in table 1, whose distances are derived from other criteria. N. G. C. 404",
+      "page": 4,
+      "box": {
+        "top": 286,
+        "left": 196,
+        "bottom": 299,
+        "right": 883
+      }
+    },
+    {
+      "text": "+1000 KM",
+      "page": 4,
+      "box": {
+        "top": 356,
+        "left": 269,
+        "bottom": 361,
+        "right": 313
+      }
+    },
+    {
+      "text": "500KM",
+      "page": 4,
+      "box": {
+        "top": 416,
+        "left": 279,
+        "bottom": 422,
+        "right": 311
+      }
+    },
+    {
+      "text": "VELOCITY",
+      "page": 4,
+      "box": {
+        "top": 435,
+        "left": 318,
+        "bottom": 465,
+        "right": 326
+      }
+    },
+    {
+      "text": "DISTANCE",
+      "page": 4,
+      "box": {
+        "top": 513,
+        "left": 410,
+        "bottom": 519,
+        "right": 459
+      }
+    },
+    {
+      "text": "O",
+      "page": 4,
+      "box": {
+        "top": 523,
+        "left": 373,
+        "bottom": 528,
+        "right": 381
+      }
+    },
+    {
+      "text": "2x10 PARSECS",
+      "page": 4,
+      "box": {
+        "top": 521,
+        "left": 705,
+        "bottom": 528,
+        "right": 786
+      }
+    },
+    {
+      "text": "10* PARSECS",
+      "page": 4,
+      "box": {
+        "top": 521,
+        "left": 534,
+        "bottom": 528,
+        "right": 594
+      }
+    },
+    {
+      "text": "FIGURE 1",
+      "page": 4,
+      "box": {
+        "top": 531,
+        "left": 499,
+        "bottom": 539,
+        "right": 575
+      }
+    },
+    {
+      "text": "Velocity-Distance Relation among Extra-Galactic Nebulae.",
+      "page": 4,
+      "box": {
+        "top": 544,
+        "left": 304,
+        "bottom": 555,
+        "right": 771
+      }
+    },
+    {
+      "text": "Radial velocities, corrected for solar motion, are plotted against",
+      "page": 4,
+      "box": {
+        "top": 561,
+        "left": 289,
+        "bottom": 572,
+        "right": 806
+      }
+    },
+    {
+      "text": "distances estimated from involved stars and mean luminosities of",
+      "page": 4,
+      "box": {
+        "top": 575,
+        "left": 271,
+        "bottom": 584,
+        "right": 808
+      }
+    },
+    {
+      "text": "nebulae in a cluster. The black discs and full line represent the",
+      "page": 4,
+      "box": {
+        "top": 589,
+        "left": 271,
+        "bottom": 599,
+        "right": 807
+      }
+    },
+    {
+      "text": "solution for solar motion using the nebulae individually; the circles",
+      "page": 4,
+      "box": {
+        "top": 603,
+        "left": 271,
+        "bottom": 613,
+        "right": 805
+      }
+    },
+    {
+      "text": "and broken line represent the solution combining the nebulae into",
+      "page": 4,
+      "box": {
+        "top": 617,
+        "left": 271,
+        "bottom": 627,
+        "right": 807
+      }
+    },
+    {
+      "text": "groups; the cross represents the mean velocity corresponding to",
+      "page": 4,
+      "box": {
+        "top": 631,
+        "left": 271,
+        "bottom": 642,
+        "right": 805
+      }
+    },
+    {
+      "text": "the mean distance of 22 nebulae whose distances could not be esti-",
+      "page": 4,
+      "box": {
+        "top": 645,
+        "left": 271,
+        "bottom": 654,
+        "right": 806
+      }
+    },
+    {
+      "text": "mated individually.",
+      "page": 4,
+      "box": {
+        "top": 658,
+        "left": 271,
+        "bottom": 669,
+        "right": 426
+      }
+    },
+    {
+      "text": "can be excluded, since the observed velocity is so small that the peculiar",
+      "page": 4,
+      "box": {
+        "top": 690,
+        "left": 197,
+        "bottom": 703,
+        "right": 883
+      }
+    },
+    {
+      "text": "motion must be large in comparison with the distance effect. The object",
+      "page": 4,
+      "box": {
+        "top": 707,
+        "left": 197,
+        "bottom": 719,
+        "right": 883
+      }
+    },
+    {
+      "text": "is not necessarily an exception, however, since a distance can be assigned",
+      "page": 4,
+      "box": {
+        "top": 723,
+        "left": 197,
+        "bottom": 736,
+        "right": 882
+      }
+    },
+    {
+      "text": "for which the peculiar motion and the absolute magnitude are both within",
+      "page": 4,
+      "box": {
+        "top": 740,
+        "left": 196,
+        "bottom": 752,
+        "right": 883
+      }
+    },
+    {
+      "text": "the range previously determined. The two mean magnitudes, -15.3",
+      "page": 4,
+      "box": {
+        "top": 752,
+        "left": 196,
+        "bottom": 771,
+        "right": 883
+      }
+    },
+    {
+      "text": "and -15.5 , the ranges, 4.9 and 5.0 mag., and the frequency distributions",
+      "page": 4,
+      "box": {
+        "top": 770,
+        "left": 197,
+        "bottom": 786,
+        "right": 882
+      }
+    },
+    {
+      "text": "are closely similar for these two entirely independent sets of data; and",
+      "page": 4,
+      "box": {
+        "top": 788,
+        "left": 197,
+        "bottom": 802,
+        "right": 883
+      }
+    },
+    {
+      "text": "even the slight difference in mean magnitudes can be attributed to the",
+      "page": 4,
+      "box": {
+        "top": 804,
+        "left": 196,
+        "bottom": 818,
+        "right": 883
+      }
+    },
+    {
+      "text": "selected, very bright, nebulae in the Virgo Cluster. This entirely unforced",
+      "page": 4,
+      "box": {
+        "top": 820,
+        "left": 197,
+        "bottom": 834,
+        "right": 882
+      }
+    },
+    {
+      "text": "agreement supports the validity of the velocity-distance relation in a very",
+      "page": 4,
+      "box": {
+        "top": 836,
+        "left": 197,
+        "bottom": 851,
+        "right": 883
+      }
+    },
+    {
+      "text": "Downloaded from https://www.pnas.org by 45.113.94.70 on January 5, 2026 from IP address 45.113.94.70.",
+      "page": 5,
+      "box": {
+        "top": 931,
+        "left": 15,
+        "bottom": 456,
+        "right": 31
+      }
+    },
+    {
+      "text": "VOL. 15, 1929",
+      "page": 5,
+      "box": {
+        "top": 109,
+        "left": 120,
+        "bottom": 118,
+        "right": 228
+      }
+    },
+    {
+      "text": "ASTRONOMY: E. HUBBLE",
+      "page": 5,
+      "box": {
+        "top": 109,
+        "left": 343,
+        "bottom": 118,
+        "right": 584
+      }
+    },
+    {
+      "text": "173",
+      "page": 5,
+      "box": {
+        "top": 109,
+        "left": 778,
+        "bottom": 118,
+        "right": 805
+      }
+    },
+    {
+      "text": "evident matter. Finally, it is worth recording that the frequency distribu-",
+      "page": 5,
+      "box": {
+        "top": 137,
+        "left": 120,
+        "bottom": 150,
+        "right": 806
+      }
+    },
+    {
+      "text": "tion of absolute magnitudes in the two tables combined is comparable",
+      "page": 5,
+      "box": {
+        "top": 153,
+        "left": 120,
+        "bottom": 167,
+        "right": 806
+      }
+    },
+    {
+      "text": "with those found in the various clusters of nebulae.",
+      "page": 5,
+      "box": {
+        "top": 170,
+        "left": 120,
+        "bottom": 180,
+        "right": 594
+      }
+    },
+    {
+      "text": "The results establish a roughly linear relation between velocities and",
+      "page": 5,
+      "box": {
+        "top": 187,
+        "left": 142,
+        "bottom": 199,
+        "right": 805
+      }
+    },
+    {
+      "text": "distances among nebulae for which velocities have been previously pub-",
+      "page": 5,
+      "box": {
+        "top": 203,
+        "left": 120,
+        "bottom": 217,
+        "right": 804
+      }
+    },
+    {
+      "text": "lished, and the relation appears to dominate the distribution of velocities.",
+      "page": 5,
+      "box": {
+        "top": 220,
+        "left": 120,
+        "bottom": 233,
+        "right": 803
+      }
+    },
+    {
+      "text": "In order to investigate the matter on a much larger scale, Mr. Humason",
+      "page": 5,
+      "box": {
+        "top": 237,
+        "left": 120,
+        "bottom": 249,
+        "right": 805
+      }
+    },
+    {
+      "text": "at Mount Wilson has initiated a program of determining velocities",
+      "page": 5,
+      "box": {
+        "top": 253,
+        "left": 120,
+        "bottom": 266,
+        "right": 805
+      }
+    },
+    {
+      "text": "of the most distant nebulae that can be observed with confidence.",
+      "page": 5,
+      "box": {
+        "top": 269,
+        "left": 120,
+        "bottom": 280,
+        "right": 806
+      }
+    },
+    {
+      "text": "These, naturally, are the brightest nebulae in clusters of nebulae.",
+      "page": 5,
+      "box": {
+        "top": 286,
+        "left": 120,
+        "bottom": 299,
+        "right": 805
+      }
+    },
+    {
+      "text": "The first definite result,\u00b9 v=+3779~km./sec. for N. G. C. 7619, is",
+      "page": 5,
+      "box": {
+        "top": 301,
+        "left": 121,
+        "bottom": 316,
+        "right": 807
+      }
+    },
+    {
+      "text": "thoroughly consistent with the present conclusions. Corrected for the",
+      "page": 5,
+      "box": {
+        "top": 318,
+        "left": 119,
+        "bottom": 332,
+        "right": 807
+      }
+    },
+    {
+      "text": "solar motion, this velocity is +3910, which, with K=500 , corresponds to",
+      "page": 5,
+      "box": {
+        "top": 334,
+        "left": 121,
+        "bottom": 349,
+        "right": 805
+      }
+    },
+    {
+      "text": "a distance of 7.8\\times10^{6} parsecs. Since the apparent magnitude is 11.8,",
+      "page": 5,
+      "box": {
+        "top": 350,
+        "left": 120,
+        "bottom": 365,
+        "right": 804
+      }
+    },
+    {
+      "text": "the absolute magnitude at such a distance is -17.65, which is of the",
+      "page": 5,
+      "box": {
+        "top": 369,
+        "left": 120,
+        "bottom": 381,
+        "right": 807
+      }
+    },
+    {
+      "text": "right order for the brightest nebulae in a cluster. A preliminary dis-",
+      "page": 5,
+      "box": {
+        "top": 385,
+        "left": 120,
+        "bottom": 398,
+        "right": 805
+      }
+    },
+    {
+      "text": "tance, derived independently from the cluster of which this nebula appears",
+      "page": 5,
+      "box": {
+        "top": 402,
+        "left": 121,
+        "bottom": 415,
+        "right": 804
+      }
+    },
+    {
+      "text": "to be a member, is of the order of 7\\times10^{6} parsecs.",
+      "page": 5,
+      "box": {
+        "top": 416,
+        "left": 120,
+        "bottom": 431,
+        "right": 591
+      }
+    },
+    {
+      "text": "New data to be expected in the near future may modify the significance",
+      "page": 5,
+      "box": {
+        "top": 435,
+        "left": 142,
+        "bottom": 448,
+        "right": 805
+      }
+    },
+    {
+      "text": "of the present investigation or, if confirmatory, will lead to a solution",
+      "page": 5,
+      "box": {
+        "top": 451,
+        "left": 120,
+        "bottom": 464,
+        "right": 806
+      }
+    },
+    {
+      "text": "having many times the weight. For this reason it is thought premature",
+      "page": 5,
+      "box": {
+        "top": 467,
+        "left": 120,
+        "bottom": 481,
+        "right": 804
+      }
+    },
+    {
+      "text": "to discuss in detail the obvious consequences of the present results. For",
+      "page": 5,
+      "box": {
+        "top": 484,
+        "left": 120,
+        "bottom": 497,
+        "right": 806
+      }
+    },
+    {
+      "text": "example, if the solar motion with respect to the clusters represents the",
+      "page": 5,
+      "box": {
+        "top": 501,
+        "left": 120,
+        "bottom": 514,
+        "right": 805
+      }
+    },
+    {
+      "text": "rotation of the galactic system, this motion could be subtracted from the",
+      "page": 5,
+      "box": {
+        "top": 517,
+        "left": 120,
+        "bottom": 530,
+        "right": 805
+      }
+    },
+    {
+      "text": "results for the nebulae and the remainder would represent the motion of",
+      "page": 5,
+      "box": {
+        "top": 534,
+        "left": 120,
+        "bottom": 547,
+        "right": 807
+      }
+    },
+    {
+      "text": "the galactic system with respect to the extra-galactic nebulae.",
+      "page": 5,
+      "box": {
+        "top": 550,
+        "left": 120,
+        "bottom": 563,
+        "right": 691
+      }
+    },
+    {
+      "text": "The outstanding feature, however, is the possibility that the velocity-",
+      "page": 5,
+      "box": {
+        "top": 567,
+        "left": 140,
+        "bottom": 580,
+        "right": 805
+      }
+    },
+    {
+      "text": "distance relation may represent the de Sitter effect, and hence that numer-",
+      "page": 5,
+      "box": {
+        "top": 584,
+        "left": 120,
+        "bottom": 596,
+        "right": 804
+      }
+    },
+    {
+      "text": "ical data may be introduced into discussions of the general curvature of",
+      "page": 5,
+      "box": {
+        "top": 600,
+        "left": 119,
+        "bottom": 613,
+        "right": 806
+      }
+    },
+    {
+      "text": "space. In the de Sitter cosmology, displacements of the spectra arise",
+      "page": 5,
+      "box": {
+        "top": 617,
+        "left": 119,
+        "bottom": 630,
+        "right": 805
+      }
+    },
+    {
+      "text": "from two sources, an apparent slowing down of atomic vibrations and a",
+      "page": 5,
+      "box": {
+        "top": 631,
+        "left": 119,
+        "bottom": 646,
+        "right": 805
+      }
+    },
+    {
+      "text": "general tendency of material particles to scatter. The latter involves an",
+      "page": 5,
+      "box": {
+        "top": 648,
+        "left": 119,
+        "bottom": 663,
+        "right": 805
+      }
+    },
+    {
+      "text": "acceleration and hence introduces the element of time. The relative im-",
+      "page": 5,
+      "box": {
+        "top": 666,
+        "left": 119,
+        "bottom": 677,
+        "right": 804
+      }
+    },
+    {
+      "text": "portance of these two effects should determine the form of the relation",
+      "page": 5,
+      "box": {
+        "top": 681,
+        "left": 119,
+        "bottom": 696,
+        "right": 805
+      }
+    },
+    {
+      "text": "between distances and observed velocities; and in this connection it may",
+      "page": 5,
+      "box": {
+        "top": 699,
+        "left": 119,
+        "bottom": 711,
+        "right": 805
+      }
+    },
+    {
+      "text": "be emphasized that the linear relation found in the present discussion is a",
+      "page": 5,
+      "box": {
+        "top": 716,
+        "left": 119,
+        "bottom": 729,
+        "right": 805
+      }
+    },
+    {
+      "text": "first approximation representing a restricted range in distance.",
+      "page": 5,
+      "box": {
+        "top": 732,
+        "left": 119,
+        "bottom": 746,
+        "right": 697
+      }
+    },
+    {
+      "text": "1 Mt. Wilson Contr., No. 324; Astroph. J., Chicago, Ill., 64, 1926 (321).",
+      "page": 5,
+      "box": {
+        "top": 753,
+        "left": 142,
+        "bottom": 764,
+        "right": 712
+      }
+    },
+    {
+      "text": "Harvard Coll. Obs. Circ., 294, 1926.",
+      "page": 5,
+      "box": {
+        "top": 767,
+        "left": 155,
+        "bottom": 777,
+        "right": 436
+      }
+    },
+    {
+      "text": "Mon. Not. R. Astr. Soc., 85, 1925 (865-894).",
+      "page": 5,
+      "box": {
+        "top": 781,
+        "left": 156,
+        "bottom": 791,
+        "right": 516
+      }
+    },
+    {
+      "text": "4 These PROCEEDINGS, 15, 1929 (167).",
+      "page": 5,
+      "box": {
+        "top": 794,
+        "left": 143,
+        "bottom": 804,
+        "right": 451
+      }
+    }
+  ]
+]
