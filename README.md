@@ -1,5 +1,7 @@
 # anchorite
 
+<img src="https://raw.githubusercontent.com/populationgenomics/anchorite/main/docs/source/_static/anchorite.svg" alt="anchorite" width="200">
+
 **Spatial text alignment for document AI pipelines.**
 
 `anchorite` aligns generated Markdown text back to the physical bounding boxes that an OCR engine found on the original document pages. It bridges the gap between generative AI (which produces high-quality, readable Markdown) and traditional OCR (which provides precise coordinates) by finding where each OCR word or phrase appears in the generated output.
