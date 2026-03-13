@@ -68,9 +68,10 @@ async def process_document(
 
     if anchor_provider is not None:
         anchor_tasks = [anchor_provider.generate_anchors(chunk) for chunk in chunk_list]
-        results = await asyncio.gather(*markdown_tasks, *anchor_tasks)
-        markdown_chunks = list(results[: len(chunk_list)])
-        all_anchors = results[len(chunk_list) :]
+        markdown_chunks, all_anchors = await asyncio.gather(
+            asyncio.gather(*markdown_tasks),
+            asyncio.gather(*anchor_tasks),
+        )
         flat_anchors = [anchor for chunk_anchors in all_anchors for anchor in chunk_anchors]
     else:
         markdown_chunks = list(await asyncio.gather(*markdown_tasks))
