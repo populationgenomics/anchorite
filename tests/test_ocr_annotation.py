@@ -53,21 +53,28 @@ def test_ocr_result_annotate_overlap() -> None:
     assert annotated == expected
 
 
-def test_ocr_result_annotate_zero_length() -> None:
-    # Test zero-length span
-    # Text content: "Hello"
-    # bbox1: "" [2, 2) (Insertion point at index 2)
+def test_annotate_abutting_spans() -> None:
+    # When two spans meet at the same character index (e.g. de-hyphenated words),
+    # the end tag of the first must precede the start tag of the second.
+    content = "underdiagnosed"
+    bbox_a = anchorite.Anchor(text="under-", page=0, box=anchorite.BBox(0, 0, 10, 100))
+    bbox_b = anchorite.Anchor(text="diagnosed", page=0, box=anchorite.BBox(10, 0, 20, 100))
 
+    annotated = anchorite.annotate(content, {bbox_a: (0, 5), bbox_b: (5, 14)})
+
+    tag_a = '<span data-bbox="0,0,10,100" data-page="0">'
+    tag_b = '<span data-bbox="10,0,20,100" data-page="0">'
+    end = "</span>"
+
+    expected = f"{tag_a}under{end}{tag_b}diagnosed{end}"
+    assert annotated == expected
+
+
+def test_annotate_zero_length() -> None:
+    # Zero-length spans are skipped — they carry no text content.
     content = "Hello"
     bbox1 = anchorite.Anchor(text="", page=1, box=anchorite.BBox(0, 0, 0, 0))
     span1 = (2, 2)
 
-    result = anchorite.AlignmentResult(content, {bbox1: span1}, coverage_percent=0.0)
-
-    annotated = result.annotate()
-
-    tag_start = '<span data-bbox="0,0,0,0" data-page="1">'
-    tag_end = "</span>"
-
-    expected = f"He{tag_start}{tag_end}llo"
-    assert annotated == expected
+    annotated = anchorite.annotate(content, {bbox1: span1})
+    assert annotated == "Hello"
