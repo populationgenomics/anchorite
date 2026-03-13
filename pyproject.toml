@@ -22,7 +22,7 @@ classifiers = [
 ]
 dependencies = [
     "seq-smith>=0.5.1",
-    "pymupdf",
+    "pypdfium2",
     "fsspec",
 ]
 

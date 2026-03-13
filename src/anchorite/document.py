@@ -6,8 +6,8 @@ import pathlib
 from collections.abc import Iterator
 from typing import TypeAlias
 
-import fitz
 import fsspec
+import pypdfium2 as pdfium
 
 DocumentInput: TypeAlias = pathlib.Path | str | bytes | io.IOBase
 
@@ -29,7 +29,7 @@ class DocumentChunk:
 
 
 def _split_pdf_bytes(file_bytes: bytes, page_count: int | None = None) -> Iterator[DocumentChunk]:
-    doc = fitz.open(stream=file_bytes, filetype="pdf")
+    doc = pdfium.PdfDocument(file_bytes)
     doc_page_count = len(doc)
     document_sha256 = hashlib.sha256(file_bytes).hexdigest()
     if page_count is None:
@@ -37,11 +37,12 @@ def _split_pdf_bytes(file_bytes: bytes, page_count: int | None = None) -> Iterat
         return
 
     for start_page in range(0, doc_page_count, page_count):
-        new_doc = fitz.open()
         end_page = min(start_page + page_count, doc_page_count)
-        new_doc.insert_pdf(doc, from_page=start_page, to_page=end_page - 1)
-        yield DocumentChunk(document_sha256, start_page, end_page, new_doc.tobytes(), "application/pdf")
-        new_doc.close()
+        new_doc = pdfium.PdfDocument.new()
+        new_doc.import_pages(doc, list(range(start_page, end_page)))
+        buf = io.BytesIO()
+        new_doc.save(buf)
+        yield DocumentChunk(document_sha256, start_page, end_page, buf.getvalue(), "application/pdf")
 
 
 def _resolve_input(input_source: DocumentInput, mime_type: str | None) -> tuple[bytes, str | None]:
