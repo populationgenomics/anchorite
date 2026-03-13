@@ -1,14 +1,15 @@
 import dataclasses
 import hashlib
+import io
 import mimetypes
 import pathlib
 from collections.abc import Iterator
-from typing import BinaryIO, TypeAlias
+from typing import TypeAlias
 
 import fitz
 import fsspec
 
-DocumentInput: TypeAlias = pathlib.Path | str | bytes | BinaryIO
+DocumentInput: TypeAlias = pathlib.Path | str | bytes | io.IOBase
 
 
 @dataclasses.dataclass
@@ -60,7 +61,7 @@ def _resolve_input(input_source: DocumentInput, mime_type: str | None) -> tuple[
                 mime_type, _ = mimetypes.guess_type(path_obj)
         case bytes():
             file_bytes = input_source
-        case BinaryIO():
+        case _ if hasattr(input_source, "read"):
             file_bytes = input_source.read()
         case _:
             raise ValueError(f"Unsupported input source: {input_source}")
@@ -92,7 +93,7 @@ def chunks(
             mime_type = "image/webp"
 
     if mime_type and mime_type.startswith("image/"):
-        yield DocumentChunk(hashlib.sha256(file_bytes).hexdigest(), 0, 0, file_bytes, mime_type)
+        yield DocumentChunk(hashlib.sha256(file_bytes).hexdigest(), 0, 1, file_bytes, mime_type)
         return
 
     if mime_type != "application/pdf":
