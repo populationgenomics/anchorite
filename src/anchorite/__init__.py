@@ -1,14 +1,16 @@
+"""Anchorite: spatial text alignment connecting Markdown to PDF bounding boxes."""
+
 import dataclasses
 import logging
 import re
 import string
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 import seq_smith
 
 from . import bbox_alignment, document, markdown, orchestrator, providers, range_ops
+from .anchors import Anchor, BBox
 from .orchestrator import AlignmentResult, process_document
-from .types import Anchor, BBox
 
 __all__ = [
     "AlignmentResult",
@@ -116,11 +118,18 @@ def align(
     uniqueness_threshold: float = 0.5,
     min_overlap: float = 0.9,
 ) -> dict[Anchor, tuple[int, int]]:
-    """
-    Alignment of anchors to Markdown text.
+    """Align OCR anchors to character positions in a Markdown string.
 
     Iterative: ungapped alignment first, then gapped, until convergence.
     Filters by uniqueness, minimum overlap, and page consistency.
+
+    Args:
+        anchors: OCR-derived anchors to align.
+        markdown: The Markdown string to align against.
+        uniqueness_threshold: An anchor is accepted only when its best-match
+            score exceeds this fraction of its second-best score.
+        min_overlap: Minimum fraction of the anchor's normalised length that
+            must be covered by the alignment.
 
     Returns:
         Mapping of Anchor -> (start_char, end_char) in markdown.
@@ -135,7 +144,7 @@ def align(
 
 def annotate(
     markdown: str,
-    alignment: dict[Anchor, tuple[int, int]],
+    alignment: Mapping[Anchor, tuple[int, int]],
 ) -> str:
     """Inject coordinate ``<span>`` tags into Markdown at aligned positions.
 
@@ -368,7 +377,7 @@ def _fuzzy_resolve_quote(
 # enough context to make every citation unique in the document.
 def resolve(
     annotated_md: str,
-    quotes: list[str],
+    quotes: Sequence[str],
 ) -> dict[str, list[tuple[int, BBox]]]:
     """Resolve verbatim quotes to bounding boxes using fuzzy iterative matching.
 

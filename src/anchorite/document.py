@@ -1,3 +1,5 @@
+"""Document loading and chunking for PDF and image inputs."""
+
 import dataclasses
 import hashlib
 import io
@@ -76,9 +78,22 @@ def chunks(
     page_count: int | None = None,
     mime_type: str | None = None,
 ) -> Iterator[DocumentChunk]:
-    """Splits a Document into chunks.
+    """Split a document into chunks for processing.
 
-    Supports PDF (splits by pages) and Images (single chunk).
+    Supports PDF (split by page count) and images (yielded as a single chunk).
+
+    Args:
+        input_source: Path, URL, raw bytes, or file-like object for the document.
+        page_count: Number of pages per chunk. If ``None``, the entire PDF is
+            yielded as a single chunk.
+        mime_type: MIME type of the input. Inferred from the source path or
+            magic bytes when not provided.
+
+    Yields:
+        ``DocumentChunk`` instances, each covering a contiguous page range.
+
+    Raises:
+        ValueError: If the MIME type cannot be determined or is unsupported.
     """
     file_bytes, mime_type = _resolve_input(input_source, mime_type)
 

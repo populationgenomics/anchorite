@@ -1,3 +1,5 @@
+"""Integer interval arithmetic: union, intersection, subtraction, and sweep-line utilities."""
+
 import heapq
 import itertools
 from collections.abc import Callable, Iterator, Sequence
@@ -64,7 +66,8 @@ def _sweep_operation(
             start_pos = pos
         elif was_active and not is_active:
             # Stopped satisfying predicate
-            assert start_pos != -1  # noqa: S101
+            if start_pos == -1:
+                raise RuntimeError("sweep-line state error: active interval ended without a recorded start")
             result.append((start_pos, pos))
             start_pos = -1
 

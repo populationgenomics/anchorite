@@ -1,3 +1,5 @@
+"""Iterative Smith-Waterman alignment of OCR anchors to Markdown text."""
+
 import collections
 import dataclasses
 import logging
@@ -7,8 +9,7 @@ from collections.abc import Iterator, Sequence
 
 import seq_smith
 
-from . import range_ops
-from .types import Anchor
+from . import anchors, range_ops
 
 _ALIGN_ALPHABET = string.ascii_lowercase + string.digits + " "
 _NON_WORD_CHARS = seq_smith.encode(" ", _ALIGN_ALPHABET)
@@ -52,7 +53,7 @@ class _NormalizedSpan:
 class _AnchorFragment(_NormalizedSpan):
     """A normalized span derived from an anchor."""
 
-    anchor: Anchor
+    anchor: anchors.Anchor
     """The original anchor object."""
 
 
@@ -90,7 +91,7 @@ def _normalize(source: str, span: tuple[int, int] = (-1, -1)) -> tuple[bytes, tu
     return span_bytes, tuple(normalized_to_source)
 
 
-def _make_anchor_fragment(anchor: Anchor) -> _AnchorFragment:
+def _make_anchor_fragment(anchor: anchors.Anchor) -> _AnchorFragment:
     span_bytes, normalized_to_source = _normalize(anchor.text)
     return _AnchorFragment(anchor.text, span_bytes, normalized_to_source, anchor)
 
@@ -356,10 +357,10 @@ def _process_alignment_iteration(
 
 def align_anchors(
     markdown_content: str,
-    anchors: Sequence[Anchor],
+    anchor_seq: Sequence[anchors.Anchor],
     uniqueness_threshold: float = _UNIQUENESS_THRESHOLD,
     min_overlap: float = _MIN_OVERLAP,
-) -> dict[Anchor, tuple[int, int]]:
+) -> dict[anchors.Anchor, tuple[int, int]]:
     """Align a sequence of anchors to their positions in a Markdown string.
 
     Runs the iterative Smith-Waterman alignment loop: ungapped on the first pass,
@@ -369,7 +370,7 @@ def align_anchors(
 
     Args:
         markdown_content: The generated Markdown text to align against.
-        anchors: OCR-derived anchors, each carrying text, page number, and bounding box.
+        anchor_seq: OCR-derived anchors, each carrying text, page number, and bounding box.
         uniqueness_threshold: An anchor is accepted only when its best-match score
             exceeds this fraction of its second-best score (prevents ambiguous matches).
         min_overlap: Minimum fraction of the anchor's normalised length that must
@@ -381,11 +382,11 @@ def align_anchors(
     """
 
     # Create initial spans (just the full content)
-    anchor_spans: set[_AnchorFragment] = {span for span in [_make_anchor_fragment(a) for a in anchors] if len(span)}
+    anchor_spans: set[_AnchorFragment] = {span for span in [_make_anchor_fragment(a) for a in anchor_seq] if len(span)}
     if not anchor_spans:
         return {}
 
-    max_page = max(a.page for a in anchors)
+    max_page = max(a.page for a in anchor_seq)
     spans = list(_make_document_fragments(markdown_content, (0, max_page + 1)))
 
     logging.debug("initial span count %d; initial anchor count %d", len(spans), len(anchor_spans))
