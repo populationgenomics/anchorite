@@ -160,6 +160,8 @@ def annotate(
 
     insertions = []
     for anchor, (span_start, span_end) in alignment.items():
+        if span_start == span_end:
+            continue
         start, end = span_start, span_end
         # Check for overlap with math ranges
         for m_start, m_end in math_ranges:
@@ -177,7 +179,12 @@ def annotate(
         insertions.append((start, False, length, start_tag))
         insertions.append((end, True, length, end_tag))
 
-    insertions.sort(key=lambda x: (x[0], x[1], -x[2] if not x[1] else x[2]), reverse=True)
+    # Sort (reverse=True -> largest key first, i.e. rightmost position first):
+    # 1. Index descending — insert from right to left.
+    # 2. is_end ascending — at the same position, process start tags before end
+    #    tags so that end tags land to the left: </span_A><span_B>.
+    # 3. Length descending — shorter spans close/open before longer ones.
+    insertions.sort(key=lambda x: (x[0], not x[1], -x[2]), reverse=True)
 
     chars = list(markdown)
     for index, _, _, text in insertions:
