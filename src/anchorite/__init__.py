@@ -210,7 +210,7 @@ def strip(annotated_md: str) -> StrippedMarkdown:
     """
     # Regex to find <span data-bbox="..." data-page="...">...</span>
     token_pattern = re.compile(
-        r'(?P<start><span data-bbox="(?P<bbox>[-?\d,]+)" data-page="(?P<page>\d+)">)|(?P<end></span>)',
+        r'(?P<start><span data-bbox="(?P<bbox>-?\d+,-?\d+,-?\d+,-?\d+)" data-page="(?P<page>\d+)">)|(?P<end></span>)',
     )
 
     plain_chars = []
