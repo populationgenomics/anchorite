@@ -363,6 +363,9 @@ def _fuzzy_resolve_quote(
     return sorted(set(found_locations))
 
 
+# TODO: flag non-unique matches in the resolve() return value so callers can warn
+# when a quote is ambiguous.  The practical mitigation is to ask the LLM to supply
+# enough context to make every citation unique in the document.
 def resolve(
     annotated_md: str,
     quotes: list[str],
