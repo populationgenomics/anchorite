@@ -28,6 +28,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pre-commit",
     "pytest",
     "pytest-asyncio",
     "ruff>=0.14.6",
