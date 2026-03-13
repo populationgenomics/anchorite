@@ -53,3 +53,36 @@ def test_hyphen_match_simple() -> None:
 
     # Verify assignment
     assert anchors[0] in assignments
+
+
+def test_align_table_cell() -> None:
+    markdown = """
+| Cell cycle | 3 | 34 |
+| DNA repair | 4 | 52 |
+| Histone modifier | 5 | 29 |
+| OTHER GROWTH/PROLIFERATION SIGNALING | | |
+"""
+    anchor = anchorite.Anchor(text="Histone modifier", page=1, box=anchorite.BBox(0, 0, 0, 0))
+    assignments = anchorite.align([anchor], markdown)
+    assert anchor in assignments
+
+
+def test_align_special_characters() -> None:
+    markdown = """
+| Trametinib | MEK1/2 | BRAF | SKCM |
+| Vemurafenib | BRAF | BRAF | SKCM |
+"""
+    anchor = anchorite.Anchor(text="MEK1/2", page=1, box=anchorite.BBox(0, 0, 0, 0))
+    assignments = anchorite.align([anchor], markdown)
+    assert anchor in assignments
+
+
+def test_align_duplicate_text_assigns_once() -> None:
+    markdown = """
+Here is duplicate.
+Here is duplicate.
+"""
+    anchor = anchorite.Anchor(text="duplicate", page=1, box=anchorite.BBox(0, 0, 0, 0))
+    assignments = anchorite.align([anchor], markdown)
+    assert anchor in assignments
+    assert len(assignments) == 1

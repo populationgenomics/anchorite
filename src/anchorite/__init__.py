@@ -159,7 +159,7 @@ def annotate(
         math_ranges.append((m.start(), m.end()))
 
     insertions = []
-    for anchor, (span_start, span_end) in alignment.items():
+    for i, (anchor, (span_start, span_end)) in enumerate(alignment.items()):
         if span_start == span_end:
             continue
         start, end = span_start, span_end
@@ -176,18 +176,33 @@ def annotate(
         start_tag = f'<span data-bbox="{box_str}" data-page="{anchor.page}">'
         end_tag = "</span>"
 
-        insertions.append((start, False, length, start_tag))
-        insertions.append((end, True, length, end_tag))
+        insertions.append((start, False, length, i, start_tag))
+        insertions.append((end, True, length, i, end_tag))
 
-    # Sort (reverse=True -> largest key first, i.e. rightmost position first):
-    # 1. Index descending — insert from right to left.
-    # 2. is_end ascending — at the same position, process start tags before end
-    #    tags so that end tags land to the left: </span_A><span_B>.
-    # 3. Length descending — shorter spans close/open before longer ones.
-    insertions.sort(key=lambda x: (x[0], not x[1], -x[2]), reverse=True)
+    # Sorting rules:
+    # * we wish to process in descending position order
+    # * if there are position ties (n.b. later insertions end up to the left of earlier):
+    #   * we want to insert closing spans to the left of opening spans, so we want to process opening spans first.
+    #   * if there are opening span ties:
+    #     * we want to insert longer spans to the left of shorter (so we want to process shorter spans first).
+    #   * if there are closing span ties:
+    #     * we want to insert longer spans to the right of shorter (so we want to process longer spans first).
+    #   * if position, kind, and length are all equal (identical ranges):
+    #     * the first-seen span (lower i) is treated as outer.
+
+    def _key(x):
+        position, is_closing, length, span_index, tag = x
+        return (
+                -position,
+                is_closing,  # opening spans sort before closing.
+                -length if is_closing else +length,  # longer closing spans and shorter opening spans first.
+                +span_index if is_closing else -span_index,  # first-seen span is outer.
+        )
+
+    insertions.sort(key=_key)
 
     chars = list(markdown)
-    for index, _, _, text in insertions:
+    for index, _, _, _, text in insertions:
         chars.insert(index, text)
 
     return "".join(chars)
