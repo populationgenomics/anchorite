@@ -154,7 +154,7 @@ def annotate(
     """
     math_ranges = []
     # Pattern matches $$...$$ (DOTALL) or $...$ (inline, allowing newlines for wrapped text)
-    pattern = re.compile(r"(\$\$[\s\S]+?\$\$|\$(?:\.|[^$])+?\$)")
+    pattern = re.compile(r"(\$\$[\s\S]+?\$\$|\$[^$]+?\$)")
     for m in pattern.finditer(markdown):
         math_ranges.append((m.start(), m.end()))
 
