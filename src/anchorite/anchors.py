@@ -1,3 +1,5 @@
+"""Core data types: BBox and Anchor."""
+
 import dataclasses
 
 

@@ -1,8 +1,11 @@
+"""Markdown post-processing utilities, including marker renumbering."""
+
 import collections
 import re
+from collections.abc import Sequence
 
 
-def renumber_markers(markdown_chunks: list[str]) -> list[str]:
+def renumber_markers(markdown_chunks: Sequence[str]) -> list[str]:
     """
     Renumbers <!--table--> and <!--figure--> markers across multiple chunks.
 

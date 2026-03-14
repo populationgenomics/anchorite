@@ -5,8 +5,7 @@ import pathlib
 import pytest
 
 import anchorite
-from anchorite.document import DocumentChunk
-from anchorite.types import Anchor, BBox
+from anchorite import Anchor, BBox, document
 
 FIXTURES_DIR = pathlib.Path(__file__).parent / "fixtures"
 
@@ -15,7 +14,7 @@ class MockMarkdownProvider:
     def __init__(self, responses: list) -> None:
         self.responses = responses
 
-    async def generate_markdown(self, chunk: DocumentChunk) -> str:
+    async def generate_markdown(self, chunk: document.DocumentChunk) -> str:
         idx = chunk.start_page // 10
         return str(self.responses[idx])
 
@@ -24,7 +23,7 @@ class MockAnchorProvider:
     def __init__(self, bboxes_data: list) -> None:
         self.bboxes_data = bboxes_data
 
-    async def generate_anchors(self, chunk: DocumentChunk) -> list[Anchor]:
+    async def generate_anchors(self, chunk: document.DocumentChunk) -> list[Anchor]:
         idx = chunk.start_page // 10
         chunk_data = self.bboxes_data[idx]
         return [
@@ -51,7 +50,7 @@ async def test_hubble_regression() -> None:
 
     # Mock chunks so we don't need a real PDF
     mock_chunks = [
-        DocumentChunk(
+        document.DocumentChunk(
             document_sha256="fake",
             start_page=i * 10,
             end_page=(i + 1) * 10,

@@ -1,11 +1,10 @@
+"""High-level orchestration of concurrent Markdown and anchor generation followed by alignment."""
+
 import asyncio
 import dataclasses
 from collections.abc import Iterable
 
-from . import document
-from .bbox_alignment import align_anchors as align_fn
-from .providers import AnchorProvider, MarkdownProvider
-from .types import Anchor
+from . import anchors, bbox_alignment, document, markdown, providers
 
 
 @dataclasses.dataclass
@@ -14,7 +13,7 @@ class AlignmentResult:
 
     markdown_content: str
     """The generated markdown content."""
-    anchor_spans: dict[Anchor, tuple[int, int]]
+    anchor_spans: dict[anchors.Anchor, tuple[int, int]]
     """Mapping of anchors to their span ranges in the markdown."""
     coverage_percent: float
     """Percentage of markdown content covered by aligned anchors."""
@@ -29,8 +28,8 @@ class AlignmentResult:
 
 async def process_document(
     chunks: Iterable[document.DocumentChunk],
-    markdown_provider: MarkdownProvider,
-    anchor_provider: AnchorProvider | None = None,
+    markdown_provider: providers.MarkdownProvider,
+    anchor_provider: providers.AnchorProvider | None = None,
     *,
     alignment_uniqueness_threshold: float = 0.5,
     alignment_min_overlap: float = 0.9,
@@ -77,9 +76,7 @@ async def process_document(
         markdown_chunks = list(await asyncio.gather(*markdown_tasks))
 
     if renumber:
-        from .markdown import renumber_markers
-
-        markdown_chunks = renumber_markers(markdown_chunks)
+        markdown_chunks = markdown.renumber_markers(markdown_chunks)
 
     markdown_content = "\n\n<!--page-->\n\n".join(markdown_chunks)
 
@@ -87,7 +84,7 @@ async def process_document(
         return AlignmentResult(markdown_content, {}, 0.0)
 
     # Align
-    anchor_spans = align_fn(
+    anchor_spans = bbox_alignment.align_anchors(
         markdown_content,
         flat_anchors,
         uniqueness_threshold=alignment_uniqueness_threshold,
