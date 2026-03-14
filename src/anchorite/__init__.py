@@ -190,13 +190,13 @@ def annotate(
     #   * if position, kind, and length are all equal (identical ranges):
     #     * the first-seen span (lower i) is treated as outer.
 
-    def _key(x):
-        position, is_closing, length, span_index, tag = x
+    def _key(x: tuple[int, bool, int, int, str]) -> tuple[int, bool, int, int]:
+        position, is_closing, length, span_index, _tag = x
         return (
-                -position,
-                is_closing,  # opening spans sort before closing.
-                -length if is_closing else +length,  # longer closing spans and shorter opening spans first.
-                +span_index if is_closing else -span_index,  # first-seen span is outer.
+            -position,
+            is_closing,  # opening spans sort before closing.
+            -length if is_closing else +length,  # longer closing spans and shorter opening spans first.
+            +span_index if is_closing else -span_index,  # first-seen span is outer.
         )
 
     insertions.sort(key=_key)
