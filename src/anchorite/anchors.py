@@ -22,11 +22,15 @@ class BBox:
 
 @dataclasses.dataclass(frozen=True, order=True)
 class Anchor:
-    """An 'Anchor' links a segment of text to a physical location (BBox) on a page."""
+    """An 'Anchor' links a segment of text to one or more physical locations on a page.
+
+    Multi-box anchors arise when a single semantic unit (e.g. a sentence) spans
+    several lines, each with its own bounding box.
+    """
 
     text: str
     """The text content."""
     page: int
     """Page number (0-indexed)."""
-    box: BBox
-    """The bounding box coordinates."""
+    boxes: tuple[BBox, ...]
+    """Bounding boxes — one per visual line covered by this anchor."""

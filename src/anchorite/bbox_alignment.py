@@ -318,7 +318,10 @@ def _process_alignment_iteration(
     candidates = list(
         _assign_high_confidence_spans(
             spans,
-            sorted(anchor_spans, key=lambda x: (x.anchor.page, x.anchor.box.top, x.anchor.box.left, x.anchor.text)),
+            sorted(
+            anchor_spans,
+            key=lambda x: (x.anchor.page, x.anchor.boxes[0].top, x.anchor.boxes[0].left, x.anchor.text),
+        ),
             uniqueness_threshold=uniqueness_threshold,
             min_overlap=min_overlap,
             with_ungapped=iteration_num == 1,

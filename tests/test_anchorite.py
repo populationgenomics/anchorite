@@ -4,8 +4,8 @@ import anchorite
 def test_anchorite_align_and_annotate() -> None:
     markdown = "The quick brown fox jumps over the lazy dog."
     anchors = [
-        anchorite.Anchor("quick brown fox", 0, anchorite.BBox(10, 10, 20, 100)),
-        anchorite.Anchor("lazy dog", 0, anchorite.BBox(50, 50, 60, 150)),
+        anchorite.Anchor("quick brown fox", 0, (anchorite.BBox(10, 10, 20, 100),)),
+        anchorite.Anchor("lazy dog", 0, (anchorite.BBox(50, 50, 60, 150),)),
     ]
 
     alignment = anchorite.align(anchors, markdown)
@@ -20,7 +20,7 @@ def test_anchorite_math_snapping() -> None:
     markdown = "The formula is $E=mc^2$ and it is famous."
     anchors = [
         # Anchor points inside the math
-        anchorite.Anchor("mc^2", 0, anchorite.BBox(100, 100, 110, 200)),
+        anchorite.Anchor("mc^2", 0, (anchorite.BBox(100, 100, 110, 200),)),
     ]
 
     alignment = anchorite.align(anchors, markdown)
