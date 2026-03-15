@@ -483,19 +483,10 @@ def _infer_page(
     return default
 
 
-def _align_against(
-    reference: bytes,
+def _aln_to_flat_ranges(
+    aln: object,
     ref_to_flat: tuple[int, ...],
-    norm_seg: bytes,
-    score_matrix: object,
-    min_score: int,
-) -> tuple[int, list[tuple[int, int]]] | None:
-    """Run Smith-Waterman and return (score, flat_ranges) or None if below threshold."""
-    if not norm_seg:
-        return None
-    aln = seq_smith.local_align(reference, norm_seg, score_matrix, _GAP_OPEN, _GAP_EXTEND)
-    if aln.score < min_score:
-        return None
+) -> list[tuple[int, int]]:
     flat_ranges: list[tuple[int, int]] = []
     for frag in aln.fragments:
         if frag.fragment_type != seq_smith.FragmentType.Match:
@@ -504,7 +495,51 @@ def _align_against(
             ref_to_flat[frag.sa_start],
             ref_to_flat[frag.sa_start + frag.len],
         ))
-    return aln.score, flat_ranges
+    return flat_ranges
+
+
+def _align_against(
+    reference: bytes,
+    ref_to_flat: tuple[int, ...],
+    norm_seg: bytes,
+    score_matrix: object,
+    min_score: int,
+) -> tuple[int, list[tuple[int, int]]] | None:
+    """Run Smith-Waterman and return (score, flat_ranges) or None if below threshold.
+
+    ``seq_smith`` returns the *last* maximum-scoring alignment when multiple
+    positions tie.  To get the *earliest* (reading-order) match, we re-run
+    on progressively shorter prefixes of the reference until no earlier
+    match at the same score exists.
+    """
+    if not norm_seg:
+        return None
+    aln = seq_smith.local_align(reference, norm_seg, score_matrix, _GAP_OPEN, _GAP_EXTEND)
+    if aln.score < min_score:
+        return None
+    best_score = aln.score
+
+    # Iteratively search for an earlier match with the same score.
+    current_aln = aln
+    while True:
+        match_starts = [
+            f.sa_start
+            for f in current_aln.fragments
+            if f.fragment_type == seq_smith.FragmentType.Match
+        ]
+        if not match_starts:
+            break
+        cutoff = min(match_starts)
+        if cutoff == 0:
+            break  # already at the start
+        earlier_aln = seq_smith.local_align(
+            reference[:cutoff], norm_seg, score_matrix, _GAP_OPEN, _GAP_EXTEND
+        )
+        if earlier_aln.score < best_score:
+            break  # no earlier match reaches the same score
+        current_aln = earlier_aln
+
+    return best_score, _aln_to_flat_ranges(current_aln, ref_to_flat)
 
 
 def associate(
@@ -515,26 +550,34 @@ def associate(
 ) -> list[Anchor] | tuple[list[Anchor], list[int]]:
     """Align each Markdown segment to the PDF and return one Anchor per segment.
 
-    Runs three passes in order:
+    Processes segments in Markdown order.  Each segment is aligned against the
+    *residual* of its candidate page — the flat-string text not yet claimed by
+    any earlier segment.  This prevents a later occurrence of a short phrase
+    (e.g. a heading like "Protein-protein interactions" buried in a body
+    sentence) from being stolen by the heading segment, because the body
+    sentence is processed first and consumes that region.
 
-    1. **Strict** – full-page, spaces preserved.
-    2. **Loose** – full-page, spaces stripped (catches letter-spaced headings).
-    3. **Residual** – for segments still unmatched, aligns against only the
-       PDF text not yet claimed by passes 1 & 2, using the page inferred from
-       neighbouring anchors and a score threshold scaled to the segment length.
+    The candidate page is the primary page from the ``<!--page-->`` marker plus
+    its immediate neighbours (±1), to tolerate off-by-one marker errors.  The
+    page with the highest alignment score is chosen.
+
+    The score threshold scales with segment length:
+    ``max(5, min(min_score, len(norm_seg)))``.  This lets short segments (e.g.
+    section labels) match when they are the only remaining text, while still
+    requiring a minimum quality score for all matches.
 
     Args:
         pdf_path: Path to the PDF file.
         markdown: Cleaned Markdown with ``<!--page-->`` page-break markers.
-        min_score: Minimum Smith-Waterman score for passes 1 & 2.
-        return_pass_info: If True, return ``(anchors, passes)`` where
-            *passes* is a parallel list of pass numbers (1 = strict/loose
-            full-page, 3 = residual).
+        min_score: Score cap for the adaptive threshold.
+        return_pass_info: If True, return ``(anchors, confidences)`` where
+            *confidences* is a parallel list: 1 = score ≥ *min_score*
+            (confident), 2 = score < *min_score* (short-segment marginal).
 
     Returns:
         One ``Anchor`` per successfully matched segment, in Markdown order.
         Segments that cannot be matched with sufficient confidence are omitted.
-        When *return_pass_info* is True, returns ``(anchors, passes)``.
+        When *return_pass_info* is True, returns ``(anchors, confidences)``.
     """
     segments = parse_markdown_segments(markdown)
     if not segments:
@@ -545,8 +588,6 @@ def associate(
 
     page_chars: dict[int, list[_Char]] = {}
     page_char_index: dict[int, _CharIndex] = {}
-    page_norm_strict: dict[int, tuple[bytes, tuple[int, ...]]] = {}
-    page_norm_loose: dict[int, tuple[bytes, tuple[int, ...]]] = {}
 
     def _get_page_data(page_idx: int) -> tuple[list[_Char], _CharIndex]:
         if page_idx not in page_chars:
@@ -557,20 +598,11 @@ def associate(
             page_char_index[page_idx] = ci
         return page_chars[page_idx], page_char_index[page_idx]
 
-    def _get_strict_norm(page_idx: int, ci: _CharIndex) -> tuple[bytes, tuple[int, ...]]:
-        if page_idx not in page_norm_strict:
-            page_norm_strict[page_idx] = _normalize_strict(ci.flat_str)
-        return page_norm_strict[page_idx]
-
-    def _get_loose_norm(page_idx: int, ci: _CharIndex) -> tuple[bytes, tuple[int, ...]]:
-        if page_idx not in page_norm_loose:
-            page_norm_loose[page_idx] = _normalize_loose(ci.flat_str)
-        return page_norm_loose[page_idx]
-
     # results[i] is the Anchor for segments[i], or None if unmatched.
     results: list[Anchor | None] = [None] * len(segments)
-    result_pass: list[int] = [0] * len(segments)  # 1 = full-page, 3 = residual
-    # flat-string ranges claimed per page (raw, merged later).
+    # confidence[i]: 1 = score >= min_score, 2 = marginal short-segment match.
+    confidence: list[int] = [0] * len(segments)
+    # Consumed flat-string ranges per page (raw; merged on demand).
     page_matched_ranges: dict[int, list[tuple[int, int]]] = {}
 
     def _chars_from_flat_ranges(
@@ -586,113 +618,84 @@ def associate(
             )
         return [chars[i] for i in sorted(indices)]
 
-    def _record_match(
+    def _try_page_residual(
         page_idx: int,
-        chars: list[_Char],
-        flat_to_char: list[int],
-        flat_ranges: list[tuple[int, int]],
         seg: MarkdownSegment,
-        result_idx: int,
-    ) -> None:
-        matched_chars = _chars_from_flat_ranges(chars, flat_to_char, flat_ranges)
-        if not matched_chars:
-            return
-        page_obj = doc[page_idx]
-        boxes = tuple(_line_bboxes(matched_chars, page_obj.get_width(), page_obj.get_height()))
-        if boxes:
-            results[result_idx] = Anchor(text=seg.text, page=page_idx, boxes=boxes)
-            page_matched_ranges.setdefault(page_idx, []).extend(flat_ranges)
-            # pass number is set by the caller after _record_match returns
+        threshold: int,
+    ) -> tuple[int, list[tuple[int, int]]] | None:
+        """Align *seg* against the residual of *page_idx*.
 
-    def _try_page(
-        page_idx: int, seg: MarkdownSegment, threshold: int
-    ) -> tuple[int, list[tuple[int, int]], list[_Char]] | None:
-        """Try strict then loose alignment of *seg* against *page_idx*.
-
-        Returns ``(score, flat_ranges, chars)`` on success, else ``None``.
+        Returns ``(score, flat_ranges)`` on success, else ``None``.
         """
         if page_idx < 0 or page_idx >= num_pages:
             return None
         chars, ci = _get_page_data(page_idx)
         if not chars:
             return None
-        norm_page, norm_to_flat = _get_strict_norm(page_idx, ci)
-        norm_seg, _ = _normalize_strict(seg.text)
-        hit = _align_against(norm_page, norm_to_flat, norm_seg, _SCORE_MATRIX_STRICT, threshold)
-        if hit is None:
-            norm_page, norm_to_flat = _get_loose_norm(page_idx, ci)
-            norm_seg, _ = _normalize_loose(seg.text)
-            hit = _align_against(norm_page, norm_to_flat, norm_seg, _SCORE_MATRIX_LOOSE, threshold)
-        if hit is None:
-            return None
-        return hit[0], hit[1], chars
-
-    # ── Pass 1 & 2: best match across primary page and ±1 neighbours ─────────
-    # Page markers in LLM-generated markdown can be off by one.  Always score
-    # all three candidate pages and take the highest, rather than short-
-    # circuiting on the first hit.
-    for i, seg in enumerate(segments):
-        if seg.page >= num_pages:
-            continue
-
-        best: tuple[int, list[tuple[int, int]], int] | None = None  # score, ranges, page
-        for offset in (0, -1, +1):
-            candidate = _try_page(seg.page + offset, seg, min_score)
-            if candidate is not None:
-                if best is None or candidate[0] > best[0]:
-                    best = (candidate[0], candidate[1], seg.page + offset)
-
-        if best is not None:
-            _, flat_ranges, matched_page = best
-            chars, ci = _get_page_data(matched_page)
-            _record_match(matched_page, chars, ci.flat_to_char, flat_ranges, seg, i)
-            result_pass[i] = 1
-
-    # ── Pass 3: residual ──────────────────────────────────────────────────────
-    for i, seg in enumerate(segments):
-        if results[i] is not None:
-            continue
-
-        page_idx = _infer_page(i, results, segments, seg.page)
-        if page_idx >= num_pages:
-            continue
-
-        chars, ci = _get_page_data(page_idx)
-        if not chars:
-            continue
 
         covered = _merge_ranges(page_matched_ranges.get(page_idx, []))
         residual, pos_map = _residual_string(ci.flat_str, covered)
         if not residual:
-            continue
+            return None
 
-        # Threshold: a perfect match of any length passes; still require ≥ 5.
-        def _residual_align(norm_fn, score_matrix):
+        def _align(norm_fn, score_matrix):
             res_norm, res_to_res = norm_fn(residual)
             seg_norm, _ = norm_fn(seg.text)
             if not seg_norm:
                 return None
-            threshold = max(5, len(seg_norm))
             hit = _align_against(res_norm, res_to_res, seg_norm, score_matrix, threshold)
             if hit is None:
                 return None
-            # Translate residual positions → flat_str positions via pos_map.
             flat_ranges = [
                 (pos_map[rs], pos_map[min(re, len(pos_map) - 1)])
                 for rs, re in hit[1]
             ]
-            return flat_ranges
+            return hit[0], flat_ranges
 
-        flat_ranges = _residual_align(_normalize_strict, _SCORE_MATRIX_STRICT)
-        if flat_ranges is None:
-            flat_ranges = _residual_align(_normalize_loose, _SCORE_MATRIX_LOOSE)
+        result = _align(_normalize_strict, _SCORE_MATRIX_STRICT)
+        if result is None:
+            result = _align(_normalize_loose, _SCORE_MATRIX_LOOSE)
+        return result
 
-        if flat_ranges:
-            _record_match(page_idx, chars, ci.flat_to_char, flat_ranges, seg, i)
-            result_pass[i] = 3
+    # ── Single sequential pass ────────────────────────────────────────────────
+    # Segments are processed in Markdown order.  Each successful match consumes
+    # flat-string ranges so subsequent segments see only the remaining text.
+    for i, seg in enumerate(segments):
+        if seg.page >= num_pages:
+            continue
 
-    anchors = [a for a, p in zip(results, result_pass) if a is not None]
+        # Adaptive threshold: cap at min_score for long segments; scale down
+        # for short ones (but floor at 5 to avoid noise).
+        norm_len = len(_normalize_strict(seg.text)[0]) or len(_normalize_loose(seg.text)[0])
+        threshold = max(5, min(min_score, norm_len))
+
+        # Try primary page and ±1; take highest score.
+        best: tuple[int, list[tuple[int, int]], int] | None = None
+        for offset in (0, -1, +1):
+            candidate = _try_page_residual(seg.page + offset, seg, threshold)
+            if candidate is not None:
+                score, flat_ranges = candidate
+                if best is None or score > best[0]:
+                    best = (score, flat_ranges, seg.page + offset)
+
+        if best is None:
+            continue
+
+        score, flat_ranges, matched_page = best
+        chars, ci = _get_page_data(matched_page)
+        matched_chars = _chars_from_flat_ranges(chars, ci.flat_to_char, flat_ranges)
+        if not matched_chars:
+            continue
+
+        page_obj = doc[matched_page]
+        boxes = tuple(_line_bboxes(matched_chars, page_obj.get_width(), page_obj.get_height()))
+        if boxes:
+            results[i] = Anchor(text=seg.text, page=matched_page, boxes=boxes)
+            confidence[i] = 1 if score >= min_score else 2
+            page_matched_ranges.setdefault(matched_page, []).extend(flat_ranges)
+
+    anchors = [a for a, c in zip(results, confidence) if a is not None]
     if return_pass_info:
-        passes = [p for a, p in zip(results, result_pass) if a is not None]
+        passes = [c for a, c in zip(results, confidence) if a is not None]
         return anchors, passes
     return anchors
