@@ -403,6 +403,105 @@ def _line_bboxes(
     return [_bbox_from_chars(cluster, page_width, page_height) for cluster in clusters]
 
 
+def _merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Merge overlapping/adjacent integer ranges into a sorted, disjoint list."""
+    merged: list[list[int]] = []
+    for s, e in sorted(ranges):
+        if merged and s <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], e)
+        else:
+            merged.append([s, e])
+    return [(s, e) for s, e in merged]
+
+
+def _residual_string(
+    flat_str: str,
+    covered: list[tuple[int, int]],
+) -> tuple[str, list[int]]:
+    """Return the uncovered portions of *flat_str* concatenated, plus a position map.
+
+    ``pos_map[i]`` is the index of ``result[i]`` in the original *flat_str*.
+    A sentinel ``pos_map[-1] == len(flat_str)`` is appended so that exclusive
+    end indices can be looked up safely.
+    """
+    parts: list[str] = []
+    pos_map: list[int] = []
+    prev = 0
+    for s, e in covered:
+        if s > prev:
+            parts.append(flat_str[prev:s])
+            pos_map.extend(range(prev, s))
+        prev = e
+    if prev < len(flat_str):
+        parts.append(flat_str[prev:])
+        pos_map.extend(range(prev, len(flat_str)))
+    pos_map.append(len(flat_str))  # sentinel
+    return "".join(parts), pos_map
+
+
+def _infer_page(
+    seg_idx: int,
+    results: list[Anchor | None],
+    segments: list[MarkdownSegment],
+    default: int,
+) -> int:
+    """Infer the PDF page for an unmatched segment from its neighbours.
+
+    Scans backwards for the last matched anchor and forwards for the first.
+    If both agree on a page, that page is returned.  If they bracket the
+    segment across a page boundary the ``<!--page-->``-derived *default* is
+    used as a tie-breaker.
+    """
+    prev_page: int | None = None
+    for j in range(seg_idx - 1, -1, -1):
+        if results[j] is not None:
+            prev_page = results[j].page
+            break
+
+    next_page: int | None = None
+    for j in range(seg_idx + 1, len(results)):
+        if results[j] is not None:
+            next_page = results[j].page
+            break
+
+    if prev_page is not None and next_page is not None:
+        if prev_page == next_page:
+            return prev_page
+        # Segment sits between two pages; trust the page-marker default.
+        if prev_page <= default <= next_page:
+            return default
+        return prev_page
+    if prev_page is not None:
+        return max(prev_page, default)
+    if next_page is not None:
+        return min(next_page, default)
+    return default
+
+
+def _align_against(
+    reference: bytes,
+    ref_to_flat: tuple[int, ...],
+    norm_seg: bytes,
+    score_matrix: object,
+    min_score: int,
+) -> tuple[int, list[tuple[int, int]]] | None:
+    """Run Smith-Waterman and return (score, flat_ranges) or None if below threshold."""
+    if not norm_seg:
+        return None
+    aln = seq_smith.local_align(reference, norm_seg, score_matrix, _GAP_OPEN, _GAP_EXTEND)
+    if aln.score < min_score:
+        return None
+    flat_ranges: list[tuple[int, int]] = []
+    for frag in aln.fragments:
+        if frag.fragment_type != seq_smith.FragmentType.Match:
+            continue
+        flat_ranges.append((
+            ref_to_flat[frag.sa_start],
+            ref_to_flat[frag.sa_start + frag.len],
+        ))
+    return aln.score, flat_ranges
+
+
 def associate(
     pdf_path: pathlib.Path,
     markdown: str,
@@ -410,10 +509,18 @@ def associate(
 ) -> list[Anchor]:
     """Align each Markdown segment to the PDF and return one Anchor per segment.
 
+    Runs three passes in order:
+
+    1. **Strict** – full-page, spaces preserved.
+    2. **Loose** – full-page, spaces stripped (catches letter-spaced headings).
+    3. **Residual** – for segments still unmatched, aligns against only the
+       PDF text not yet claimed by passes 1 & 2, using the page inferred from
+       neighbouring anchors and a score threshold scaled to the segment length.
+
     Args:
         pdf_path: Path to the PDF file.
         markdown: Cleaned Markdown with ``<!--page-->`` page-break markers.
-        min_score: Minimum Smith-Waterman score to accept a match.
+        min_score: Minimum Smith-Waterman score for passes 1 & 2.
 
     Returns:
         One ``Anchor`` per successfully matched segment, in Markdown order.
@@ -450,9 +557,43 @@ def associate(
             page_norm_loose[page_idx] = _normalize_loose(ci.flat_str)
         return page_norm_loose[page_idx]
 
-    anchors: list[Anchor] = []
+    # results[i] is the Anchor for segments[i], or None if unmatched.
+    results: list[Anchor | None] = [None] * len(segments)
+    # flat-string ranges claimed per page (raw, merged later).
+    page_matched_ranges: dict[int, list[tuple[int, int]]] = {}
 
-    for seg in segments:
+    def _chars_from_flat_ranges(
+        chars: list[_Char],
+        flat_to_char: list[int],
+        flat_ranges: list[tuple[int, int]],
+    ) -> list[_Char]:
+        indices: set[int] = set()
+        for fs, fe in flat_ranges:
+            indices.update(
+                flat_to_char[j]
+                for j in range(fs, min(fe, len(flat_to_char)))
+            )
+        return [chars[i] for i in sorted(indices)]
+
+    def _record_match(
+        page_idx: int,
+        chars: list[_Char],
+        flat_to_char: list[int],
+        flat_ranges: list[tuple[int, int]],
+        seg: MarkdownSegment,
+        result_idx: int,
+    ) -> None:
+        matched_chars = _chars_from_flat_ranges(chars, flat_to_char, flat_ranges)
+        if not matched_chars:
+            return
+        page_obj = doc[page_idx]
+        boxes = tuple(_line_bboxes(matched_chars, page_obj.get_width(), page_obj.get_height()))
+        if boxes:
+            results[result_idx] = Anchor(text=seg.text, page=page_idx, boxes=boxes)
+            page_matched_ranges.setdefault(page_idx, []).extend(flat_ranges)
+
+    # ── Pass 1 & 2: full-page strict then loose ───────────────────────────────
+    for i, seg in enumerate(segments):
         if seg.page >= num_pages:
             continue
 
@@ -460,45 +601,60 @@ def associate(
         if not chars:
             continue
 
-        # Strict pass: word boundaries preserved.
+        # Strict.
         norm_page, norm_to_flat = _get_strict_norm(seg.page, ci)
         norm_seg, _ = _normalize_strict(seg.text)
-        score_matrix = _SCORE_MATRIX_STRICT
-        if norm_seg:
-            alignment = seq_smith.local_align(
-                norm_page, norm_seg, score_matrix, _GAP_OPEN, _GAP_EXTEND
-            )
-        else:
-            alignment = None
+        hit = _align_against(norm_page, norm_to_flat, norm_seg, _SCORE_MATRIX_STRICT, min_score)
 
-        # Loose fallback: spaces stripped so letter-spaced headings match.
-        if not norm_seg or alignment.score < min_score:
+        # Loose fallback.
+        if hit is None:
             norm_page, norm_to_flat = _get_loose_norm(seg.page, ci)
             norm_seg, _ = _normalize_loose(seg.text)
-            score_matrix = _SCORE_MATRIX_LOOSE
-            if not norm_seg:
-                continue
-            alignment = seq_smith.local_align(
-                norm_page, norm_seg, score_matrix, _GAP_OPEN, _GAP_EXTEND
-            )
+            hit = _align_against(norm_page, norm_to_flat, norm_seg, _SCORE_MATRIX_LOOSE, min_score)
 
-        if alignment.score < min_score:
+        if hit is not None:
+            _record_match(seg.page, chars, ci.flat_to_char, hit[1], seg, i)
+
+    # ── Pass 3: residual ──────────────────────────────────────────────────────
+    for i, seg in enumerate(segments):
+        if results[i] is not None:
             continue
 
-        matched_chars: list[_Char] = []
-        for frag in alignment.fragments:
-            if frag.fragment_type != seq_smith.FragmentType.Match:
-                continue
-            flat_start = norm_to_flat[frag.sa_start]
-            flat_end = norm_to_flat[frag.sa_start + frag.len]
-            matched_chars.extend(_chars_in_range(chars, ci.flat_to_char, flat_start, flat_end))
-
-        if not matched_chars:
+        page_idx = _infer_page(i, results, segments, seg.page)
+        if page_idx >= num_pages:
             continue
 
-        page = doc[seg.page]
-        boxes = tuple(_line_bboxes(matched_chars, page.get_width(), page.get_height()))
-        if boxes:
-            anchors.append(Anchor(text=seg.text, page=seg.page, boxes=boxes))
+        chars, ci = _get_page_data(page_idx)
+        if not chars:
+            continue
 
-    return anchors
+        covered = _merge_ranges(page_matched_ranges.get(page_idx, []))
+        residual, pos_map = _residual_string(ci.flat_str, covered)
+        if not residual:
+            continue
+
+        # Threshold: a perfect match of any length passes; still require ≥ 5.
+        def _residual_align(norm_fn, score_matrix):
+            res_norm, res_to_res = norm_fn(residual)
+            seg_norm, _ = norm_fn(seg.text)
+            if not seg_norm:
+                return None
+            threshold = max(5, len(seg_norm))
+            hit = _align_against(res_norm, res_to_res, seg_norm, score_matrix, threshold)
+            if hit is None:
+                return None
+            # Translate residual positions → flat_str positions via pos_map.
+            flat_ranges = [
+                (pos_map[rs], pos_map[min(re, len(pos_map) - 1)])
+                for rs, re in hit[1]
+            ]
+            return flat_ranges
+
+        flat_ranges = _residual_align(_normalize_strict, _SCORE_MATRIX_STRICT)
+        if flat_ranges is None:
+            flat_ranges = _residual_align(_normalize_loose, _SCORE_MATRIX_LOOSE)
+
+        if flat_ranges:
+            _record_match(page_idx, chars, ci.flat_to_char, flat_ranges, seg, i)
+
+    return [a for a in results if a is not None]
