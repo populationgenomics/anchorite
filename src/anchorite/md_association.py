@@ -121,19 +121,38 @@ def _build_char_index(chars: list[_Char]) -> _CharIndex:
 # Normalisation
 # ---------------------------------------------------------------------------
 
-_ALIGN_ALPHABET = string.ascii_lowercase + string.digits
-_SCORE_MATRIX = seq_smith.make_score_matrix(_ALIGN_ALPHABET, +1, -1)
+_ALIGN_ALPHABET_STRICT = string.ascii_lowercase + string.digits + " "
+_SCORE_MATRIX_STRICT = seq_smith.make_score_matrix(_ALIGN_ALPHABET_STRICT, +1, -1)
+_ALIGN_ALPHABET_LOOSE = string.ascii_lowercase + string.digits
+_SCORE_MATRIX_LOOSE = seq_smith.make_score_matrix(_ALIGN_ALPHABET_LOOSE, +1, -1)
 _GAP_OPEN, _GAP_EXTEND = -2, -2
 _MIN_SCORE = 10
 
 
-def _normalize(text: str) -> tuple[bytes, tuple[int, ...]]:
+def _normalize_strict(text: str) -> tuple[bytes, tuple[int, ...]]:
+    """Lowercase + collapse non-alphanumeric runs to a single space."""
+    normalized: list[str] = []
+    idx_map: list[int] = []
+    for i, c in enumerate(text):
+        lc = c.lower()
+        if lc in string.ascii_letters + string.digits:
+            normalized.append(lc)
+            idx_map.append(i)
+        else:
+            if normalized and normalized[-1] != " ":
+                normalized.append(" ")
+                idx_map.append(i)
+    idx_map.append(len(text))
+    return seq_smith.encode("".join(normalized), _ALIGN_ALPHABET_STRICT), tuple(idx_map)
+
+
+def _normalize_loose(text: str) -> tuple[bytes, tuple[int, ...]]:
     """Keep only lowercase letters and digits; strip everything else.
 
-    Discarding spaces (rather than collapsing them to a separator) means that
-    letter-spaced display headings like ``C A S E  R E P O R T`` normalise to
-    the same sequence as ``CASE REPORT``, and words that run together in the
-    PDF char stream still align correctly against space-separated query text.
+    Used as a fallback for segments that fail the strict pass.  Discarding
+    spaces means that letter-spaced display headings like
+    ``C A S E  R E P O R T`` normalise to the same sequence as
+    ``CASE REPORT``, at the cost of losing word-boundary information.
     """
     normalized: list[str] = []
     idx_map: list[int] = []
@@ -143,7 +162,7 @@ def _normalize(text: str) -> tuple[bytes, tuple[int, ...]]:
             normalized.append(lc)
             idx_map.append(i)
     idx_map.append(len(text))
-    return seq_smith.encode("".join(normalized), _ALIGN_ALPHABET), tuple(idx_map)
+    return seq_smith.encode("".join(normalized), _ALIGN_ALPHABET_LOOSE), tuple(idx_map)
 
 
 # ---------------------------------------------------------------------------
@@ -409,22 +428,27 @@ def associate(
 
     page_chars: dict[int, list[_Char]] = {}
     page_char_index: dict[int, _CharIndex] = {}
-    page_norm: dict[int, tuple[bytes, tuple[int, ...]]] = {}
+    page_norm_strict: dict[int, tuple[bytes, tuple[int, ...]]] = {}
+    page_norm_loose: dict[int, tuple[bytes, tuple[int, ...]]] = {}
 
-    def _get_page_data(page_idx: int) -> tuple[list[_Char], _CharIndex, bytes, tuple[int, ...]]:
+    def _get_page_data(page_idx: int) -> tuple[list[_Char], _CharIndex]:
         if page_idx not in page_chars:
             page = doc[page_idx]
             chars = _extract_page_chars(page)
             ci = _build_char_index(chars)
-            norm_bytes, norm_to_flat = _normalize(ci.flat_str)
             page_chars[page_idx] = chars
             page_char_index[page_idx] = ci
-            page_norm[page_idx] = (norm_bytes, norm_to_flat)
-        return (
-            page_chars[page_idx],
-            page_char_index[page_idx],
-            *page_norm[page_idx],
-        )
+        return page_chars[page_idx], page_char_index[page_idx]
+
+    def _get_strict_norm(page_idx: int, ci: _CharIndex) -> tuple[bytes, tuple[int, ...]]:
+        if page_idx not in page_norm_strict:
+            page_norm_strict[page_idx] = _normalize_strict(ci.flat_str)
+        return page_norm_strict[page_idx]
+
+    def _get_loose_norm(page_idx: int, ci: _CharIndex) -> tuple[bytes, tuple[int, ...]]:
+        if page_idx not in page_norm_loose:
+            page_norm_loose[page_idx] = _normalize_loose(ci.flat_str)
+        return page_norm_loose[page_idx]
 
     anchors: list[Anchor] = []
 
@@ -432,17 +456,32 @@ def associate(
         if seg.page >= num_pages:
             continue
 
-        chars, ci, norm_page, norm_to_flat = _get_page_data(seg.page)
+        chars, ci = _get_page_data(seg.page)
         if not chars:
             continue
 
-        norm_seg, _ = _normalize(seg.text)
-        if not norm_seg:
-            continue
+        # Strict pass: word boundaries preserved.
+        norm_page, norm_to_flat = _get_strict_norm(seg.page, ci)
+        norm_seg, _ = _normalize_strict(seg.text)
+        score_matrix = _SCORE_MATRIX_STRICT
+        if norm_seg:
+            alignment = seq_smith.local_align(
+                norm_page, norm_seg, score_matrix, _GAP_OPEN, _GAP_EXTEND
+            )
+        else:
+            alignment = None
 
-        alignment = seq_smith.local_align(
-            norm_page, norm_seg, _SCORE_MATRIX, _GAP_OPEN, _GAP_EXTEND
-        )
+        # Loose fallback: spaces stripped so letter-spaced headings match.
+        if not norm_seg or alignment.score < min_score:
+            norm_page, norm_to_flat = _get_loose_norm(seg.page, ci)
+            norm_seg, _ = _normalize_loose(seg.text)
+            score_matrix = _SCORE_MATRIX_LOOSE
+            if not norm_seg:
+                continue
+            alignment = seq_smith.local_align(
+                norm_page, norm_seg, score_matrix, _GAP_OPEN, _GAP_EXTEND
+            )
+
         if alignment.score < min_score:
             continue
 
