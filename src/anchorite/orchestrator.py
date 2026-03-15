@@ -31,6 +31,7 @@ async def process_document(
     markdown_provider: providers.MarkdownProvider,
     anchor_provider: providers.AnchorProvider | None = None,
     *,
+    markdown: str | None = None,
     alignment_uniqueness_threshold: float = 0.5,
     alignment_min_overlap: float = 0.9,
     renumber: bool = True,
@@ -46,8 +47,11 @@ async def process_document(
             parallel, then assembled before alignment.
         markdown_provider: Generates Markdown text for a chunk (e.g. an LLM call).
             Run concurrently with anchor generation when ``anchor_provider`` is set.
+            Ignored when ``markdown`` is supplied.
         anchor_provider: Generates anchors for a chunk (e.g. an OCR call). If
             ``None``, alignment is skipped and an empty ``AlignmentResult`` is returned.
+        markdown: Pre-built Markdown string for the whole document.  When supplied,
+            ``markdown_provider`` is not called and ``renumber`` has no effect.
         alignment_uniqueness_threshold: Passed to ``align``. An anchor is accepted
             only when its best-match score exceeds this fraction of its second-best
             score.
@@ -55,7 +59,7 @@ async def process_document(
             normalised length that must be covered.
         renumber: If ``True``, renumber ``<!--table-->`` and ``<!--figure-->``
             markers across chunks before joining them (so numbering is document-wide
-            rather than per-chunk).
+            rather than per-chunk).  Has no effect when ``markdown`` is supplied.
 
     Returns:
         ``AlignmentResult`` with the assembled Markdown, the anchor→span mapping,
@@ -63,25 +67,34 @@ async def process_document(
     """
     chunk_list = list(chunks)
 
-    markdown_tasks = [markdown_provider.generate_markdown(chunk) for chunk in chunk_list]
-
-    if anchor_provider is not None:
-        anchor_tasks = [anchor_provider.generate_anchors(chunk) for chunk in chunk_list]
-        markdown_chunks, all_anchors = await asyncio.gather(
-            asyncio.gather(*markdown_tasks),
-            asyncio.gather(*anchor_tasks),
-        )
-        flat_anchors = [anchor for chunk_anchors in all_anchors for anchor in chunk_anchors]
+    if markdown is not None:
+        markdown_content = markdown
+        if anchor_provider is None:
+            return AlignmentResult(markdown_content, {}, 0.0)
+        all_anchors = list(await asyncio.gather(
+            *[anchor_provider.generate_anchors(chunk) for chunk in chunk_list]
+        ))
+        flat_anchors = [a for chunk_anchors in all_anchors for a in chunk_anchors]
     else:
-        markdown_chunks = list(await asyncio.gather(*markdown_tasks))
+        markdown_tasks = [markdown_provider.generate_markdown(chunk) for chunk in chunk_list]
 
-    if renumber:
-        markdown_chunks = markdown.renumber_markers(markdown_chunks)
+        if anchor_provider is not None:
+            anchor_tasks = [anchor_provider.generate_anchors(chunk) for chunk in chunk_list]
+            markdown_chunks, all_anchors = await asyncio.gather(
+                asyncio.gather(*markdown_tasks),
+                asyncio.gather(*anchor_tasks),
+            )
+            flat_anchors = [anchor for chunk_anchors in all_anchors for anchor in chunk_anchors]
+        else:
+            markdown_chunks = list(await asyncio.gather(*markdown_tasks))
 
-    markdown_content = "\n\n<!--page-->\n\n".join(markdown_chunks)
+        if renumber:
+            markdown_chunks = markdown.renumber_markers(markdown_chunks)
 
-    if anchor_provider is None:
-        return AlignmentResult(markdown_content, {}, 0.0)
+        markdown_content = "\n\n<!--page-->\n\n".join(markdown_chunks)
+
+        if anchor_provider is None:
+            return AlignmentResult(markdown_content, {}, 0.0)
 
     # Align
     anchor_spans = bbox_alignment.align_anchors(
