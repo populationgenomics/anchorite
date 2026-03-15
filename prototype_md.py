@@ -62,7 +62,7 @@ def main(pdf_path: pathlib.Path, md_path: pathlib.Path) -> None:
         page_anchors = [a for a in anchors if a.page == page_idx]
         print(f"Page {page_idx}: {len(page_anchors)} anchors")
         for a in page_anchors:
-            print(f"  bbox={a.box}  {a.text[:80]!r}")
+            print(f"  boxes={a.boxes}  {a.text[:80]!r}")
 
         output_path = pdf_path.with_stem(f"{pdf_path.stem}.p{page_idx}").with_suffix(".md.png")
         visualize_page(doc[page_idx], page_anchors, output_path)

@@ -121,14 +121,20 @@ def _build_char_index(chars: list[_Char]) -> _CharIndex:
 # Normalisation
 # ---------------------------------------------------------------------------
 
-_ALIGN_ALPHABET = string.ascii_lowercase + string.digits + " "
+_ALIGN_ALPHABET = string.ascii_lowercase + string.digits
 _SCORE_MATRIX = seq_smith.make_score_matrix(_ALIGN_ALPHABET, +1, -1)
 _GAP_OPEN, _GAP_EXTEND = -2, -2
 _MIN_SCORE = 10
 
 
 def _normalize(text: str) -> tuple[bytes, tuple[int, ...]]:
-    """Lowercase + collapse non-alphanumeric to single spaces."""
+    """Keep only lowercase letters and digits; strip everything else.
+
+    Discarding spaces (rather than collapsing them to a separator) means that
+    letter-spaced display headings like ``C A S E  R E P O R T`` normalise to
+    the same sequence as ``CASE REPORT``, and words that run together in the
+    PDF char stream still align correctly against space-separated query text.
+    """
     normalized: list[str] = []
     idx_map: list[int] = []
     for i, c in enumerate(text):
@@ -136,10 +142,6 @@ def _normalize(text: str) -> tuple[bytes, tuple[int, ...]]:
         if lc in string.ascii_letters + string.digits:
             normalized.append(lc)
             idx_map.append(i)
-        else:
-            if normalized and normalized[-1] != " ":
-                normalized.append(" ")
-                idx_map.append(i)
     idx_map.append(len(text))
     return seq_smith.encode("".join(normalized), _ALIGN_ALPHABET), tuple(idx_map)
 
