@@ -18,11 +18,16 @@ _COLOURS = [
 ]
 
 
+# Fill alpha by pass: pass 1 = darkest, pass 3 = lightest.
+_PASS_FILL_ALPHA = {1: 80, 3: 25}
+
+
 def visualize_page(
     page: pdfium.PdfPage,
     anchors: list[Anchor],
     output_path: pathlib.Path,
     scale: float = 2.0,
+    passes: list[int] | None = None,
 ) -> None:
     page_height = page.get_height()
     page_width = page.get_width()
@@ -33,8 +38,10 @@ def visualize_page(
 
     for i, anchor in enumerate(anchors):
         r, g, b, _ = _COLOURS[i % len(_COLOURS)]
+        pass_num = passes[i] if passes else 1
+        fill_alpha = _PASS_FILL_ALPHA.get(pass_num, 50)
         outline = (r, g, b, 230)
-        fill = (r, g, b, 40) if i % 2 == 0 else None
+        fill = (r, g, b, fill_alpha)
 
         # BBox is 0-1000 normalised, top-left origin.
         for box in anchor.boxes:
@@ -52,20 +59,22 @@ def main(pdf_path: pathlib.Path, md_path: pathlib.Path) -> None:
     segments = parse_markdown_segments(markdown)
     print(f"{len(segments)} segments parsed")
 
-    anchors = associate(pdf_path, markdown)
+    anchors, passes = associate(pdf_path, markdown, return_pass_info=True)
     print(f"{len(anchors)} anchors matched\n")
 
     doc = pdfium.PdfDocument(pdf_path)
     num_pages = len(doc)
 
     for page_idx in range(num_pages):
-        page_anchors = [a for a in anchors if a.page == page_idx]
+        idx = [(a, p) for a, p in zip(anchors, passes) if a.page == page_idx]
+        page_anchors = [a for a, _ in idx]
+        page_passes = [p for _, p in idx]
         print(f"Page {page_idx}: {len(page_anchors)} anchors")
-        for a in page_anchors:
-            print(f"  boxes={a.boxes}  {a.text[:80]!r}")
+        for a, p in zip(page_anchors, page_passes):
+            print(f"  pass={p} boxes={a.boxes}  {a.text[:80]!r}")
 
         output_path = pdf_path.with_stem(f"{pdf_path.stem}.p{page_idx}").with_suffix(".md.png")
-        visualize_page(doc[page_idx], page_anchors, output_path)
+        visualize_page(doc[page_idx], page_anchors, output_path, passes=page_passes)
         print(f"  -> {output_path}")
     print()
 

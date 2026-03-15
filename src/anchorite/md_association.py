@@ -511,7 +511,8 @@ def associate(
     pdf_path: pathlib.Path,
     markdown: str,
     min_score: int = _MIN_SCORE,
-) -> list[Anchor]:
+    return_pass_info: bool = False,
+) -> list[Anchor] | tuple[list[Anchor], list[int]]:
     """Align each Markdown segment to the PDF and return one Anchor per segment.
 
     Runs three passes in order:
@@ -526,14 +527,18 @@ def associate(
         pdf_path: Path to the PDF file.
         markdown: Cleaned Markdown with ``<!--page-->`` page-break markers.
         min_score: Minimum Smith-Waterman score for passes 1 & 2.
+        return_pass_info: If True, return ``(anchors, passes)`` where
+            *passes* is a parallel list of pass numbers (1 = strict/loose
+            full-page, 3 = residual).
 
     Returns:
         One ``Anchor`` per successfully matched segment, in Markdown order.
         Segments that cannot be matched with sufficient confidence are omitted.
+        When *return_pass_info* is True, returns ``(anchors, passes)``.
     """
     segments = parse_markdown_segments(markdown)
     if not segments:
-        return []
+        return ([], []) if return_pass_info else []
 
     doc = pdfium.PdfDocument(pdf_path)
     num_pages = len(doc)
@@ -564,6 +569,7 @@ def associate(
 
     # results[i] is the Anchor for segments[i], or None if unmatched.
     results: list[Anchor | None] = [None] * len(segments)
+    result_pass: list[int] = [0] * len(segments)  # 1 = full-page, 3 = residual
     # flat-string ranges claimed per page (raw, merged later).
     page_matched_ranges: dict[int, list[tuple[int, int]]] = {}
 
@@ -596,6 +602,7 @@ def associate(
         if boxes:
             results[result_idx] = Anchor(text=seg.text, page=page_idx, boxes=boxes)
             page_matched_ranges.setdefault(page_idx, []).extend(flat_ranges)
+            # pass number is set by the caller after _record_match returns
 
     def _try_page(
         page_idx: int, seg: MarkdownSegment, threshold: int
@@ -639,6 +646,7 @@ def associate(
             _, flat_ranges, matched_page = best
             chars, ci = _get_page_data(matched_page)
             _record_match(matched_page, chars, ci.flat_to_char, flat_ranges, seg, i)
+            result_pass[i] = 1
 
     # ── Pass 3: residual ──────────────────────────────────────────────────────
     for i, seg in enumerate(segments):
@@ -681,5 +689,10 @@ def associate(
 
         if flat_ranges:
             _record_match(page_idx, chars, ci.flat_to_char, flat_ranges, seg, i)
+            result_pass[i] = 3
 
-    return [a for a in results if a is not None]
+    anchors = [a for a, p in zip(results, result_pass) if a is not None]
+    if return_pass_info:
+        passes = [p for a, p in zip(results, result_pass) if a is not None]
+        return anchors, passes
+    return anchors
