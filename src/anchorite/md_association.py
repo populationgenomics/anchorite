@@ -22,6 +22,7 @@ import math
 import pathlib
 import re
 import string
+import unicodedata
 from typing import NamedTuple
 
 import pypdfium2 as pdfium
@@ -72,18 +73,50 @@ def _extract_page_chars(page: pdfium.PdfPage) -> list[_Char]:
 
         obj_pos = 0
         while obj_pos < len(obj_text) and char_index < total_chars:
-            text = textpage.get_text_range(char_index, 1)
-            if text in ("\r", "\n"):
+            cp = pdfium_c.FPDFText_GetUnicode(textpage, char_index)
+            # PDFium counts non-BMP characters (e.g. Mathematical Italic symbols,
+            # U+1D400–U+1D7FF) as two UTF-16 surrogate-pair indices.  Detect a
+            # high surrogate and reassemble the full code point from the pair.
+            if 0xD800 <= cp <= 0xDBFF:
+                if char_index + 1 < total_chars:
+                    cp_low = pdfium_c.FPDFText_GetUnicode(textpage, char_index + 1)
+                    if 0xDC00 <= cp_low <= 0xDFFF:
+                        cp = 0x10000 + (cp - 0xD800) * 0x400 + (cp_low - 0xDC00)
+                        ci_for_box = char_index
+                        char_index += 2  # consume both surrogate indices
+                        obj_pos += 1     # but only one code point in obj_text
+                    else:
+                        char_index += 1
+                        obj_pos += 1
+                        continue
+                else:
+                    char_index += 1
+                    obj_pos += 1
+                    continue
+            elif 0xDC00 <= cp <= 0xDFFF:
+                # Orphaned low surrogate — should not occur; skip.
                 char_index += 1
+                obj_pos += 1
                 continue
+            else:
+                ci_for_box = char_index
+                char_index += 1
+
+            text = chr(cp)
+            if text in ("\r", "\n"):
+                # Line-break markers inserted by PDFium are absent from obj_text.
+                continue  # char_index already advanced; do NOT advance obj_pos
+            obj_pos += 1
+
             if not text.isspace():
                 normalized = _CHAR_NORM.get(text, text)
+                # Map Mathematical Alphanumeric Symbols and other compatibility
+                # characters to ASCII equivalents (e.g. 𝑆𝑒𝑛𝑠𝑖𝑡𝑖𝑣𝑖𝑡𝑦 → Sensitivity).
+                normalized = unicodedata.normalize("NFKC", normalized)
                 if normalized:
-                    left, bottom, right, top = textpage.get_charbox(char_index, loose=False)
+                    left, bottom, right, top = textpage.get_charbox(ci_for_box, loose=False)
                     if right > left and top > bottom:
                         chars.append(_Char(normalized, left, bottom, right, top, font_size))
-            char_index += 1
-            obj_pos += 1
 
     return chars
 
@@ -127,6 +160,10 @@ _ALIGN_ALPHABET_LOOSE = string.ascii_lowercase + string.digits
 _SCORE_MATRIX_LOOSE = seq_smith.make_score_matrix(_ALIGN_ALPHABET_LOOSE, +1, -1)
 _GAP_OPEN, _GAP_EXTEND = -2, -2
 _MIN_SCORE = 10
+# How many PDF pages above max(page_lo, seg.page) to include in the pass-1 search window.
+_PAGE_SLACK = 5
+# Pass-1 uniqueness: best-page score must be >= this multiple of the second-best.
+_UNIQUENESS_RATIO = 2.0
 
 
 def _normalize_strict(text: str) -> tuple[bytes, tuple[int, ...]]:
@@ -517,6 +554,15 @@ def _align_against(
     aln = seq_smith.local_align(reference, norm_seg, score_matrix, _GAP_OPEN, _GAP_EXTEND)
     if aln.score < min_score:
         return None
+    # Reject weak partial hits: require at least half the segment to be covered.
+    # This catches cases like matching only "conflicting" from "Conflicting
+    # interpretations" when the heading doesn't appear in the PDF.
+    seg_covered = sum(
+        f.len for f in aln.fragments
+        if f.fragment_type == seq_smith.FragmentType.Match
+    )
+    if seg_covered * 2 < len(norm_seg):
+        return None
     best_score = aln.score
 
     # Iteratively search for an earlier match with the same score.
@@ -566,13 +612,17 @@ def associate(
     section labels) match when they are the only remaining text, while still
     requiring a minimum quality score for all matches.
 
+    Additionally, the alignment must cover at least half of the normalised
+    segment characters.  This rejects weak partial hits (e.g. matching only
+    "conflicting" from a heading "Conflicting interpretations" that does not
+    appear in the PDF) even when the score threshold is met.
+
     Args:
         pdf_path: Path to the PDF file.
         markdown: Cleaned Markdown with ``<!--page-->`` page-break markers.
         min_score: Score cap for the adaptive threshold.
         return_pass_info: If True, return ``(anchors, confidences)`` where
-            *confidences* is a parallel list: 1 = score ≥ *min_score*
-            (confident), 2 = score < *min_score* (short-segment marginal).
+            *confidences* is a parallel list of integers (currently always 1).
 
     Returns:
         One ``Anchor`` per successfully matched segment, in Markdown order.
@@ -657,42 +707,103 @@ def associate(
             result = _align(_normalize_loose, _SCORE_MATRIX_LOOSE)
         return result
 
-    # ── Single sequential pass ────────────────────────────────────────────────
-    # Segments are processed in Markdown order.  Each successful match consumes
-    # flat-string ranges so subsequent segments see only the remaining text.
-    for i, seg in enumerate(segments):
-        if seg.page >= num_pages:
-            continue
-
-        # Adaptive threshold: cap at min_score for long segments; scale down
-        # for short ones (but floor at 5 to avoid noise).
-        norm_len = len(_normalize_strict(seg.text)[0]) or len(_normalize_loose(seg.text)[0])
-        threshold = max(5, min(min_score, norm_len))
-
-        # Try primary page and ±1; take highest score.
-        best: tuple[int, list[tuple[int, int]], int] | None = None
-        for offset in (0, -1, +1):
-            candidate = _try_page_residual(seg.page + offset, seg, threshold)
-            if candidate is not None:
-                score, flat_ranges = candidate
-                if best is None or score > best[0]:
-                    best = (score, flat_ranges, seg.page + offset)
-
-        if best is None:
-            continue
-
-        score, flat_ranges, matched_page = best
+    def _accept_match(
+        seg: MarkdownSegment,
+        i: int,
+        score: int,
+        flat_ranges: list,
+        matched_page: int,
+        conf: int,
+    ) -> None:
         chars, ci = _get_page_data(matched_page)
         matched_chars = _chars_from_flat_ranges(chars, ci.flat_to_char, flat_ranges)
         if not matched_chars:
-            continue
-
+            return
         page_obj = doc[matched_page]
         boxes = tuple(_line_bboxes(matched_chars, page_obj.get_width(), page_obj.get_height()))
         if boxes:
             results[i] = Anchor(text=seg.text, page=matched_page, boxes=boxes)
-            confidence[i] = 1 if score >= min_score else 2
+            confidence[i] = conf
             page_matched_ranges.setdefault(matched_page, []).extend(flat_ranges)
+
+    def _best_across_pages(
+        seg: MarkdownSegment,
+        page_range: range,
+        threshold: int,
+    ) -> list[tuple[int, list, int]]:
+        """Return all above-threshold matches sorted best-first."""
+        hits: list[tuple[int, list, int]] = []
+        for page in page_range:
+            candidate = _try_page_residual(page, seg, threshold)
+            if candidate is not None:
+                hits.append((candidate[0], candidate[1], page))
+        hits.sort(key=lambda x: x[0], reverse=True)
+        return hits
+
+    # ── Pass 1: unique matches ────────────────────────────────────────────────
+    # Search a symmetric window of _PAGE_SLACK pages around the page marker.
+    # A match is accepted only when it is *unique*: the best-scoring page
+    # beats all others by _UNIQUENESS_RATIO.  Ambiguous segments (e.g.
+    # per-page running headers) are deferred to pass 2.
+    # No global ordering state is maintained here — the uniqueness check
+    # prevents wrong matches, so early errors cannot cascade.
+
+    for i, seg in enumerate(segments):
+        if seg.page >= num_pages:
+            continue
+
+        norm_len = len(_normalize_strict(seg.text)[0]) or len(_normalize_loose(seg.text)[0])
+        threshold = max(5, min(min_score, norm_len))
+
+        p1_lo = max(0, seg.page - _PAGE_SLACK)
+        p1_hi = min(num_pages - 1, seg.page + _PAGE_SLACK)
+        hits = _best_across_pages(seg, range(p1_lo, p1_hi + 1), threshold)
+
+        if not hits:
+            continue
+
+        # Uniqueness check: best score must exceed second-best by _UNIQUENESS_RATIO.
+        if len(hits) >= 2 and hits[1][0] * _UNIQUENESS_RATIO > hits[0][0]:
+            continue  # ambiguous — defer to pass 2
+
+        score, flat_ranges, matched_page = hits[0]
+        _accept_match(seg, i, score, flat_ranges, matched_page, 1 if score >= min_score else 2)
+
+    # ── Pass 2: fill in deferred segments using neighbour-inferred pages ──────
+    # Segments skipped in pass 1 (ambiguous or search-window miss) are retried
+    # here.  For each unmatched segment, _infer_page() estimates its PDF page
+    # from the nearest pass-1 anchors on either side, narrowing the search to
+    # [inferred - 1, inferred + 1].  No uniqueness requirement.
+    for i, seg in enumerate(segments):
+        if results[i] is not None:
+            continue
+        if seg.page >= num_pages:
+            continue
+
+        norm_len = len(_normalize_strict(seg.text)[0]) or len(_normalize_loose(seg.text)[0])
+        threshold = max(5, min(min_score, norm_len))
+
+        # Search the full interval between the nearest pass-1 anchors on either
+        # side — this is what the document-order constraint actually tells us.
+        prev_page: int | None = None
+        for j in range(i - 1, -1, -1):
+            if results[j] is not None:
+                prev_page = results[j].page
+                break
+        next_page: int | None = None
+        for j in range(i + 1, len(results)):
+            if results[j] is not None:
+                next_page = results[j].page
+                break
+        p2_lo = prev_page if prev_page is not None else 0
+        p2_hi = next_page if next_page is not None else num_pages - 1
+
+        hits = _best_across_pages(seg, range(p2_lo, p2_hi + 1), threshold)
+        if not hits:
+            continue
+
+        score, flat_ranges, matched_page = hits[0]
+        _accept_match(seg, i, score, flat_ranges, matched_page, 1 if score >= min_score else 2)
 
     anchors = [a for a, c in zip(results, confidence) if a is not None]
     if return_pass_info:
