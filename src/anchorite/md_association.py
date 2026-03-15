@@ -592,28 +592,55 @@ def associate(
             results[result_idx] = Anchor(text=seg.text, page=page_idx, boxes=boxes)
             page_matched_ranges.setdefault(page_idx, []).extend(flat_ranges)
 
-    # ── Pass 1 & 2: full-page strict then loose ───────────────────────────────
+    def _try_page(
+        page_idx: int, seg: MarkdownSegment, threshold: int
+    ) -> tuple[int, list[tuple[int, int]], list[_Char]] | None:
+        """Try strict then loose alignment of *seg* against *page_idx*.
+
+        Returns ``(score, flat_ranges, chars)`` on success, else ``None``.
+        """
+        if page_idx < 0 or page_idx >= num_pages:
+            return None
+        chars, ci = _get_page_data(page_idx)
+        if not chars:
+            return None
+        norm_page, norm_to_flat = _get_strict_norm(page_idx, ci)
+        norm_seg, _ = _normalize_strict(seg.text)
+        hit = _align_against(norm_page, norm_to_flat, norm_seg, _SCORE_MATRIX_STRICT, threshold)
+        if hit is None:
+            norm_page, norm_to_flat = _get_loose_norm(page_idx, ci)
+            norm_seg, _ = _normalize_loose(seg.text)
+            hit = _align_against(norm_page, norm_to_flat, norm_seg, _SCORE_MATRIX_LOOSE, threshold)
+        if hit is None:
+            return None
+        return hit[0], hit[1], chars
+
+    # ── Pass 1 & 2: full-page strict then loose, ±1 page fallback ────────────
     for i, seg in enumerate(segments):
         if seg.page >= num_pages:
             continue
 
-        chars, ci = _get_page_data(seg.page)
-        if not chars:
-            continue
+        result = _try_page(seg.page, seg, min_score)
 
-        # Strict.
-        norm_page, norm_to_flat = _get_strict_norm(seg.page, ci)
-        norm_seg, _ = _normalize_strict(seg.text)
-        hit = _align_against(norm_page, norm_to_flat, norm_seg, _SCORE_MATRIX_STRICT, min_score)
+        # If the primary page gives no match, check neighbours — page markers
+        # in the markdown can be off by one relative to the PDF.
+        if result is None:
+            best: tuple[int, list[tuple[int, int]], list[_Char]] | None = None
+            for offset in (-1, +1):
+                candidate = _try_page(seg.page + offset, seg, min_score)
+                if candidate is not None:
+                    if best is None or candidate[0] > best[0]:
+                        best = candidate
+                        best_page = seg.page + offset
+            if best is not None:
+                result = best
+                chars_for_result = best[2]
+                _record_match(best_page, chars_for_result, page_char_index[best_page].flat_to_char, best[1], seg, i)
+                continue
 
-        # Loose fallback.
-        if hit is None:
-            norm_page, norm_to_flat = _get_loose_norm(seg.page, ci)
-            norm_seg, _ = _normalize_loose(seg.text)
-            hit = _align_against(norm_page, norm_to_flat, norm_seg, _SCORE_MATRIX_LOOSE, min_score)
-
-        if hit is not None:
-            _record_match(seg.page, chars, ci.flat_to_char, hit[1], seg, i)
+        if result is not None:
+            chars, ci = _get_page_data(seg.page)
+            _record_match(seg.page, chars, ci.flat_to_char, result[1], seg, i)
 
     # ── Pass 3: residual ──────────────────────────────────────────────────────
     for i, seg in enumerate(segments):
