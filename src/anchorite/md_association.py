@@ -259,7 +259,12 @@ def _segments_from_block(
 
     # ── Heading ──────────────────────────────────────────────────────────────
     if re.match(r"^#{1,6}\s", text):
-        return [seg(text)]
+        lines = text.splitlines()
+        heading_seg = seg(lines[0])
+        rest = "\n".join(lines[1:]).strip()
+        if not rest:
+            return [heading_seg]
+        return [heading_seg] + _segments_from_block(rest, page, md_start, md_end)
 
     # ── Blockquote ───────────────────────────────────────────────────────────
     if text.startswith(">"):
@@ -615,32 +620,25 @@ def associate(
             return None
         return hit[0], hit[1], chars
 
-    # ── Pass 1 & 2: full-page strict then loose, ±1 page fallback ────────────
+    # ── Pass 1 & 2: best match across primary page and ±1 neighbours ─────────
+    # Page markers in LLM-generated markdown can be off by one.  Always score
+    # all three candidate pages and take the highest, rather than short-
+    # circuiting on the first hit.
     for i, seg in enumerate(segments):
         if seg.page >= num_pages:
             continue
 
-        result = _try_page(seg.page, seg, min_score)
+        best: tuple[int, list[tuple[int, int]], int] | None = None  # score, ranges, page
+        for offset in (0, -1, +1):
+            candidate = _try_page(seg.page + offset, seg, min_score)
+            if candidate is not None:
+                if best is None or candidate[0] > best[0]:
+                    best = (candidate[0], candidate[1], seg.page + offset)
 
-        # If the primary page gives no match, check neighbours — page markers
-        # in the markdown can be off by one relative to the PDF.
-        if result is None:
-            best: tuple[int, list[tuple[int, int]], list[_Char]] | None = None
-            for offset in (-1, +1):
-                candidate = _try_page(seg.page + offset, seg, min_score)
-                if candidate is not None:
-                    if best is None or candidate[0] > best[0]:
-                        best = candidate
-                        best_page = seg.page + offset
-            if best is not None:
-                result = best
-                chars_for_result = best[2]
-                _record_match(best_page, chars_for_result, page_char_index[best_page].flat_to_char, best[1], seg, i)
-                continue
-
-        if result is not None:
-            chars, ci = _get_page_data(seg.page)
-            _record_match(seg.page, chars, ci.flat_to_char, result[1], seg, i)
+        if best is not None:
+            _, flat_ranges, matched_page = best
+            chars, ci = _get_page_data(matched_page)
+            _record_match(matched_page, chars, ci.flat_to_char, flat_ranges, seg, i)
 
     # ── Pass 3: residual ──────────────────────────────────────────────────────
     for i, seg in enumerate(segments):
