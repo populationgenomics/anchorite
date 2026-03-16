@@ -57,7 +57,7 @@ _ABBREVIATIONS: frozenset[str] = frozenset(
         "min",
         "cf",
         "viz",
-    }
+    },
 )
 
 # Sentence boundary: terminal punctuation, optional reference markers
