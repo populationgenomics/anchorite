@@ -28,7 +28,7 @@ the molecular diversity of cancer a realistic possibility (Liu et al.,
     ]
 
     dummy_rect = anchorite.BBox(0, 0, 0, 0)
-    anchors = [anchorite.Anchor(text=t, page=0, box=dummy_rect) for t in bbox_texts]
+    anchors = [anchorite.Anchor(text=t, page=0, boxes=(dummy_rect,)) for t in bbox_texts]
 
     # Run alignment
     assignments = bbox_alignment.align_anchors(markdown_content, anchors)
@@ -46,7 +46,7 @@ def test_hyphen_match_simple() -> None:
     markdown = "hyphen- ated"
     bbox_text = "hyphenated"
 
-    anchors = [anchorite.Anchor(text=bbox_text, page=1, box=anchorite.BBox(0, 0, 0, 0))]
+    anchors = [anchorite.Anchor(text=bbox_text, page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))]
 
     # Run
     assignments = bbox_alignment.align_anchors(markdown, anchors)
@@ -62,7 +62,7 @@ def test_align_table_cell() -> None:
 | Histone modifier | 5 | 29 |
 | OTHER GROWTH/PROLIFERATION SIGNALING | | |
 """
-    anchor = anchorite.Anchor(text="Histone modifier", page=1, box=anchorite.BBox(0, 0, 0, 0))
+    anchor = anchorite.Anchor(text="Histone modifier", page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))
     assignments = anchorite.align([anchor], markdown)
     assert anchor in assignments
 
@@ -72,7 +72,7 @@ def test_align_special_characters() -> None:
 | Trametinib | MEK1/2 | BRAF | SKCM |
 | Vemurafenib | BRAF | BRAF | SKCM |
 """
-    anchor = anchorite.Anchor(text="MEK1/2", page=1, box=anchorite.BBox(0, 0, 0, 0))
+    anchor = anchorite.Anchor(text="MEK1/2", page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))
     assignments = anchorite.align([anchor], markdown)
     assert anchor in assignments
 
@@ -82,7 +82,7 @@ def test_align_duplicate_text_assigns_once() -> None:
 Here is duplicate.
 Here is duplicate.
 """
-    anchor = anchorite.Anchor(text="duplicate", page=1, box=anchorite.BBox(0, 0, 0, 0))
+    anchor = anchorite.Anchor(text="duplicate", page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))
     assignments = anchorite.align([anchor], markdown)
     assert anchor in assignments
     assert len(assignments) == 1

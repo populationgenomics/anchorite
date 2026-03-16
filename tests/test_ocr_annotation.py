@@ -6,10 +6,10 @@ def test_ocr_result_annotate() -> None:
     # span "Hello" is [0, 5)
     # span "World" is [6, 11)
 
-    bbox1 = anchorite.Anchor(text="Hello", page=1, box=anchorite.BBox(0, 0, 5, 1))
+    bbox1 = anchorite.Anchor(text="Hello", page=1, boxes=(anchorite.BBox(0, 0, 5, 1),))
     span1 = (0, 5)
 
-    bbox2 = anchorite.Anchor(text="World", page=1, box=anchorite.BBox(6, 6, 11, 1))
+    bbox2 = anchorite.Anchor(text="World", page=1, boxes=(anchorite.BBox(6, 6, 11, 1),))
     span2 = (6, 11)
 
     result = anchorite.AlignmentResult(
@@ -35,10 +35,10 @@ def test_ocr_result_annotate() -> None:
 def test_ocr_result_annotate_overlap() -> None:
     # Test overlapping spans (nested)
     content = "Hello"
-    bbox1 = anchorite.Anchor(text="Hello", page=1, box=anchorite.BBox(0, 0, 5, 1))
+    bbox1 = anchorite.Anchor(text="Hello", page=1, boxes=(anchorite.BBox(0, 0, 5, 1),))
     span1 = (0, 5)
 
-    bbox2 = anchorite.Anchor(text="He", page=1, box=anchorite.BBox(0, 0, 1, 1))
+    bbox2 = anchorite.Anchor(text="He", page=1, boxes=(anchorite.BBox(0, 0, 1, 1),))
     span2 = (0, 2)
 
     result = anchorite.AlignmentResult(content, {bbox1: span1, bbox2: span2}, coverage_percent=1.0)
@@ -57,8 +57,8 @@ def test_annotate_abutting_spans() -> None:
     # When two spans meet at the same character index (e.g. de-hyphenated words),
     # the end tag of the first must precede the start tag of the second.
     content = "underdiagnosed"
-    bbox_a = anchorite.Anchor(text="under-", page=0, box=anchorite.BBox(0, 0, 10, 100))
-    bbox_b = anchorite.Anchor(text="diagnosed", page=0, box=anchorite.BBox(10, 0, 20, 100))
+    bbox_a = anchorite.Anchor(text="under-", page=0, boxes=(anchorite.BBox(0, 0, 10, 100),))
+    bbox_b = anchorite.Anchor(text="diagnosed", page=0, boxes=(anchorite.BBox(10, 0, 20, 100),))
 
     annotated = anchorite.annotate(content, {bbox_a: (0, 5), bbox_b: (5, 14)})
 
@@ -73,7 +73,7 @@ def test_annotate_abutting_spans() -> None:
 def test_annotate_zero_length() -> None:
     # Zero-length spans are skipped — they carry no text content.
     content = "Hello"
-    bbox1 = anchorite.Anchor(text="", page=1, box=anchorite.BBox(0, 0, 0, 0))
+    bbox1 = anchorite.Anchor(text="", page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))
     span1 = (2, 2)
 
     annotated = anchorite.annotate(content, {bbox1: span1})

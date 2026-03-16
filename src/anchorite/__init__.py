@@ -181,7 +181,7 @@ def annotate(
                 break
 
         length = end - start
-        box_str = f"{anchor.box.top},{anchor.box.left},{anchor.box.bottom},{anchor.box.right}"
+        box_str = ";".join(f"{b.top},{b.left},{b.bottom},{b.right}" for b in anchor.boxes)
         start_tag = f'<span data-bbox="{box_str}" data-page="{anchor.page}">'
         end_tag = "</span>"
 
@@ -241,7 +241,8 @@ def strip(annotated_md: str) -> StrippedMarkdown:
     """
     # Regex to find <span data-bbox="..." data-page="...">...</span>
     token_pattern = re.compile(
-        r'(?P<start><span data-bbox="(?P<bbox>-?\d+,-?\d+,-?\d+,-?\d+)" data-page="(?P<page>\d+)">)|(?P<end></span>)',
+        r'(?P<start><span data-bbox="(?P<bbox>-?\d+,-?\d+,-?\d+,-?\d+(?:;-?\d+,-?\d+,-?\d+,-?\d+)*)"'
+        r' data-page="(?P<page>\d+)">)|(?P<end></span>)',
     )
 
     plain_chars = []
@@ -260,8 +261,8 @@ def strip(annotated_md: str) -> StrippedMarkdown:
         if match.group("start"):
             bbox_str = match.group("bbox")
             page = int(match.group("page"))
-            coords = [int(x) for x in bbox_str.split(",")]
-            anchor = Anchor(text="", page=page, box=BBox(*coords))
+            boxes = tuple(BBox(*[int(x) for x in group.split(",")]) for group in bbox_str.split(";"))
+            anchor = Anchor(text="", page=page, boxes=boxes)
             stack.append((current_plain_pos, anchor))
         elif stack:
             start_plain_pos, anchor = stack.pop()
@@ -287,7 +288,7 @@ def _collect_overlapping_anchors(
         if b_start >= text_end:
             break
         if b_end > text_start:
-            found_locations.append((anchor.page, anchor.box))
+            found_locations.extend((anchor.page, box) for box in anchor.boxes)
 
 
 def _process_alignment(

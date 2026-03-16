@@ -30,7 +30,7 @@ class MockAnchorProvider:
             Anchor(
                 text=b["text"],
                 page=b["page"],
-                box=BBox(**b["box"]),
+                boxes=(BBox(**b["box"]),),
             )
             for b in chunk_data
         ]
