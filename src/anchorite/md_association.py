@@ -160,10 +160,14 @@ _ALIGN_ALPHABET_LOOSE = string.ascii_lowercase + string.digits
 _SCORE_MATRIX_LOOSE = seq_smith.make_score_matrix(_ALIGN_ALPHABET_LOOSE, +1, -1)
 _GAP_OPEN, _GAP_EXTEND = -2, -2
 _MIN_SCORE = 10
-# How many PDF pages above max(page_lo, seg.page) to include in the pass-1 search window.
-_PAGE_SLACK = 5
-# Pass-1 uniqueness: best-page score must be >= this multiple of the second-best.
-_UNIQUENESS_RATIO = 2.0
+# Phase 1 (conservative HSP-based): pages to search around the page marker.
+_PHASE1_PAGE_SLACK = 10
+# Phase 1: best score must be >= this multiple of the second-best (cross-page AND within-page).
+_PHASE1_UNIQUENESS_RATIO = 2.0
+# Phase 1: fraction of the normalised segment that must be covered by the best HSP.
+_PHASE1_MIN_COVERAGE = 0.9
+# Phase 1: segments with fewer alphanum chars than this are skipped (too short to be unique).
+_PHASE1_MIN_LEN = 10
 
 
 def _normalize_strict(text: str) -> tuple[bytes, tuple[int, ...]]:
@@ -361,6 +365,13 @@ def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
     affiliation entry, or table cell.  ``<!--page-->`` comments advance the page
     counter; all other HTML comments are stripped from segment text.
     """
+    # Ensure every <!--page--> marker sits in its own blank-line-delimited block.
+    # Without this, a marker that immediately follows a paragraph (no blank line)
+    # ends up in the same block as that paragraph; after comment-stripping the
+    # subsequent content (tables, etc.) is concatenated onto the last sentence.
+    markdown = re.sub(r"(?<!\n\n)(<!--page-->)", r"\n\n\1", markdown)
+    markdown = re.sub(r"(<!--page-->)(?!\n)", r"\1\n\n", markdown)
+
     segments: list[MarkdownSegment] = []
     current_page = -1
 
@@ -481,43 +492,6 @@ def _residual_string(
     return "".join(parts), pos_map
 
 
-def _infer_page(
-    seg_idx: int,
-    results: list[Anchor | None],
-    segments: list[MarkdownSegment],
-    default: int,
-) -> int:
-    """Infer the PDF page for an unmatched segment from its neighbours.
-
-    Scans backwards for the last matched anchor and forwards for the first.
-    If both agree on a page, that page is returned.  If they bracket the
-    segment across a page boundary the ``<!--page-->``-derived *default* is
-    used as a tie-breaker.
-    """
-    prev_page: int | None = None
-    for j in range(seg_idx - 1, -1, -1):
-        if results[j] is not None:
-            prev_page = results[j].page
-            break
-
-    next_page: int | None = None
-    for j in range(seg_idx + 1, len(results)):
-        if results[j] is not None:
-            next_page = results[j].page
-            break
-
-    if prev_page is not None and next_page is not None:
-        if prev_page == next_page:
-            return prev_page
-        # Segment sits between two pages; trust the page-marker default.
-        if prev_page <= default <= next_page:
-            return default
-        return prev_page
-    if prev_page is not None:
-        return max(prev_page, default)
-    if next_page is not None:
-        return min(next_page, default)
-    return default
 
 
 def _aln_to_flat_ranges(
@@ -596,38 +570,36 @@ def associate(
 ) -> list[Anchor] | tuple[list[Anchor], list[int]]:
     """Align each Markdown segment to the PDF and return one Anchor per segment.
 
-    Processes segments in Markdown order.  Each segment is aligned against the
-    *residual* of its candidate page — the flat-string text not yet claimed by
-    any earlier segment.  This prevents a later occurrence of a short phrase
-    (e.g. a heading like "Protein-protein interactions" buried in a body
-    sentence) from being stolen by the heading segment, because the body
-    sentence is processed first and consumes that region.
+    Uses a two-phase approach:
 
-    The candidate page is the primary page from the ``<!--page-->`` marker plus
-    its immediate neighbours (±1), to tolerate off-by-one marker errors.  The
-    page with the highest alignment score is chosen.
+    **Phase 1 (conservative):** Normalise both segment and page text to
+    alphanumeric characters only (no spaces), then run ungapped local alignment
+    (HSPs) with k=2.  A segment is assigned to a page only when:
 
-    The score threshold scales with segment length:
-    ``max(5, min(min_score, len(norm_seg)))``.  This lets short segments (e.g.
-    section labels) match when they are the only remaining text, while still
-    requiring a minimum quality score for all matches.
+    * The best HSP covers ≥ ``_PHASE1_MIN_COVERAGE`` of the segment.
+    * The best HSP is ≥ ``_PHASE1_UNIQUENESS_RATIO`` × the second-best, both
+      *within* the winning page and *across* all candidate pages.
 
-    Additionally, the alignment must cover at least half of the normalised
-    segment characters.  This rejects weak partial hits (e.g. matching only
-    "conflicting" from a heading "Conflicting interpretations" that does not
-    appear in the PDF) even when the score threshold is met.
+    Accepted segments are then precisely aligned (with spaces, gapped SW) to
+    the *residual* of their assigned page to obtain bounding boxes.
+
+    **Phase 2 (page-constrained):** Segments not matched in phase 1 are
+    re-attempted using the document-order constraint: since the Markdown is in
+    reading order, any unmatched segment must lie between the pages of its
+    nearest matched neighbours.  The search range ``[prev_page, next_page]``
+    is derived from the phase-1 results; no uniqueness requirement applies.
 
     Args:
         pdf_path: Path to the PDF file.
         markdown: Cleaned Markdown with ``<!--page-->`` page-break markers.
-        min_score: Score cap for the adaptive threshold.
-        return_pass_info: If True, return ``(anchors, confidences)`` where
-            *confidences* is a parallel list of integers (currently always 1).
+        min_score: Score cap for the adaptive alignment threshold.
+        return_pass_info: If True, return ``(anchors, passes)`` where *passes*
+            is a parallel list of ints: 1 = phase 1, 2 = phase 2.
 
     Returns:
         One ``Anchor`` per successfully matched segment, in Markdown order.
-        Segments that cannot be matched with sufficient confidence are omitted.
-        When *return_pass_info* is True, returns ``(anchors, confidences)``.
+        Segments that cannot be matched are omitted.
+        When *return_pass_info* is True, returns ``(anchors, passes)``.
     """
     segments = parse_markdown_segments(markdown)
     if not segments:
@@ -648,9 +620,9 @@ def associate(
             page_char_index[page_idx] = ci
         return page_chars[page_idx], page_char_index[page_idx]
 
-    # results[i] is the Anchor for segments[i], or None if unmatched.
+    # results[i]: Anchor for segments[i], or None if unmatched.
     results: list[Anchor | None] = [None] * len(segments)
-    # confidence[i]: 1 = score >= min_score, 2 = marginal short-segment match.
+    # confidence[i]: 1 = phase 1 (conservative), 2 = phase 2 (page-constrained).
     confidence: list[int] = [0] * len(segments)
     # Consumed flat-string ranges per page (raw; merged on demand).
     page_matched_ranges: dict[int, list[tuple[int, int]]] = {}
@@ -726,54 +698,94 @@ def associate(
             confidence[i] = conf
             page_matched_ranges.setdefault(matched_page, []).extend(flat_ranges)
 
-    def _best_across_pages(
-        seg: MarkdownSegment,
-        page_range: range,
-        threshold: int,
-    ) -> list[tuple[int, list, int]]:
-        """Return all above-threshold matches sorted best-first."""
-        hits: list[tuple[int, list, int]] = []
-        for page in page_range:
-            candidate = _try_page_residual(page, seg, threshold)
-            if candidate is not None:
-                hits.append((candidate[0], candidate[1], page))
-        hits.sort(key=lambda x: x[0], reverse=True)
-        return hits
+    # ── Phase 1: conservative HSP-based page assignment ──────────────────────
+    # Normalise segment and page to alphanumeric only (no spaces).  Run
+    # top-2 ungapped local alignment of the segment against each candidate
+    # page.  Accept only when the best HSP is (a) high-coverage and (b) unique
+    # both within the winning page and across all candidate pages.
 
-    # ── Pass 1: unique matches ────────────────────────────────────────────────
-    # Search a symmetric window of _PAGE_SLACK pages around the page marker.
-    # A match is accepted only when it is *unique*: the best-scoring page
-    # beats all others by _UNIQUENESS_RATIO.  Ambiguous segments (e.g.
-    # per-page running headers) are deferred to pass 2.
-    # No global ordering state is maintained here — the uniqueness check
-    # prevents wrong matches, so early errors cannot cascade.
+    # Lazy cache: alphanum-only bytes per page.
+    page_alphanum_bytes: dict[int, bytes] = {}
+
+    def _get_alphanum_page(page_idx: int) -> bytes:
+        if page_idx not in page_alphanum_bytes:
+            _, ci = _get_page_data(page_idx)
+            norm_bytes, _ = _normalize_loose(ci.flat_str)
+            page_alphanum_bytes[page_idx] = norm_bytes
+        return page_alphanum_bytes[page_idx]
+
+    # seg_idx → PDF page index assigned by phase 1.
+    phase1_page: dict[int, int] = {}
 
     for i, seg in enumerate(segments):
         if seg.page >= num_pages:
             continue
 
-        norm_len = len(_normalize_strict(seg.text)[0]) or len(_normalize_loose(seg.text)[0])
-        threshold = max(5, min(min_score, norm_len))
+        norm_seg, _ = _normalize_loose(seg.text)
+        if len(norm_seg) < _PHASE1_MIN_LEN:
+            continue  # too short to identify uniquely
 
-        p1_lo = max(0, seg.page - _PAGE_SLACK)
-        p1_hi = min(num_pages - 1, seg.page + _PAGE_SLACK)
-        hits = _best_across_pages(seg, range(p1_lo, p1_hi + 1), threshold)
+        p_lo = max(0, seg.page - _PHASE1_PAGE_SLACK)
+        p_hi = min(num_pages - 1, seg.page + _PHASE1_PAGE_SLACK)
+        candidate_pages = list(range(p_lo, p_hi + 1))
+        page_norms = [_get_alphanum_page(p) for p in candidate_pages]
 
-        if not hits:
+        # Top-2 ungapped HSPs of segment vs each candidate page.
+        top2_per_page = seq_smith.top_k_ungapped_local_align_many(
+            norm_seg,
+            page_norms,
+            _SCORE_MATRIX_LOOSE,
+            k=2,
+            filter_overlap_a=False,
+            filter_overlap_b=False,
+        )
+
+        # Score each page: apply coverage filter.
+        page_scores: list[tuple[int, int]] = []  # (score, page_idx)
+        for page_idx, top2 in zip(candidate_pages, top2_per_page):
+            if not top2:
+                continue
+            best = top2[0]
+            # Coverage: best HSP must span ≥ _PHASE1_MIN_COVERAGE of the segment.
+            if best.stats.len < len(norm_seg) * _PHASE1_MIN_COVERAGE:
+                continue
+            page_scores.append((best.score, page_idx))
+
+        if not page_scores:
             continue
 
-        # Uniqueness check: best score must exceed second-best by _UNIQUENESS_RATIO.
-        if len(hits) >= 2 and hits[1][0] * _UNIQUENESS_RATIO > hits[0][0]:
-            continue  # ambiguous — defer to pass 2
+        page_scores.sort(reverse=True)
 
-        score, flat_ranges, matched_page = hits[0]
-        _accept_match(seg, i, score, flat_ranges, matched_page, 1 if score >= min_score else 2)
+        # Cross-page uniqueness: winning page must beat runner-up by _PHASE1_UNIQUENESS_RATIO.
+        if len(page_scores) >= 2 and page_scores[1][0] * _PHASE1_UNIQUENESS_RATIO > page_scores[0][0]:
+            continue
 
-    # ── Pass 2: fill in deferred segments using neighbour-inferred pages ──────
-    # Segments skipped in pass 1 (ambiguous or search-window miss) are retried
-    # here.  For each unmatched segment, _infer_page() estimates its PDF page
-    # from the nearest pass-1 anchors on either side, narrowing the search to
-    # [inferred - 1, inferred + 1].  No uniqueness requirement.
+        phase1_page[i] = page_scores[0][1]
+
+    # ── Phase 1 refinement: full SW alignment on the assigned page ────────────
+    # Process in document order so residuals accumulate correctly across segments
+    # on the same page.
+    for i in sorted(phase1_page.keys()):
+        seg = segments[i]
+        matched_page = phase1_page[i]
+        norm_len = len(_normalize_strict(seg.text)[0]) or len(_normalize_loose(seg.text)[0])
+        threshold = max(5, min(min_score, norm_len))
+        result = _try_page_residual(matched_page, seg, threshold)
+        if result is not None:
+            score, flat_ranges = result
+            _accept_match(seg, i, score, flat_ranges, matched_page, 1)
+
+    phase1_count = sum(1 for r in results if r is not None)
+    print(
+        f"Phase 1 (conservative HSP): {phase1_count}/{len(segments)} segments"
+        f" matched ({100 * phase1_count // max(len(segments), 1)}%)"
+    )
+
+    # ── Phase 2: page-constrained matching ────────────────────────────────────
+    # For each segment not matched in phase 1, the document-order constraint
+    # limits it to pages in [prev_matched_page, next_matched_page].  Take the
+    # highest-scoring hit in that interval; no uniqueness requirement (the
+    # narrow window suppresses false positives).
     for i, seg in enumerate(segments):
         if results[i] is not None:
             continue
@@ -783,8 +795,6 @@ def associate(
         norm_len = len(_normalize_strict(seg.text)[0]) or len(_normalize_loose(seg.text)[0])
         threshold = max(5, min(min_score, norm_len))
 
-        # Search the full interval between the nearest pass-1 anchors on either
-        # side — this is what the document-order constraint actually tells us.
         prev_page: int | None = None
         for j in range(i - 1, -1, -1):
             if results[j] is not None:
@@ -798,12 +808,15 @@ def associate(
         p2_lo = prev_page if prev_page is not None else 0
         p2_hi = next_page if next_page is not None else num_pages - 1
 
-        hits = _best_across_pages(seg, range(p2_lo, p2_hi + 1), threshold)
-        if not hits:
-            continue
+        best: tuple[int, list, int] | None = None
+        for page in range(p2_lo, p2_hi + 1):
+            candidate = _try_page_residual(page, seg, threshold)
+            if candidate is not None and (best is None or candidate[0] > best[0]):
+                best = (candidate[0], candidate[1], page)
 
-        score, flat_ranges, matched_page = hits[0]
-        _accept_match(seg, i, score, flat_ranges, matched_page, 1 if score >= min_score else 2)
+        if best is not None:
+            score, flat_ranges, matched_page = best
+            _accept_match(seg, i, score, flat_ranges, matched_page, 2)
 
     anchors = [a for a, c in zip(results, confidence) if a is not None]
     if return_pass_info:
