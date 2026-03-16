@@ -1,9 +1,10 @@
 """Parse Markdown into fine-grained segments for anchor alignment."""
 
+from __future__ import annotations
+
 import dataclasses
 import re
-import string
-
+from collections.abc import Callable
 
 # ---------------------------------------------------------------------------
 # Sentence splitting
@@ -81,6 +82,61 @@ _LIST_ITEM_RE = re.compile(r"^(\s{0,3}(?:[-*+]|\d+[.)]) )")
 # Lines starting with superscript digits → affiliation / footnote entries.
 _SUPER_PREFIX_RE = re.compile(r"^[" + _SUPERSCRIPT_DIGITS + r"]")
 
+_Seg = Callable[[str], MarkdownSegment]
+
+
+def _segments_from_heading(
+    text: str,
+    page: int,
+    md_start: int,
+    md_end: int,
+    seg: _Seg,
+) -> list[MarkdownSegment]:
+    lines = text.splitlines()
+    heading_seg = seg(lines[0])
+    rest = "\n".join(lines[1:]).strip()
+    if not rest:
+        return [heading_seg]
+    return [heading_seg, *_segments_from_block(rest, page, md_start, md_end)]
+
+
+def _segments_from_blockquote(text: str, seg: _Seg) -> list[MarkdownSegment]:
+    results: list[MarkdownSegment] = []
+    for raw_line in text.splitlines():
+        stripped = re.sub(r"^>\s?", "", raw_line).strip()
+        if not stripped:
+            continue
+        if _LIST_ITEM_RE.match(stripped):
+            results.append(seg(stripped))
+        else:
+            results.extend(seg(s) for s in _split_sentences(stripped))
+    return results
+
+
+def _segments_from_list(lines: list[str], seg: _Seg) -> list[MarkdownSegment]:
+    items: list[str] = []
+    current: list[str] = []
+    for line in lines:
+        if _LIST_ITEM_RE.match(line):
+            if current:
+                items.append(" ".join(current))
+            current = [line]
+        elif line.strip():
+            current.append(line.strip())
+    if current:
+        items.append(" ".join(current))
+    return [seg(item) for item in items if item.strip()]
+
+
+def _segments_from_table(lines: list[str], seg: _Seg) -> list[MarkdownSegment]:
+    results: list[MarkdownSegment] = []
+    for line in lines:
+        if re.match(r"^\s*\|[-:\s|]+\|\s*$", line):
+            continue  # separator row
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        results.extend(seg(c) for c in cells if c)
+    return results
+
 
 def _segments_from_block(
     block_text: str,
@@ -96,63 +152,28 @@ def _segments_from_block(
     def seg(t: str) -> MarkdownSegment:
         return MarkdownSegment(t.strip(), page, md_start, md_end)
 
-    # ── Heading ──────────────────────────────────────────────────────────────
-    if re.match(r"^#{1,6}\s", text):
-        lines = text.splitlines()
-        heading_seg = seg(lines[0])
-        rest = "\n".join(lines[1:]).strip()
-        if not rest:
-            return [heading_seg]
-        return [heading_seg] + _segments_from_block(rest, page, md_start, md_end)
-
-    # ── Blockquote ───────────────────────────────────────────────────────────
-    if text.startswith(">"):
-        results: list[MarkdownSegment] = []
-        for line in text.splitlines():
-            line = re.sub(r"^>\s?", "", line).strip()
-            if not line:
-                continue
-            if _LIST_ITEM_RE.match(line):
-                results.append(seg(line))
-            else:
-                results.extend(seg(s) for s in _split_sentences(line))
-        return results
-
-    # ── List ─────────────────────────────────────────────────────────────────
     lines = text.splitlines()
-    if _LIST_ITEM_RE.match(lines[0]):
-        items: list[str] = []
-        current: list[str] = []
-        for line in lines:
-            if _LIST_ITEM_RE.match(line):
-                if current:
-                    items.append(" ".join(current))
-                current = [line]
-            elif line.strip():
-                current.append(line.strip())
-        if current:
-            items.append(" ".join(current))
-        return [seg(item) for item in items if item.strip()]
-
-    # ── Affiliation / footnote block (lines with superscript prefix) ─────────
     non_empty = [line for line in lines if line.strip()]
-    if len(non_empty) > 1 and sum(
-        1 for line in non_empty if _SUPER_PREFIX_RE.match(line.strip())
-    ) >= len(non_empty) * 0.5:
-        return [seg(line) for line in non_empty]
+    is_affiliation = (
+        len(non_empty) > 1
+        and sum(1 for line in non_empty if _SUPER_PREFIX_RE.match(line.strip()))
+        >= len(non_empty) * 0.5
+    )
 
-    # ── Table (GFM pipe syntax) ───────────────────────────────────────────────
-    if lines and "|" in lines[0]:
-        results = []
-        for line in lines:
-            if re.match(r"^\s*\|[-:\s|]+\|\s*$", line):
-                continue  # separator row
-            cells = [c.strip() for c in line.strip().strip("|").split("|")]
-            results.extend(seg(c) for c in cells if c)
-        return results
+    if re.match(r"^#{1,6}\s", text):
+        result = _segments_from_heading(text, page, md_start, md_end, seg)
+    elif text.startswith(">"):
+        result = _segments_from_blockquote(text, seg)
+    elif _LIST_ITEM_RE.match(lines[0]):
+        result = _segments_from_list(lines, seg)
+    elif is_affiliation:
+        result = [seg(line) for line in non_empty]
+    elif "|" in lines[0]:
+        result = _segments_from_table(lines, seg)
+    else:
+        result = [seg(s) for s in _split_sentences(text)]
 
-    # ── Regular paragraph → sentence splitting ────────────────────────────────
-    return [seg(s) for s in _split_sentences(text)]
+    return result
 
 
 def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
