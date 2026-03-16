@@ -319,9 +319,9 @@ def _process_alignment_iteration(
         _assign_high_confidence_spans(
             spans,
             sorted(
-            anchor_spans,
-            key=lambda x: (x.anchor.page, x.anchor.boxes[0].top, x.anchor.boxes[0].left, x.anchor.text),
-        ),
+                anchor_spans,
+                key=lambda x: (x.anchor.page, x.anchor.boxes[0].top, x.anchor.boxes[0].left, x.anchor.text),
+            ),
             uniqueness_threshold=uniqueness_threshold,
             min_overlap=min_overlap,
             with_ungapped=iteration_num == 1,
