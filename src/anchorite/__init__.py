@@ -8,19 +8,23 @@ from collections.abc import Mapping, Sequence
 
 import seq_smith
 
-from . import bbox_alignment, document, markdown, orchestrator, providers, range_ops
+from . import bbox_alignment, document, markdown, md_segments, orchestrator, providers, range_ops
 from .anchors import Anchor, BBox
+from .md_segments import MarkdownSegment, parse_markdown_segments
 from .orchestrator import AlignmentResult, process_document
 
 __all__ = [
     "AlignmentResult",
     "Anchor",
     "BBox",
+    "MarkdownSegment",
     "align",
     "annotate",
     "document",
     "markdown",
+    "md_segments",
     "orchestrator",
+    "parse_markdown_segments",
     "process_document",
     "providers",
     "range_ops",
