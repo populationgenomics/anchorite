@@ -12,22 +12,62 @@ from collections.abc import Callable
 
 _SUPERSCRIPT_DIGITS = "⁰¹²³⁴⁵⁶⁷⁸⁹"
 
-_ABBREVIATIONS: frozenset[str] = frozenset({
-    "al", "fig", "figs", "eq", "eqs", "vs", "etc",
-    "dr", "mr", "mrs", "ms", "prof", "inc", "ltd", "co", "jr", "sr",
-    "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
-    "vol", "no", "pp", "p", "ed", "eds", "ref", "refs",
-    "approx", "dept", "est", "max", "min", "cf", "viz",
-})
+_ABBREVIATIONS: frozenset[str] = frozenset(
+    {
+        "al",
+        "fig",
+        "figs",
+        "eq",
+        "eqs",
+        "vs",
+        "etc",
+        "dr",
+        "mr",
+        "mrs",
+        "ms",
+        "prof",
+        "inc",
+        "ltd",
+        "co",
+        "jr",
+        "sr",
+        "jan",
+        "feb",
+        "mar",
+        "apr",
+        "jun",
+        "jul",
+        "aug",
+        "sep",
+        "oct",
+        "nov",
+        "dec",
+        "vol",
+        "no",
+        "pp",
+        "p",
+        "ed",
+        "eds",
+        "ref",
+        "refs",
+        "approx",
+        "dept",
+        "est",
+        "max",
+        "min",
+        "cf",
+        "viz",
+    }
+)
 
 # Sentence boundary: terminal punctuation, optional reference markers
 # (superscripts or a space-separated digit run), then whitespace, then uppercase.
 _SENT_END_RE = re.compile(
     r"[.!?]"
     r"[" + _SUPERSCRIPT_DIGITS + r"]*"  # optional superscript refs directly after punct
-    r"(?:\s+\d[\d,\-]*)?"               # optional space + numeric refs (e.g. ". 1,2")
-    r"\s+"                               # required whitespace before next sentence
-    r"(?=[A-Z])",                        # lookahead: next char is uppercase
+    r"(?:\s+\d[\d,\-]*)?"  # optional space + numeric refs (e.g. ". 1,2")
+    r"\s+"  # required whitespace before next sentence
+    r"(?=[A-Z])",  # lookahead: next char is uppercase
 )
 
 
@@ -59,6 +99,7 @@ def _split_sentences(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 # Markdown segment parsing
 # ---------------------------------------------------------------------------
+
 
 @dataclasses.dataclass(frozen=True)
 class MarkdownSegment:
@@ -156,8 +197,7 @@ def _segments_from_block(
     non_empty = [line for line in lines if line.strip()]
     is_affiliation = (
         len(non_empty) > 1
-        and sum(1 for line in non_empty if _SUPER_PREFIX_RE.match(line.strip()))
-        >= len(non_empty) * 0.5
+        and sum(1 for line in non_empty if _SUPER_PREFIX_RE.match(line.strip())) >= len(non_empty) * 0.5
     )
 
     if re.match(r"^#{1,6}\s", text):
