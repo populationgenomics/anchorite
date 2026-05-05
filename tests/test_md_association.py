@@ -207,3 +207,61 @@ class TestHtmlTagsInNormalisation:
         # other punctuation.
         norm_bytes, _ = md_association._normalize_strict("a < b")
         assert norm_bytes == md_association._normalize_strict("a   b")[0]
+
+
+# ---------------------------------------------------------------------------
+# Normalisation: NFKD compatibility decomposition
+# ---------------------------------------------------------------------------
+
+class TestNfkdNormalisation:
+    """Each input character is NFKD-decomposed before classification, so
+    accented letters keep their base form, ligatures expand, superscript
+    digits become plain digits, and Mathematical Alphanumeric Symbols map
+    back to ASCII.  Without NFKD these all dropped out as non-ASCII and
+    shrank the alignable sequence — short segments hit the phase-1
+    minimum-length cutoff and never matched.
+    """
+
+    def test_accented_letters_keep_base(self) -> None:
+        # Töpf used to normalise to 'tpf' (ö dropped); now keeps 'topf'.
+        assert md_association._normalize_loose("Töpf")[0] == md_association._normalize_loose("Topf")[0]
+        assert md_association._normalize_loose("Müller")[0] == md_association._normalize_loose("Muller")[0]
+        assert md_association._normalize_loose("naïve")[0] == md_association._normalize_loose("naive")[0]
+        assert md_association._normalize_loose("Göngör")[0] == md_association._normalize_loose("Gongor")[0]
+
+    def test_ligatures_expand(self) -> None:
+        # ﬁnal (single ligature glyph) used to drop entirely; now becomes 'final'.
+        assert md_association._normalize_loose("ﬁnal")[0] == md_association._normalize_loose("final")[0]
+        assert md_association._normalize_loose("eﬃcient")[0] == md_association._normalize_loose("efficient")[0]
+
+    def test_superscript_digits_become_plain(self) -> None:
+        # ⁶¹RNRKRKAEPY⁷⁰ used to lose the superscripts entirely.
+        assert md_association._normalize_loose("⁶¹RNRKRKAEPY⁷⁰")[0] == md_association._normalize_loose("61RNRKRKAEPY70")[0]
+        assert md_association._normalize_loose("H²O")[0] == md_association._normalize_loose("H2O")[0]
+
+    def test_math_alphanumeric_symbols(self) -> None:
+        # Mathematical Italic capital S (𝑆) should normalise to 's', etc.
+        assert md_association._normalize_loose("𝑆ensitivity")[0] == md_association._normalize_loose("Sensitivity")[0]
+
+    def test_idx_map_for_one_to_many_decomposition(self) -> None:
+        # 'ﬁnal' has 4 chars; under NFKD ``ﬁ`` decomposes to ``fi`` (two
+        # bytes), so the normalised output has 5 bytes — but both
+        # decomposed letters of ``ﬁ`` map back to its single original
+        # offset 0.
+        norm, idx_map = md_association._normalize_loose("ﬁnal")
+        assert len(norm) == 5
+        # Original offsets for f, i, n, a, l: ﬁ is at 0; n, a, l at 1, 2, 3.
+        assert list(idx_map) == [0, 0, 1, 2, 3, 4]
+
+    def test_combining_marks_dropped(self) -> None:
+        # NFKD decomposes 'ö' to 'o' + U+0308 combining diaeresis.  The
+        # combining mark must not contribute an output byte.
+        norm, idx_map = md_association._normalize_loose("ö")
+        assert len(norm) == 1   # just 'o', no combining mark
+        assert list(idx_map) == [0, 1]
+
+    def test_strict_mode_emits_space_for_pure_punctuation(self) -> None:
+        # NFKD doesn't decompose dashes/quotes; they still collapse to a
+        # space in strict mode — preserve the existing behaviour.
+        norm, _ = md_association._normalize_strict("a — b")
+        assert norm == md_association._normalize_strict("a   b")[0]

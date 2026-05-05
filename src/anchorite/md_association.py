@@ -203,8 +203,35 @@ def _html_tag_spans(text: str) -> list[tuple[int, int]]:
     return [(m.start(), m.end()) for m in _HTML_TAG_RE.finditer(text)]
 
 
+_ASCII_ALNUM = frozenset(string.ascii_lowercase + string.digits)
+
+
+def _nfkd_alnum(c: str) -> str:
+    """Return the lowercase-ASCII-alphanum letters NFKD-decomposed from *c*.
+
+    NFKD applies compatibility decompositions, which lets us recover the base
+    letter from accented characters (``ö`` → ``o`` + combining diaeresis),
+    expand ligatures (``ﬁ`` → ``fi``), turn superscript and subscript digits
+    into plain digits (``²`` → ``2``), and map Mathematical Alphanumeric
+    Symbols and other compatibility characters to their ASCII equivalents.
+    Combining marks and other non-ASCII components of the decomposition are
+    discarded.  The empty string is returned when nothing alphanumeric remains.
+    """
+    out = []
+    for d in unicodedata.normalize("NFKD", c):
+        ld = d.lower()
+        if ld in _ASCII_ALNUM:
+            out.append(ld)
+    return "".join(out)
+
+
 def _normalize_strict(text: str) -> tuple[bytes, tuple[int, ...]]:
-    """Lowercase + collapse non-alphanumeric runs to a single space."""
+    """Lowercase + collapse non-alphanumeric runs to a single space.
+
+    Each input character is NFKD-decomposed before classification (see
+    ``_nfkd_alnum``), so accented letters and ligatures contribute their
+    base letters rather than dropping out as non-ASCII.
+    """
     tag_spans = _html_tag_spans(text)
     normalized: list[str] = []
     idx_map: list[int] = []
@@ -216,11 +243,11 @@ def _normalize_strict(text: str) -> tuple[bytes, tuple[int, ...]]:
             i = next_span[1]
             next_span = next(span_iter, None)
             continue
-        c = text[i]
-        lc = c.lower()
-        if lc in string.ascii_letters + string.digits:
-            normalized.append(lc)
-            idx_map.append(i)
+        emitted = _nfkd_alnum(text[i])
+        if emitted:
+            for d in emitted:
+                normalized.append(d)
+                idx_map.append(i)
         elif normalized and normalized[-1] != " ":
             normalized.append(" ")
             idx_map.append(i)
@@ -236,6 +263,9 @@ def _normalize_loose(text: str) -> tuple[bytes, tuple[int, ...]]:
     spaces means that letter-spaced display headings like
     ``C A S E  R E P O R T`` normalise to the same sequence as
     ``CASE REPORT``, at the cost of losing word-boundary information.
+
+    Each input character is NFKD-decomposed before classification (see
+    ``_nfkd_alnum``).
     """
     tag_spans = _html_tag_spans(text)
     normalized: list[str] = []
@@ -248,10 +278,8 @@ def _normalize_loose(text: str) -> tuple[bytes, tuple[int, ...]]:
             i = next_span[1]
             next_span = next(span_iter, None)
             continue
-        c = text[i]
-        lc = c.lower()
-        if lc in string.ascii_letters + string.digits:
-            normalized.append(lc)
+        for d in _nfkd_alnum(text[i]):
+            normalized.append(d)
             idx_map.append(i)
         i += 1
     idx_map.append(len(text))
