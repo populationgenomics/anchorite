@@ -137,7 +137,20 @@ class _CharIndex(NamedTuple):
 
 
 def _build_char_index(chars: list[_Char]) -> _CharIndex:
-    """Build a flat string and a per-character index mapping back to chars."""
+    """Build a flat string and a per-character index mapping back to chars.
+
+    Inserts a space between successive chars when either:
+
+    * the horizontal gap to the next char exceeds 20 % of font size (an
+      intra-line word break), or
+    * the next char drops to a different visual line — its baseline is
+      shifted vertically by more than 50 % of font size, or sits to the
+      *left* of the current char.  Without this, end-of-line + start-of-
+      next-line concatenates ("``we``" + "``identified``" → "``weidentified``")
+      because PDFium's coordinate stream emits no whitespace at line
+      breaks, and the alignment string drifts out of sync with the
+      Markdown.
+    """
     parts: list[str] = []
     flat_to_char: list[int] = []
 
@@ -146,8 +159,11 @@ def _build_char_index(chars: list[_Char]) -> _CharIndex:
             parts.append(c)
             flat_to_char.append(i)
         if i + 1 < len(chars):
-            gap = chars[i + 1].x0 - ch.x1
-            if gap > ch.font_size * 0.2:
+            nxt = chars[i + 1]
+            x_gap = nxt.x0 - ch.x1
+            y_drop = abs(nxt.y0 - ch.y0)
+            line_break = nxt.x0 < ch.x0 or y_drop > ch.font_size * 0.5
+            if x_gap > ch.font_size * 0.2 or line_break:
                 parts.append(" ")
                 flat_to_char.append(i)
 
