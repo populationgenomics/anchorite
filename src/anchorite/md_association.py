@@ -1,14 +1,18 @@
-"""Prototype: derive Anchors by aligning Markdown segments to PDF characters.
+"""Derive Anchors by aligning Markdown segments to PDF characters.
 
-Given a cleaned Markdown document (with ``<!--page-->`` page-break markers) and
-the corresponding PDF, this module:
+Given a Markdown document and the corresponding PDF, this module:
 
 1. Parses the Markdown into fine-grained segments — headings, individual
-   sentences, list items, blockquote lines, affiliation entries — using
-   ``<!--page-->`` markers to infer which PDF page each segment lives on.
+   sentences, list items, blockquote lines, affiliation entries.  When the
+   Markdown carries ``<!--page-->`` page-break markers (the typical chunked-OCR
+   shape), they seed each segment's page hint.  When no markers are present
+   (e.g. JATS-derived Markdown, where the source has no notion of pages), the
+   page is left to fall out of the alignment.
 2. Extracts per-character bounding boxes from the PDF using pypdfium2.
 3. Aligns each segment's normalised text against the flat character text of its
-   candidate page using Smith-Waterman local alignment.
+   candidate page(s) using Smith-Waterman local alignment.  With a page hint,
+   the search is restricted to a window around it; without one, phase 1
+   searches every page and relies on its uniqueness ratio to discriminate.
 4. Unions the bounding boxes of the matched characters to produce an ``Anchor``
    for each segment.
 
@@ -267,8 +271,10 @@ class MarkdownSegment:
 
     text: str
     """Segment text (Markdown syntax preserved, HTML comments stripped)."""
-    page: int
-    """PDF page index (0-based) inferred from surrounding ``<!--page-->`` markers."""
+    page: int | None
+    """PDF page index (0-based) inferred from surrounding ``<!--page-->`` markers,
+    or ``None`` when the source Markdown carries no page markers (in which case
+    the page is determined by the alignment itself)."""
     md_start: int
     """Start character offset of the enclosing block in the original Markdown."""
     md_end: int
@@ -286,7 +292,7 @@ _SUPER_PREFIX_RE = re.compile(r"^[" + _SUPERSCRIPT_DIGITS + r"]")
 
 def _segments_from_block(
     block_text: str,
-    page: int,
+    page: int | None,
     md_start: int,
     md_end: int,
 ) -> list[MarkdownSegment]:
@@ -359,11 +365,23 @@ def _segments_from_block(
 
 
 def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
-    """Parse Markdown into fine-grained segments with page hints.
+    """Parse Markdown into fine-grained segments, optionally with page hints.
 
     Produces one segment per heading, sentence, list item, blockquote line,
-    affiliation entry, or table cell.  ``<!--page-->`` comments advance the page
-    counter; all other HTML comments are stripped from segment text.
+    affiliation entry, or table cell.  All HTML comments are stripped from
+    segment text.
+
+    Page-hint behaviour:
+
+    * If the Markdown contains one or more ``<!--page-->`` markers, the markers
+      seed each segment's ``page`` field; content preceding the first marker
+      is dropped (it isn't pinned to any page).  This is the typical input
+      shape produced by chunked OCR pipelines, where a marker is emitted at
+      every page break.
+    * If the Markdown contains no markers at all (e.g. JATS XML rendered to
+      Markdown, where page boundaries aren't carried by the source), every
+      segment's ``page`` is ``None`` and the page is determined later by the
+      alignment.
     """
     # Ensure every <!--page--> marker sits in its own blank-line-delimited block.
     # Without this, a marker that immediately follows a paragraph (no blank line)
@@ -372,8 +390,12 @@ def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
     markdown = re.sub(r"(?<!\n\n)(<!--page-->)", r"\n\n\1", markdown)
     markdown = re.sub(r"(<!--page-->)(?!\n)", r"\1\n\n", markdown)
 
+    has_markers = _PAGE_MARKER_RE.search(markdown) is not None
+
     segments: list[MarkdownSegment] = []
-    current_page = -1
+    # marker_page tracks the page counter when the source uses markers.  In
+    # the no-marker case it's irrelevant — every segment carries ``page=None``.
+    marker_page = -1
 
     block_start = 0
     for m in re.finditer(r"\n{2,}|\Z", markdown, re.MULTILINE):
@@ -383,13 +405,18 @@ def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
         block_start = m.end()
 
         for _ in _PAGE_MARKER_RE.finditer(block_raw):
-            current_page += 1
+            marker_page += 1
 
-        if current_page < 0:
-            continue
+        page: int | None
+        if has_markers:
+            if marker_page < 0:
+                continue  # Pre-marker content is unpinned; drop it.
+            page = marker_page
+        else:
+            page = None
 
         text = _COMMENT_RE.sub("", block_raw).strip()
-        segments.extend(_segments_from_block(text, current_page, md_start, md_end))
+        segments.extend(_segments_from_block(text, page, md_start, md_end))
 
     return segments
 
@@ -591,7 +618,9 @@ def associate(
 
     Args:
         pdf_path: Path to the PDF file.
-        markdown: Cleaned Markdown with ``<!--page-->`` page-break markers.
+        markdown: The Markdown to align.  May contain ``<!--page-->`` page-
+            break markers (used as phase-1 search-window hints); if omitted,
+            phase 1 searches every page.
         min_score: Score cap for the adaptive alignment threshold.
         return_pass_info: If True, return ``(anchors, passes)`` where *passes*
             is a parallel list of ints: 1 = phase 1, 2 = phase 2.
@@ -718,16 +747,22 @@ def associate(
     phase1_page: dict[int, int] = {}
 
     for i, seg in enumerate(segments):
-        if seg.page >= num_pages:
+        if seg.page is not None and seg.page >= num_pages:
             continue
 
         norm_seg, _ = _normalize_loose(seg.text)
         if len(norm_seg) < _PHASE1_MIN_LEN:
             continue  # too short to identify uniquely
 
-        p_lo = max(0, seg.page - _PHASE1_PAGE_SLACK)
-        p_hi = min(num_pages - 1, seg.page + _PHASE1_PAGE_SLACK)
-        candidate_pages = list(range(p_lo, p_hi + 1))
+        # Without a page hint, search every page; the cross-page uniqueness
+        # check below still suppresses ambiguous matches.  With a hint, restrict
+        # to a window around it for cost.
+        if seg.page is None:
+            candidate_pages = list(range(num_pages))
+        else:
+            p_lo = max(0, seg.page - _PHASE1_PAGE_SLACK)
+            p_hi = min(num_pages - 1, seg.page + _PHASE1_PAGE_SLACK)
+            candidate_pages = list(range(p_lo, p_hi + 1))
         page_norms = [_get_alphanum_page(p) for p in candidate_pages]
 
         # Top-2 ungapped HSPs of segment vs each candidate page.
@@ -789,7 +824,7 @@ def associate(
     for i, seg in enumerate(segments):
         if results[i] is not None:
             continue
-        if seg.page >= num_pages:
+        if seg.page is not None and seg.page >= num_pages:
             continue
 
         norm_len = len(_normalize_strict(seg.text)[0]) or len(_normalize_loose(seg.text)[0])
