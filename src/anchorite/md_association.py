@@ -174,19 +174,41 @@ _PHASE1_MIN_COVERAGE = 0.9
 _PHASE1_MIN_LEN = 10
 
 
+# HTML tags that survive into Markdown (e.g. ``<sup>`` from JATS-derived
+# articles, ``<a id="...">`` anchors) must not contribute alphanum bytes to
+# the alignment string — otherwise ``<sup>1</sup>`` becomes the letters
+# ``sup1sup`` and the matching PDF text ``1`` aligns nowhere near it.  Both
+# normalisers detect tag spans in advance and skip past them, leaving the
+# index map pointing at the original text offsets.
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _html_tag_spans(text: str) -> list[tuple[int, int]]:
+    return [(m.start(), m.end()) for m in _HTML_TAG_RE.finditer(text)]
+
+
 def _normalize_strict(text: str) -> tuple[bytes, tuple[int, ...]]:
     """Lowercase + collapse non-alphanumeric runs to a single space."""
+    tag_spans = _html_tag_spans(text)
     normalized: list[str] = []
     idx_map: list[int] = []
-    for i, c in enumerate(text):
+    span_iter = iter(tag_spans)
+    next_span = next(span_iter, None)
+    i = 0
+    while i < len(text):
+        if next_span is not None and i == next_span[0]:
+            i = next_span[1]
+            next_span = next(span_iter, None)
+            continue
+        c = text[i]
         lc = c.lower()
         if lc in string.ascii_letters + string.digits:
             normalized.append(lc)
             idx_map.append(i)
-        else:
-            if normalized and normalized[-1] != " ":
-                normalized.append(" ")
-                idx_map.append(i)
+        elif normalized and normalized[-1] != " ":
+            normalized.append(" ")
+            idx_map.append(i)
+        i += 1
     idx_map.append(len(text))
     return seq_smith.encode("".join(normalized), _ALIGN_ALPHABET_STRICT), tuple(idx_map)
 
@@ -199,13 +221,23 @@ def _normalize_loose(text: str) -> tuple[bytes, tuple[int, ...]]:
     ``C A S E  R E P O R T`` normalise to the same sequence as
     ``CASE REPORT``, at the cost of losing word-boundary information.
     """
+    tag_spans = _html_tag_spans(text)
     normalized: list[str] = []
     idx_map: list[int] = []
-    for i, c in enumerate(text):
+    span_iter = iter(tag_spans)
+    next_span = next(span_iter, None)
+    i = 0
+    while i < len(text):
+        if next_span is not None and i == next_span[0]:
+            i = next_span[1]
+            next_span = next(span_iter, None)
+            continue
+        c = text[i]
         lc = c.lower()
         if lc in string.ascii_letters + string.digits:
             normalized.append(lc)
             idx_map.append(i)
+        i += 1
     idx_map.append(len(text))
     return seq_smith.encode("".join(normalized), _ALIGN_ALPHABET_LOOSE), tuple(idx_map)
 
