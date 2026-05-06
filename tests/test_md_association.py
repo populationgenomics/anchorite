@@ -311,7 +311,7 @@ def _line(text: str, *, baseline: float, x0: float = 0.0, font_size: float = 10.
                 x1=cursor + font_size * 0.6,
                 y1=baseline + font_size,
                 font_size=font_size,
-            )
+            ),
         )
         cursor += font_size * 0.6
     return chars
