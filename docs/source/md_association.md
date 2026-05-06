@@ -88,7 +88,7 @@ uv run python prototype_md.py paper.pdf paper.md
 
 **Console** — summary statistics and per-page anchor listings:
 
-```
+```text
 1985 segments parsed
 Phase 1 (conservative HSP): 847/1985 segments matched (42%)
 1066 anchors matched
@@ -102,7 +102,7 @@ Page 1: 12 anchors
 
 **Images** — one PNG per page, written alongside the PDF:
 
-```
+```text
 paper.p0.md.png
 paper.p1.md.png
 ...
