@@ -606,16 +606,6 @@ def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
 # ---------------------------------------------------------------------------
 
 
-def _chars_in_range(
-    chars: list[_Char],
-    flat_to_char: list[int],
-    flat_start: int,
-    flat_end: int,
-) -> list[_Char]:
-    indices = {flat_to_char[i] for i in range(flat_start, min(flat_end, len(flat_to_char)))}
-    return [chars[i] for i in sorted(indices)]
-
-
 def _bbox_from_chars(chars: list[_Char], page_width: float, page_height: float) -> BBox:
     x0 = min(c.x0 for c in chars)
     y0 = min(c.y0 for c in chars)
