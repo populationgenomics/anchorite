@@ -168,45 +168,57 @@ def test_segment_page_can_be_none() -> None:
 
 class TestHtmlTagsInNormalisation:
     """HTML tags surviving into Markdown (`<sup>`, `<a id="...">`, etc.) must
-    not contribute alphanum bytes to the alignment string — otherwise their
-    tag names line up with letters in the PDF and trash the alignment.
+    not contribute alphanum bytes to the alignment string when *strip_html*
+    is True — otherwise their tag names line up with letters in the PDF and
+    trash the alignment.  *strip_html* defaults to False because pdfium-
+    extracted PDF text contains literal ``<`` / ``>`` characters when those
+    glyphs appear in the document (e.g. ``p < 0.05``); stripping them would
+    silently drop real content.
     """
 
-    def test_strict_skips_html_tag_letters(self) -> None:
+    def test_strict_strips_when_enabled(self) -> None:
         text = "Author<sup>1</sup>"
         plain = "Author1"
-        # Both should normalise to the same byte sequence.
-        assert md_association._normalize_strict(text)[0] == md_association._normalize_strict(plain)[0]
+        assert (
+            md_association._normalize_strict(text, strip_html=True)[0]
+            == md_association._normalize_strict(plain, strip_html=True)[0]
+        )
 
-    def test_loose_skips_html_tag_letters(self) -> None:
+    def test_loose_strips_when_enabled(self) -> None:
         text = "Author<sup>1</sup>"
         plain = "Author1"
-        assert md_association._normalize_loose(text)[0] == md_association._normalize_loose(plain)[0]
+        assert (
+            md_association._normalize_loose(text, strip_html=True)[0]
+            == md_association._normalize_loose(plain, strip_html=True)[0]
+        )
+
+    def test_default_does_not_strip(self) -> None:
+        # PDF-side default: `<` / `>` are literal characters and must contribute
+        # like any other punctuation.  ``a<b`` (PDF rendering of ``a < b``)
+        # normalises like ``a b``.
+        norm, _ = md_association._normalize_strict("a<b")
+        assert norm == md_association._normalize_strict("a b")[0]
 
     def test_idx_map_points_into_original_text(self) -> None:
-        # After stripping ``<sup>``, the alphanum bytes in normalised text
-        # must map back to the *original* offsets ("A","u","t","h","o","r" at
-        # 0..5; "1" at 11 — the digit between the two tags).
         text = "Author<sup>1</sup>"
-        norm_bytes, idx_map = md_association._normalize_loose(text)
-        # idx_map covers the 7 emitted alphanum bytes plus one trailing sentinel.
+        norm_bytes, idx_map = md_association._normalize_loose(text, strip_html=True)
+        # 7 alphanum bytes (a,u,t,h,o,r,1) plus one trailing sentinel.
         assert len(norm_bytes) == 7
         assert list(idx_map) == [0, 1, 2, 3, 4, 5, 11, len(text)]
 
     def test_anchor_tag_with_id_zero_width(self) -> None:
         text = '<a id="R1"></a>\n## References'
         plain = "## References"
-        # The leading <a id="R1"></a> contributes nothing; everything after it
-        # normalises identically to the bare heading.
-        assert md_association._normalize_strict(text)[0] == md_association._normalize_strict(plain)[0]
+        assert (
+            md_association._normalize_strict(text, strip_html=True)[0]
+            == md_association._normalize_strict(plain, strip_html=True)[0]
+        )
 
     def test_lone_lt_gt_treated_as_punctuation(self) -> None:
-        # A bare ``<`` or ``>`` (not part of a complete ``<...>`` tag) shouldn't
-        # be silently skipped — the regex requires a closing ``>`` to match.
-        # Verify a stray ``<`` collapses to a space in strict mode like any
-        # other punctuation.
-        norm_bytes, _ = md_association._normalize_strict("a < b")
-        assert norm_bytes == md_association._normalize_strict("a   b")[0]
+        # A bare ``<`` or ``>`` (no closing ``>``) is left alone even when
+        # strip_html is True — the regex requires a complete tag.
+        norm_bytes, _ = md_association._normalize_strict("a < b", strip_html=True)
+        assert norm_bytes == md_association._normalize_strict("a   b", strip_html=True)[0]
 
 
 # ---------------------------------------------------------------------------

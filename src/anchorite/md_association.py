@@ -225,14 +225,23 @@ def _nfkd_alnum(c: str) -> str:
     return "".join(out)
 
 
-def _normalize_strict(text: str) -> tuple[bytes, tuple[int, ...]]:
+def _normalize_strict(text: str, *, strip_html: bool = False) -> tuple[bytes, tuple[int, ...]]:
     """Lowercase + collapse non-alphanumeric runs to a single space.
 
     Each input character is NFKD-decomposed before classification (see
     ``_nfkd_alnum``), so accented letters and ligatures contribute their
     base letters rather than dropping out as non-ASCII.
+
+    Args:
+        text: The text to normalise.
+        strip_html: When True, ``<...>``-style tags are treated as zero-width
+            (their tag-name letters don't contribute alignment bytes).  Only
+            safe for Markdown input — pdfium-extracted PDF text contains
+            literal ``<`` / ``>`` characters when those glyphs appear in the
+            document (e.g. ``p < 0.05``), and stripping them silently drops
+            real content.  Defaults to False (PDF-safe).
     """
-    tag_spans = _html_tag_spans(text)
+    tag_spans = _html_tag_spans(text) if strip_html else []
     normalized: list[str] = []
     idx_map: list[int] = []
     span_iter = iter(tag_spans)
@@ -256,7 +265,7 @@ def _normalize_strict(text: str) -> tuple[bytes, tuple[int, ...]]:
     return seq_smith.encode("".join(normalized), _ALIGN_ALPHABET_STRICT), tuple(idx_map)
 
 
-def _normalize_loose(text: str) -> tuple[bytes, tuple[int, ...]]:
+def _normalize_loose(text: str, *, strip_html: bool = False) -> tuple[bytes, tuple[int, ...]]:
     """Keep only lowercase letters and digits; strip everything else.
 
     Used as a fallback for segments that fail the strict pass.  Discarding
@@ -266,8 +275,10 @@ def _normalize_loose(text: str) -> tuple[bytes, tuple[int, ...]]:
 
     Each input character is NFKD-decomposed before classification (see
     ``_nfkd_alnum``).
+
+    See ``_normalize_strict`` for the meaning of ``strip_html``.
     """
-    tag_spans = _html_tag_spans(text)
+    tag_spans = _html_tag_spans(text) if strip_html else []
     normalized: list[str] = []
     idx_map: list[int] = []
     span_iter = iter(tag_spans)
@@ -766,8 +777,8 @@ def associate(
             return None
 
         def _align(norm_fn, score_matrix):
-            res_norm, res_to_res = norm_fn(residual)
-            seg_norm, _ = norm_fn(seg.text)
+            res_norm, res_to_res = norm_fn(residual)               # PDF
+            seg_norm, _ = norm_fn(seg.text, strip_html=True)        # markdown
             if not seg_norm:
                 return None
             hit = _align_against(res_norm, res_to_res, seg_norm, score_matrix, threshold)
@@ -804,10 +815,13 @@ def associate(
             page_matched_ranges.setdefault(matched_page, []).extend(flat_ranges)
 
     # ── Phase 1: conservative HSP-based page assignment ──────────────────────
-    # Normalise segment and page to alphanumeric only (no spaces).  Run
-    # top-2 ungapped local alignment of the segment against each candidate
-    # page.  Accept only when the best HSP is (a) high-coverage and (b) unique
-    # both within the winning page and across all candidate pages.
+    # Normalise segment and page to alphanumeric only (no spaces).  Collect
+    # the top-2 ungapped HSPs per candidate page, pool them globally, then
+    # accept the best one only when (a) it covers ≥ _PHASE1_MIN_COVERAGE of
+    # the segment and (b) it scores ≥ _PHASE1_UNIQUENESS_RATIO × the second-
+    # best HSP *anywhere* (same page or a different page — the location of
+    # the runner-up is irrelevant; only the score gap matters for whether
+    # the best hit is unambiguous).
 
     # Lazy cache: alphanum-only bytes per page.
     page_alphanum_bytes: dict[int, bytes] = {}
@@ -815,7 +829,7 @@ def associate(
     def _get_alphanum_page(page_idx: int) -> bytes:
         if page_idx not in page_alphanum_bytes:
             _, ci = _get_page_data(page_idx)
-            norm_bytes, _ = _normalize_loose(ci.flat_str)
+            norm_bytes, _ = _normalize_loose(ci.flat_str)  # PDF: don't strip HTML
             page_alphanum_bytes[page_idx] = norm_bytes
         return page_alphanum_bytes[page_idx]
 
@@ -826,13 +840,13 @@ def associate(
         if seg.page is not None and seg.page >= num_pages:
             continue
 
-        norm_seg, _ = _normalize_loose(seg.text)
+        norm_seg, _ = _normalize_loose(seg.text, strip_html=True)
         if len(norm_seg) < _PHASE1_MIN_LEN:
             continue  # too short to identify uniquely
 
-        # Without a page hint, search every page; the cross-page uniqueness
-        # check below still suppresses ambiguous matches.  With a hint, restrict
-        # to a window around it for cost.
+        # Without a page hint, search every page; the uniqueness check below
+        # still suppresses ambiguous matches.  With a hint, restrict to a
+        # window around it for cost.
         if seg.page is None:
             candidate_pages = list(range(num_pages))
         else:
@@ -851,27 +865,27 @@ def associate(
             filter_overlap_b=False,
         )
 
-        # Score each page: apply coverage filter.
-        page_scores: list[tuple[int, int]] = []  # (score, page_idx)
-        for page_idx, top2 in zip(candidate_pages, top2_per_page):
-            if not top2:
-                continue
-            best = top2[0]
-            # Coverage: best HSP must span ≥ _PHASE1_MIN_COVERAGE of the segment.
-            if best.stats.len < len(norm_seg) * _PHASE1_MIN_COVERAGE:
-                continue
-            page_scores.append((best.score, page_idx))
+        # Pool every HSP across every candidate page; pick the global best
+        # and runner-up regardless of which page each lives on.
+        pooled: list[tuple[int, int, int]] = []  # (score, len, page_idx)
+        for page_idx, hsps in zip(candidate_pages, top2_per_page):
+            for hsp in hsps:
+                pooled.append((hsp.score, hsp.stats.len, page_idx))
+        if not pooled:
+            continue
+        pooled.sort(reverse=True)
+        best_score, best_len, best_page = pooled[0]
 
-        if not page_scores:
+        # Coverage: best HSP must span ≥ _PHASE1_MIN_COVERAGE of the segment.
+        if best_len < len(norm_seg) * _PHASE1_MIN_COVERAGE:
             continue
 
-        page_scores.sort(reverse=True)
-
-        # Cross-page uniqueness: winning page must beat runner-up by _PHASE1_UNIQUENESS_RATIO.
-        if len(page_scores) >= 2 and page_scores[1][0] * _PHASE1_UNIQUENESS_RATIO > page_scores[0][0]:
+        # Uniqueness: best score must beat second-best by the configured
+        # ratio.  Score-only comparison; the runner-up's page doesn't matter.
+        if len(pooled) >= 2 and pooled[1][0] * _PHASE1_UNIQUENESS_RATIO > best_score:
             continue
 
-        phase1_page[i] = page_scores[0][1]
+        phase1_page[i] = best_page
 
     # ── Phase 1 refinement: full SW alignment on the assigned page ────────────
     # Process in document order so residuals accumulate correctly across segments
@@ -879,7 +893,10 @@ def associate(
     for i in sorted(phase1_page.keys()):
         seg = segments[i]
         matched_page = phase1_page[i]
-        norm_len = len(_normalize_strict(seg.text)[0]) or len(_normalize_loose(seg.text)[0])
+        norm_len = (
+            len(_normalize_strict(seg.text, strip_html=True)[0])
+            or len(_normalize_loose(seg.text, strip_html=True)[0])
+        )
         threshold = max(5, min(min_score, norm_len))
         result = _try_page_residual(matched_page, seg, threshold)
         if result is not None:
@@ -903,7 +920,10 @@ def associate(
         if seg.page is not None and seg.page >= num_pages:
             continue
 
-        norm_len = len(_normalize_strict(seg.text)[0]) or len(_normalize_loose(seg.text)[0])
+        norm_len = (
+            len(_normalize_strict(seg.text, strip_html=True)[0])
+            or len(_normalize_loose(seg.text, strip_html=True)[0])
+        )
         threshold = max(5, min(min_score, norm_len))
 
         prev_page: int | None = None
