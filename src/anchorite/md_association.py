@@ -22,6 +22,7 @@ the accidents of PDF typesetting.
 """
 
 import dataclasses
+import logging
 import math
 import pathlib
 import re
@@ -35,6 +36,8 @@ import pypdfium2.raw as pdfium_c
 import seq_smith
 
 from .anchors import Anchor, BBox
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Character extraction
@@ -1021,9 +1024,11 @@ def associate(  # noqa: C901, PLR0912, PLR0915
             _accept_match(seg, i, flat_ranges, matched_page, 1)
 
     phase1_count = sum(1 for r in results if r is not None)
-    print(
-        f"Phase 1 (conservative HSP): {phase1_count}/{len(segments)} segments"
-        f" matched ({100 * phase1_count // max(len(segments), 1)}%)",
+    logger.info(
+        "Phase 1 (conservative HSP): %d/%d segments matched (%d%%)",
+        phase1_count,
+        len(segments),
+        100 * phase1_count // max(len(segments), 1),
     )
 
     # ── Phase 2: page-constrained matching ────────────────────────────────────
