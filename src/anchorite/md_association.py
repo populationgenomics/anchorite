@@ -255,6 +255,11 @@ def _normalize_strict(text: str, *, strip_html: bool = False) -> tuple[bytes, tu
     ``_nfkd_alnum``), so accented letters and ligatures contribute their
     base letters rather than dropping out as non-ASCII.
 
+    Combining marks (Unicode general category ``M*``) are zero-width: they
+    don't emit alphanum bytes and don't trigger the punctuation-collapses-to-
+    space branch.  This keeps decomposed input (``o`` + ``U+0308``)
+    indistinguishable from precomposed input (``ö``) in the alignment string.
+
     Args:
         text: The text to normalise.
         strip_html: When True, ``<...>``-style tags are treated as zero-width
@@ -275,11 +280,14 @@ def _normalize_strict(text: str, *, strip_html: bool = False) -> tuple[bytes, tu
             i = next_span[1]
             next_span = next(span_iter, None)
             continue
-        emitted = _nfkd_alnum(text[i])
+        c = text[i]
+        emitted = _nfkd_alnum(c)
         if emitted:
             for d in emitted:
                 normalized.append(d)
                 idx_map.append(i)
+        elif unicodedata.category(c).startswith("M"):
+            pass  # combining mark — zero-width, neither letter nor separator
         elif normalized and normalized[-1] != " ":
             normalized.append(" ")
             idx_map.append(i)

@@ -278,6 +278,35 @@ class TestNfkdNormalisation:
         norm, _ = md_association._normalize_strict("a — b")
         assert norm == md_association._normalize_strict("a   b")[0]
 
+    def test_decomposed_input_normalises_like_precomposed_strict(self) -> None:
+        # ``Töpf`` arriving as decomposed [T, o, U+0308, p, f] must yield the
+        # same byte sequence as the precomposed form.  Without the combining-
+        # mark guard, strict mode would emit a space for U+0308 and produce
+        # ``to pf`` instead of ``topf``.
+        decomposed = "T" + "o" + "̈" + "p" + "f"
+        precomposed = "Töpf"
+        assert (
+            md_association._normalize_strict(decomposed)[0]
+            == md_association._normalize_strict(precomposed)[0]
+        )
+
+    def test_decomposed_input_normalises_like_precomposed_loose(self) -> None:
+        decomposed = "T" + "o" + "̈" + "p" + "f"
+        precomposed = "Töpf"
+        assert (
+            md_association._normalize_loose(decomposed)[0]
+            == md_association._normalize_loose(precomposed)[0]
+        )
+
+    def test_combining_mark_omits_idx_map_entry(self) -> None:
+        # The combining mark must produce no normalised byte and no idx_map
+        # entry — only the base letters land in the output.
+        decomposed = "öp"  # ö (decomposed) followed by p
+        norm, idx_map = md_association._normalize_loose(decomposed)
+        assert len(norm) == 2
+        # Original positions: o=0, p=2 (combining mark at 1 is skipped).
+        assert list(idx_map) == [0, 2, len(decomposed)]
+
 
 # ---------------------------------------------------------------------------
 # _build_char_index: line-break and soft-hyphen handling
