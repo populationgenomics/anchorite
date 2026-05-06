@@ -394,7 +394,7 @@ _ABBREVIATIONS: frozenset[str] = frozenset(
         "min",
         "cf",
         "viz",
-    }
+    },
 )
 
 # Sentence boundary: terminal punctuation, optional reference markers
@@ -693,7 +693,7 @@ def _residual_string(
 
 
 def _aln_to_flat_ranges(
-    aln: object,
+    aln: seq_smith.Alignment,
     ref_to_flat: tuple[int, ...],
 ) -> list[tuple[int, int]]:
     flat_ranges: list[tuple[int, int]] = []
@@ -704,7 +704,7 @@ def _aln_to_flat_ranges(
             (
                 ref_to_flat[frag.sa_start],
                 ref_to_flat[frag.sa_start + frag.len],
-            )
+            ),
         )
     return flat_ranges
 
@@ -864,7 +864,29 @@ def associate(
             hit = _align_against(res_norm, res_to_res, seg_norm, score_matrix, threshold)
             if hit is None:
                 return None
-            flat_ranges = [(pos_map[rs], pos_map[min(re, len(pos_map) - 1)]) for rs, re in hit[1]]
+            # ``hit[1]`` ranges are in *residual* coordinates; map back through
+            # ``pos_map`` to original flat positions.  ``pos_map`` is
+            # non-contiguous when the residual was stitched from multiple
+            # uncovered slices — a single residual range may correspond to
+            # several disjoint flat ranges, with previously-matched chars
+            # masked between them.  Naively taking
+            # ``(pos_map[rs], pos_map[re])`` would re-include those masked
+            # chars and inflate the matched bbox set across content the
+            # alignment never actually claimed (e.g. into a neighbouring
+            # sentence whose lines fell between two matched chunks).
+            flat_ranges: list[tuple[int, int]] = []
+            for rs, re in hit[1]:
+                if rs >= re:
+                    continue
+                run_start = pos_map[rs]
+                prev = run_start
+                for k in range(rs + 1, re):
+                    p = pos_map[k]
+                    if p != prev + 1:
+                        flat_ranges.append((run_start, prev + 1))
+                        run_start = p
+                    prev = p
+                flat_ranges.append((run_start, prev + 1))
             return hit[0], flat_ranges
 
         result = _align(_normalize_strict, _SCORE_MATRIX_STRICT)
@@ -971,7 +993,7 @@ def associate(
         seg = segments[i]
         matched_page = phase1_page[i]
         norm_len = len(_normalize_strict(seg.text, strip_html=True)[0]) or len(
-            _normalize_loose(seg.text, strip_html=True)[0]
+            _normalize_loose(seg.text, strip_html=True)[0],
         )
         threshold = max(5, min(min_score, norm_len))
         result = _try_page_residual(matched_page, seg, threshold)
@@ -997,7 +1019,7 @@ def associate(
             continue
 
         norm_len = len(_normalize_strict(seg.text, strip_html=True)[0]) or len(
-            _normalize_loose(seg.text, strip_html=True)[0]
+            _normalize_loose(seg.text, strip_html=True)[0],
         )
         threshold = max(5, min(min_score, norm_len))
 
