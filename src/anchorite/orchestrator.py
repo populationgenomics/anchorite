@@ -4,7 +4,8 @@ import asyncio
 import dataclasses
 from collections.abc import Iterable
 
-from . import anchors, bbox_alignment, document, markdown, providers
+from . import anchors, bbox_alignment, document, providers
+from .markdown import renumber_markers
 
 
 @dataclasses.dataclass
@@ -106,7 +107,7 @@ async def process_document(
             )
             markdown_chunks = list(markdown_chunks)
             if renumber:
-                markdown_chunks = markdown.renumber_markers(markdown_chunks)
+                markdown_chunks = renumber_markers(markdown_chunks)
             markdown_content = "\n\n<!--page-->\n\n".join(markdown_chunks)
             flat_anchors = await anchor_provider.finalize(markdown_content)
         elif anchor_provider is not None:
@@ -118,12 +119,12 @@ async def process_document(
             )
             flat_anchors = [anchor for chunk_anchors in all_anchors for anchor in chunk_anchors]
             if renumber:
-                markdown_chunks = markdown.renumber_markers(list(markdown_chunks))
+                markdown_chunks = renumber_markers(list(markdown_chunks))
             markdown_content = "\n\n<!--page-->\n\n".join(markdown_chunks)
         else:
             markdown_chunks = list(await asyncio.gather(*markdown_tasks))
             if renumber:
-                markdown_chunks = markdown.renumber_markers(markdown_chunks)
+                markdown_chunks = renumber_markers(markdown_chunks)
             markdown_content = "\n\n<!--page-->\n\n".join(markdown_chunks)
             return AlignmentResult(markdown_content, {}, 0.0)
 
