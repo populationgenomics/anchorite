@@ -556,6 +556,17 @@ def resolve_quote(  # noqa: C901, PLR0912
     # sentence.
     sorted_spans = sorted(spans, key=lambda sa: sa.span[0])
     span_starts = [sa.span[0] for sa in sorted_spans]
+    # Prefix max of span ends, in start order.  Used to skip spans whose
+    # ends are all <= text_start: bisect_right on this monotonic
+    # non-decreasing array yields the lowest index whose max_end exceeds
+    # text_start, so every earlier span ended before the match and can be
+    # ignored.
+    max_end_prefix: list[int] = []
+    running_max = 0
+    for sa in sorted_spans:
+        if sa.span[1] > running_max:
+            running_max = sa.span[1]
+        max_end_prefix.append(running_max)
 
     found_locations: list[tuple[int, BBox]] = []
     current_norm_quote = bytearray(norm_quote)
@@ -606,11 +617,16 @@ def resolve_quote(  # noqa: C901, PLR0912
                     continue
                 text_start = text_mapping[ms]
                 text_end = text_mapping[me]
-                # All overlap candidates have ``span_start < text_end`` —
-                # find the upper bound and walk every earlier span,
-                # accepting those whose end exceeds ``text_start``.
+                # All overlap candidates have ``span_start < text_end`` and
+                # ``span_end > text_start``.  ``bisect_left`` on
+                # ``span_starts`` bounds the upper end; ``bisect_right`` on
+                # ``max_end_prefix`` skips the prefix of spans that have all
+                # ended before ``text_start``.  The remaining window still
+                # has individual spans that may not overlap, so each is
+                # checked explicitly.
                 hi = bisect.bisect_left(span_starts, text_end)
-                for sa in sorted_spans[:hi]:
+                lo = bisect.bisect_right(max_end_prefix, text_start)
+                for sa in sorted_spans[lo:hi]:
                     if sa.span[1] > text_start:
                         found_locations.append((sa.page, sa.box))
 
