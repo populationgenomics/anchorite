@@ -59,6 +59,7 @@ _ALIGN_ALPHABET = string.ascii_lowercase + string.digits + " " + _MASK_CHAR
 _NON_WORD_CHARS = seq_smith.encode(" ", _ALIGN_ALPHABET)
 _SCORE_MATRIX = seq_smith.make_score_matrix(_ALIGN_ALPHABET, +1, -1)
 _MASK_BYTE: int = seq_smith.encode(_MASK_CHAR, _ALIGN_ALPHABET)[0]
+_SPACE_BYTE: int = seq_smith.encode(" ", _ALIGN_ALPHABET)[0]
 _SCORE_MATRIX[_MASK_BYTE, :] = -100
 _SCORE_MATRIX[:, _MASK_BYTE] = -100
 
@@ -587,8 +588,24 @@ def resolve_quote(
             match_found = True
 
             if frag.fragment_type == seq_smith.FragmentType.Match:
-                text_start = text_mapping[frag.sa_start]
-                text_end = text_mapping[frag.sa_start + frag.len]
+                # Trim trailing / leading space bytes from the matched
+                # reference run before mapping to Markdown char positions.
+                # ``_normalize`` collapses any non-alnum run to a single
+                # space byte and records the *first* original char of the
+                # run.  A trailing-space match therefore advances
+                # ``text_end`` past the entire whitespace run — into the
+                # *next* segment's span on the page.  Trim back to the
+                # last non-space byte so ``text_end`` points at one past
+                # the last actual alnum char of the match.
+                ms, me = frag.sa_start, frag.sa_start + frag.len
+                while ms < me and norm_text[ms] == _SPACE_BYTE:
+                    ms += 1
+                while me > ms and norm_text[me - 1] == _SPACE_BYTE:
+                    me -= 1
+                if ms >= me:
+                    continue
+                text_start = text_mapping[ms]
+                text_end = text_mapping[me]
                 # All overlap candidates have ``span_start < text_end`` —
                 # find the upper bound and walk every earlier span,
                 # accepting those whose end exceeds ``text_start``.
