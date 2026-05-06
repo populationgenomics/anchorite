@@ -27,6 +27,7 @@ import pathlib
 import re
 import string
 import unicodedata
+from collections.abc import Callable
 from typing import Literal, NamedTuple, overload
 
 import pypdfium2 as pdfium
@@ -73,7 +74,7 @@ class _Char:
     font_size: float
 
 
-def _extract_page_chars(page: pdfium.PdfPage) -> list[_Char]:
+def _extract_page_chars(page: pdfium.PdfPage) -> list[_Char]:  # noqa: C901, PLR0912
     """Extract non-whitespace chars with bboxes from a single page."""
     textpage = page.get_textpage()
     total_chars = textpage.count_chars()
@@ -189,7 +190,7 @@ def _build_char_index(chars: list[_Char]) -> _CharIndex:
             line_break = nxt.x0 < ch.x0 or y_drop > ch.font_size * 0.5
             if (
                 line_break
-                and len(parts) >= 2
+                and len(parts) >= 2  # noqa: PLR2004
                 and parts[-1] == "-"
                 and parts[-2].isalpha()
                 and nxt.text
@@ -218,6 +219,8 @@ _ALIGN_ALPHABET_LOOSE = string.ascii_lowercase + string.digits
 _SCORE_MATRIX_LOOSE = seq_smith.make_score_matrix(_ALIGN_ALPHABET_LOOSE, +1, -1)
 _GAP_OPEN, _GAP_EXTEND = -2, -2
 _MIN_SCORE = 10
+
+_NormFn = Callable[..., tuple[bytes, tuple[int, ...]]]
 
 # UTF-16 surrogate ranges for non-BMP code points returned by PDFium.
 _HIGH_SURROGATE_LO, _HIGH_SURROGATE_HI = 0xD800, 0xDBFF
@@ -469,7 +472,7 @@ _LIST_ITEM_RE = re.compile(r"^(\s{0,3}(?:[-*+]|\d+[.)]) )")
 _SUPER_PREFIX_RE = re.compile(r"^[" + _SUPERSCRIPT_DIGITS + r"]")
 
 
-def _segments_from_block(
+def _segments_from_block(  # noqa: C901, PLR0911, PLR0912
     block_text: str,
     page: int | None,
     md_start: int,
@@ -490,13 +493,13 @@ def _segments_from_block(
         rest = "\n".join(lines[1:]).strip()
         if not rest:
             return [heading_seg]
-        return [heading_seg] + _segments_from_block(rest, page, md_start, md_end)
+        return [heading_seg, *_segments_from_block(rest, page, md_start, md_end)]
 
     # ── Blockquote ───────────────────────────────────────────────────────────
     if text.startswith(">"):
         results: list[MarkdownSegment] = []
-        for line in text.splitlines():
-            line = re.sub(r"^>\s?", "", line).strip()
+        for raw_line in text.splitlines():
+            line = re.sub(r"^>\s?", "", raw_line).strip()
             if not line:
                 continue
             # A line that is itself a list item (e.g. "> * item").
@@ -523,8 +526,8 @@ def _segments_from_block(
         return [seg(item) for item in items if item.strip()]
 
     # ── Affiliation / footnote block (lines with superscript prefix) ─────────
-    non_empty = [l for l in lines if l.strip()]
-    if len(non_empty) > 1 and sum(1 for l in non_empty if _SUPER_PREFIX_RE.match(l.strip())) >= len(non_empty) * 0.5:
+    non_empty = [ln for ln in lines if ln.strip()]
+    if len(non_empty) > 1 and sum(1 for ln in non_empty if _SUPER_PREFIX_RE.match(ln.strip())) >= len(non_empty) * 0.5:
         return [seg(line) for line in non_empty]
 
     # ── Table (GFM pipe syntax) ───────────────────────────────────────────────
@@ -609,7 +612,7 @@ def _chars_in_range(
     flat_start: int,
     flat_end: int,
 ) -> list[_Char]:
-    indices = set(flat_to_char[i] for i in range(flat_start, min(flat_end, len(flat_to_char))))
+    indices = {flat_to_char[i] for i in range(flat_start, min(flat_end, len(flat_to_char)))}
     return [chars[i] for i in sorted(indices)]
 
 
@@ -783,7 +786,7 @@ def associate(
 ) -> tuple[list[Anchor], list[int]]: ...
 
 
-def associate(
+def associate(  # noqa: C901, PLR0912, PLR0915
     pdf_path: pathlib.Path,
     markdown: str,
     min_score: int = _MIN_SCORE,
@@ -860,7 +863,7 @@ def associate(
             indices.update(flat_to_char[j] for j in range(fs, min(fe, len(flat_to_char))))
         return [chars[i] for i in sorted(indices)]
 
-    def _try_page_residual(
+    def _try_page_residual(  # noqa: C901
         page_idx: int,
         seg: MarkdownSegment,
         threshold: int,
@@ -880,7 +883,10 @@ def associate(
         if not residual:
             return None
 
-        def _align(norm_fn, score_matrix):
+        def _align(
+            norm_fn: _NormFn,
+            score_matrix: object,
+        ) -> tuple[int, list[tuple[int, int]]] | None:
             res_norm, res_to_res = norm_fn(residual)  # PDF
             seg_norm, _ = norm_fn(seg.text, strip_html=True)  # markdown
             if not seg_norm:
@@ -899,12 +905,12 @@ def associate(
             # alignment never actually claimed (e.g. into a neighbouring
             # sentence whose lines fell between two matched chunks).
             flat_ranges: list[tuple[int, int]] = []
-            for rs, re in hit[1]:
-                if rs >= re:
+            for rs, rend in hit[1]:
+                if rs >= rend:
                     continue
                 run_start = pos_map[rs]
                 prev = run_start
-                for k in range(rs + 1, re):
+                for k in range(rs + 1, rend):
                     p = pos_map[k]
                     if p != prev + 1:
                         flat_ranges.append((run_start, prev + 1))
@@ -921,7 +927,6 @@ def associate(
     def _accept_match(
         seg: MarkdownSegment,
         i: int,
-        score: int,
         flat_ranges: list,
         matched_page: int,
         conf: int,
@@ -991,7 +996,7 @@ def associate(
         # Pool every HSP across every candidate page; pick the global best
         # and runner-up regardless of which page each lives on.
         pooled: list[tuple[int, int, int]] = []  # (score, len, page_idx)
-        for page_idx, hsps in zip(candidate_pages, top2_per_page):
+        for page_idx, hsps in zip(candidate_pages, top2_per_page, strict=True):
             for hsp in hsps:
                 pooled.append((hsp.score, hsp.stats.len, page_idx))
         if not pooled:
@@ -1005,7 +1010,7 @@ def associate(
 
         # Uniqueness: best score must beat second-best by the configured
         # ratio.  Score-only comparison; the runner-up's page doesn't matter.
-        if len(pooled) >= 2 and pooled[1][0] * _PHASE1_UNIQUENESS_RATIO > best_score:
+        if len(pooled) >= 2 and pooled[1][0] * _PHASE1_UNIQUENESS_RATIO > best_score:  # noqa: PLR2004
             continue
 
         phase1_page[i] = best_page
@@ -1022,8 +1027,8 @@ def associate(
         threshold = max(5, min(min_score, norm_len))
         result = _try_page_residual(matched_page, seg, threshold)
         if result is not None:
-            score, flat_ranges = result
-            _accept_match(seg, i, score, flat_ranges, matched_page, 1)
+            _, flat_ranges = result
+            _accept_match(seg, i, flat_ranges, matched_page, 1)
 
     phase1_count = sum(1 for r in results if r is not None)
     print(
@@ -1067,11 +1072,11 @@ def associate(
                 best = (candidate[0], candidate[1], page)
 
         if best is not None:
-            score, flat_ranges, matched_page = best
-            _accept_match(seg, i, score, flat_ranges, matched_page, 2)
+            _, flat_ranges, matched_page = best
+            _accept_match(seg, i, flat_ranges, matched_page, 2)
 
-    anchors = [a for a, c in zip(results, confidence) if a is not None]
+    anchors = [a for a, c in zip(results, confidence, strict=True) if a is not None]
     if return_pass_info:
-        passes = [c for a, c in zip(results, confidence) if a is not None]
+        passes = [c for a, c in zip(results, confidence, strict=True) if a is not None]
         return anchors, passes
     return anchors

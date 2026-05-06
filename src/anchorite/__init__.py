@@ -129,7 +129,7 @@ def _normalize(source: str, span: tuple[int, int] = (-1, -1)) -> tuple[bytes, tu
     else:
         s, e = span
     text = source if (s == 0 and e == len(source)) else source[s:e]
-    norm_bytes, local_map = md_association._normalize_strict(text, strip_html=True)
+    norm_bytes, local_map = md_association._normalize_strict(text, strip_html=True)  # noqa: SLF001
     if s == 0:
         return norm_bytes, local_map
     return norm_bytes, tuple(p + s for p in local_map)
@@ -494,7 +494,7 @@ class SpanAnchor:
     """Bounding box on that page."""
 
 
-def resolve_quote(
+def resolve_quote(  # noqa: C901, PLR0912
     markdown: str,
     spans: Sequence[SpanAnchor],
     quote: str,
@@ -611,8 +611,7 @@ def resolve_quote(
                 # accepting those whose end exceeds ``text_start``.
                 hi = bisect.bisect_left(span_starts, text_end)
                 for sa in sorted_spans[:hi]:
-                    s, e = sa.span
-                    if e > text_start:
+                    if sa.span[1] > text_start:
                         found_locations.append((sa.page, sa.box))
 
         if not match_found:

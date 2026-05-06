@@ -66,11 +66,11 @@ def main(pdf_path: pathlib.Path, md_path: pathlib.Path) -> None:
     num_pages = len(doc)
 
     for page_idx in range(num_pages):
-        idx = [(a, p) for a, p in zip(anchors, passes) if a.page == page_idx]
+        idx = [(a, p) for a, p in zip(anchors, passes, strict=True) if a.page == page_idx]
         page_anchors = [a for a, _ in idx]
         page_passes = [p for _, p in idx]
         print(f"Page {page_idx}: {len(page_anchors)} anchors")
-        for a, p in zip(page_anchors, page_passes):
+        for a, p in zip(page_anchors, page_passes, strict=True):
             print(f"  pass={p} boxes={a.boxes}  {a.text[:80]!r}")
 
         output_path = pdf_path.with_stem(f"{pdf_path.stem}.p{page_idx}").with_suffix(".md.png")
@@ -80,7 +80,7 @@ def main(pdf_path: pathlib.Path, md_path: pathlib.Path) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 3:  # noqa: PLR2004
         print(f"usage: {sys.argv[0]} <pdf> <markdown>")
         sys.exit(1)
     main(pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]))
