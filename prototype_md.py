@@ -18,8 +18,8 @@ _COLOURS = [
 ]
 
 
-# Fill alpha by pass: pass 1 = darkest, pass 3 = lightest.
-_PASS_FILL_ALPHA = {1: 80, 3: 25}
+# Fill alpha by pass: pass 1 = darkest, pass 2 = lightest.
+_PASS_FILL_ALPHA = {1: 80, 2: 25}
 
 
 def visualize_page(
