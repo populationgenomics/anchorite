@@ -247,9 +247,36 @@ _PHASE1_MIN_LEN = 10
 # index map pointing at the original text offsets.
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
+# Inline Markdown links ``[text](url)``.  Renders as just ``text`` in the PDF,
+# but a naïve normalisation contributes both the visible text *and* the URL
+# target — so an autolink ``[https://x.org](https://x.org/path)`` doubles its
+# alphanum footprint.  When the segment is significantly longer than its PDF
+# counterpart the alignment's coverage gates reject the match.  We treat the
+# wrapper (``[`` and ``](url)``) as zero-width, leaving the inner link text
+# to align like ordinary prose.
+#
+# The regex is deliberately conservative: link text and URL must each be
+# single-line and contain no nested ``]`` / ``)``.  Edge cases (URLs with
+# balanced parens, nested brackets) fall through to the existing behaviour.
+_MD_LINK_RE = re.compile(r"\[([^\]\n]+)\]\(([^)\n]*)\)")
 
-def _html_tag_spans(text: str) -> list[tuple[int, int]]:
-    return [(m.start(), m.end()) for m in _HTML_TAG_RE.finditer(text)]
+
+def _strip_spans(text: str) -> list[tuple[int, int]]:
+    """Return sorted, merged character spans whose content is zero-width for
+    alignment: HTML tags and the wrapper portions of inline Markdown links.
+    """
+    spans: list[tuple[int, int]] = [(m.start(), m.end()) for m in _HTML_TAG_RE.finditer(text)]
+    for m in _MD_LINK_RE.finditer(text):
+        spans.append((m.start(), m.start(1)))  # leading '['
+        spans.append((m.end(1), m.end()))  # trailing '](url)'
+    spans.sort()
+    merged: list[tuple[int, int]] = []
+    for s, e in spans:
+        if merged and merged[-1][1] >= s:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+        else:
+            merged.append((s, e))
+    return merged
 
 
 _ASCII_ALNUM = frozenset(string.ascii_lowercase + string.digits)
@@ -295,10 +322,10 @@ def _normalize_strict(text: str, *, strip_html: bool = False) -> tuple[bytes, tu
             document (e.g. ``p < 0.05``), and stripping them silently drops
             real content.  Defaults to False (PDF-safe).
     """
-    tag_spans = _html_tag_spans(text) if strip_html else []
+    skip_spans = _strip_spans(text) if strip_html else []
     normalized: list[str] = []
     idx_map: list[int] = []
-    span_iter = iter(tag_spans)
+    span_iter = iter(skip_spans)
     next_span = next(span_iter, None)
     i = 0
     while i < len(text):
@@ -335,10 +362,10 @@ def _normalize_loose(text: str, *, strip_html: bool = False) -> tuple[bytes, tup
 
     See ``_normalize_strict`` for the meaning of ``strip_html``.
     """
-    tag_spans = _html_tag_spans(text) if strip_html else []
+    skip_spans = _strip_spans(text) if strip_html else []
     normalized: list[str] = []
     idx_map: list[int] = []
-    span_iter = iter(tag_spans)
+    span_iter = iter(skip_spans)
     next_span = next(span_iter, None)
     i = 0
     while i < len(text):

@@ -210,6 +210,75 @@ class TestHtmlTagsInNormalisation:
 
 
 # ---------------------------------------------------------------------------
+# Normalisation: inline Markdown link wrappers must be zero-width
+# ---------------------------------------------------------------------------
+
+
+class TestMarkdownLinksInNormalisation:
+    """Inline Markdown links ``[text](url)`` render as just ``text`` in the
+    PDF.  A naïve normalisation contributes both ``text`` *and* the URL,
+    which doubles the autolink footprint (``[https://x.org](https://x.org)``
+    becomes two copies of ``httpsxorg``) and silently inflates the segment
+    far beyond what the PDF holds.  When *strip_html* is True the wrapper
+    portions (``[``, ``](url)``) must drop out, leaving only ``text``.
+    """
+
+    def test_strict_strips_link_wrapper(self) -> None:
+        text = "see [phosphosite](https://www.phosphosite.org/homeAction.action) for details"
+        plain = "see phosphosite for details"
+        assert (
+            md_association._normalize_strict(text, strip_html=True)[0]
+            == md_association._normalize_strict(plain, strip_html=True)[0]
+        )
+
+    def test_loose_strips_link_wrapper(self) -> None:
+        text = "see [phosphosite](https://www.phosphosite.org/homeAction.action) for details"
+        plain = "see phosphosite for details"
+        assert (
+            md_association._normalize_loose(text, strip_html=True)[0]
+            == md_association._normalize_loose(plain, strip_html=True)[0]
+        )
+
+    def test_autolink_with_duplicate_text_collapses(self) -> None:
+        # Link text equals the URL: the wrapper must collapse so the URL
+        # contributes only once, matching what the PDF actually shows.
+        text = "[https://x.org](https://x.org)"
+        plain = "https://x.org"
+        assert (
+            md_association._normalize_loose(text, strip_html=True)[0]
+            == md_association._normalize_loose(plain, strip_html=True)[0]
+        )
+
+    def test_citation_reference_normalises_to_marker(self) -> None:
+        # Pubmed-style citation links ``[6](#R6)`` should normalise to just
+        # ``6`` — the digit the PDF actually renders.
+        text = "...nucleus ([6](#R6))."
+        plain = "...nucleus (6)."
+        assert (
+            md_association._normalize_loose(text, strip_html=True)[0]
+            == md_association._normalize_loose(plain, strip_html=True)[0]
+        )
+
+    def test_html_inside_link_text_is_also_stripped(self) -> None:
+        # ``[<sup>1</sup>](#R1)`` should normalise to ``1`` — both the link
+        # wrapper and the surviving HTML tag are zero-width.
+        text = "see [<sup>1</sup>](#R1) above"
+        plain = "see 1 above"
+        assert (
+            md_association._normalize_loose(text, strip_html=True)[0]
+            == md_association._normalize_loose(plain, strip_html=True)[0]
+        )
+
+    def test_default_does_not_strip_link(self) -> None:
+        # PDF-side default: ``[`` / ``]`` / ``(`` / ``)`` are literal glyphs
+        # and contribute as ordinary punctuation when *strip_html* is False.
+        text = "[a](b)"
+        norm_with = md_association._normalize_loose(text, strip_html=True)[0]
+        norm_without = md_association._normalize_loose(text, strip_html=False)[0]
+        assert norm_with != norm_without
+
+
+# ---------------------------------------------------------------------------
 # Normalisation: NFKD compatibility decomposition
 # ---------------------------------------------------------------------------
 
