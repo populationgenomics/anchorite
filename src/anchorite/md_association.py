@@ -636,11 +636,20 @@ def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
 # ---------------------------------------------------------------------------
 
 
-def _bbox_from_chars(chars: list[_Char], page_width: float, page_height: float) -> BBox:
-    x0 = min(c.x0 for c in chars)
-    y0 = min(c.y0 for c in chars)
-    x1 = max(c.x1 for c in chars)
-    y1 = max(c.y1 for c in chars)
+def _bbox_from_chars(
+    chars: list[_Char],
+    page_width: float,
+    page_height: float,
+    origin_x: float = 0.0,
+    origin_y: float = 0.0,
+) -> BBox:
+    # Subtract the page's mediabox origin so coordinates are page-relative.
+    # PDFs whose mediabox is offset from (0, 0) would otherwise produce
+    # bboxes shifted by that offset.
+    x0 = min(c.x0 for c in chars) - origin_x
+    y0 = min(c.y0 for c in chars) - origin_y
+    x1 = max(c.x1 for c in chars) - origin_x
+    y1 = max(c.y1 for c in chars) - origin_y
     top = round((1.0 - y1 / page_height) * 1000)
     left = round(x0 / page_width * 1000)
     bottom = round((1.0 - y0 / page_height) * 1000)
@@ -652,6 +661,8 @@ def _line_bboxes(
     chars: list[_Char],
     page_width: float,
     page_height: float,
+    origin_x: float = 0.0,
+    origin_y: float = 0.0,
 ) -> list[BBox]:
     """Return one BBox per line of matched chars.
 
@@ -681,7 +692,9 @@ def _line_bboxes(
             band_y0 = ch.y0
             band_y1 = ch.y1
 
-    return [_bbox_from_chars(cluster, page_width, page_height) for cluster in clusters]
+    return [
+        _bbox_from_chars(cluster, page_width, page_height, origin_x, origin_y) for cluster in clusters
+    ]
 
 
 def _merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
@@ -956,7 +969,16 @@ def associate(  # noqa: C901, PLR0912, PLR0915
         if not matched_chars:
             return
         page_obj = doc[matched_page]
-        boxes = tuple(_line_bboxes(matched_chars, page_obj.get_width(), page_obj.get_height()))
+        mediabox = page_obj.get_mediabox()
+        boxes = tuple(
+            _line_bboxes(
+                matched_chars,
+                page_obj.get_width(),
+                page_obj.get_height(),
+                mediabox[0],
+                mediabox[1],
+            ),
+        )
         if boxes:
             results[i] = Anchor(text=seg.text, page=matched_page, boxes=boxes)
             confidence[i] = conf

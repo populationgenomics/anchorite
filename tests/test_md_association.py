@@ -431,3 +431,41 @@ class TestBuildCharIndex:
         chars = _line("e-mail", baseline=100.0)
         ci = md_association._build_char_index(chars)
         assert ci.flat_str == "e-mail"
+
+
+class TestBboxFromCharsOrigin:
+    def test_zero_origin_matches_no_origin(self) -> None:
+        # Default origin (0, 0) reproduces the unshifted result.
+        chars = _line("hello", baseline=100.0, x0=50.0)
+        bbox = md_association._bbox_from_chars(chars, page_width=600.0, page_height=800.0)
+        bbox_zero = md_association._bbox_from_chars(
+            chars, page_width=600.0, page_height=800.0, origin_x=0.0, origin_y=0.0,
+        )
+        assert bbox == bbox_zero
+
+    def test_origin_shift_makes_bbox_page_relative(self) -> None:
+        # PDFs with non-zero mediabox origin must subtract that origin so the
+        # 0-1000 normalised coords are relative to the page, not the
+        # absolute PDF coordinate space.
+        chars = _line("hello", baseline=100.0, x0=50.0)
+        unshifted = md_association._bbox_from_chars(chars, page_width=600.0, page_height=800.0)
+        shifted = md_association._bbox_from_chars(
+            chars, page_width=600.0, page_height=800.0, origin_x=50.0, origin_y=100.0,
+        )
+        # The shifted bbox should equal the unshifted bbox computed against
+        # chars whose absolute coords were already pre-subtracted.
+        chars_pre = _line("hello", baseline=0.0, x0=0.0)
+        expected = md_association._bbox_from_chars(chars_pre, page_width=600.0, page_height=800.0)
+        assert shifted == expected
+        assert shifted != unshifted
+
+    def test_line_bboxes_threads_origin(self) -> None:
+        # ``_line_bboxes`` must propagate the origin to ``_bbox_from_chars``
+        # for each line cluster.
+        chars = _line("a", baseline=100.0, x0=50.0) + _line("b", baseline=80.0, x0=50.0)
+        boxes = md_association._line_bboxes(
+            chars, page_width=600.0, page_height=800.0, origin_x=50.0, origin_y=70.0,
+        )
+        assert len(boxes) == 2
+        for box in boxes:
+            assert box.left == 0  # x0 (50) - origin_x (50) = 0
