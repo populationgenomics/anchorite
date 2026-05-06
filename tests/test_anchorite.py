@@ -74,3 +74,70 @@ def test_anchorite_resolve_partial_quote() -> None:
     assert len(results[quote]) == 2
     assert (0, anchorite.BBox(1, 1, 1, 1)) in results[quote]
     assert (0, anchorite.BBox(2, 2, 2, 2)) in results[quote]
+
+
+# ---------------------------------------------------------------------------
+# resolve_quote: lit-manager-style API (markdown + (span, page, box) records)
+# ---------------------------------------------------------------------------
+
+def test_resolve_quote_basic() -> None:
+    markdown = "The quick brown fox jumps over the lazy dog."
+    spans = [
+        anchorite.SpanAnchor(span=(0, 25), page=0, box=anchorite.BBox(10, 10, 20, 20)),
+        anchorite.SpanAnchor(span=(25, 44), page=1, box=anchorite.BBox(30, 30, 40, 40)),
+    ]
+    out = anchorite.resolve_quote(markdown, spans, "quick brown fox jumps")
+    assert out == [(0, anchorite.BBox(10, 10, 20, 20))]
+
+
+def test_resolve_quote_overlapping_spans() -> None:
+    # A quote that crosses span boundaries returns boxes from both spans.
+    markdown = "The quick brown fox jumps over the lazy dog that slept."
+    spans = [
+        anchorite.SpanAnchor(span=(0, 25), page=0, box=anchorite.BBox(1, 1, 1, 1)),
+        anchorite.SpanAnchor(span=(34, 55), page=0, box=anchorite.BBox(2, 2, 2, 2)),
+    ]
+    quote = "fox jumps over the lazy dog"
+    out = anchorite.resolve_quote(markdown, spans, quote)
+    assert (0, anchorite.BBox(1, 1, 1, 1)) in out
+    assert (0, anchorite.BBox(2, 2, 2, 2)) in out
+
+
+def test_resolve_quote_uses_html_aware_normalisation() -> None:
+    # The Markdown carries ``<sup>1</sup>`` markup; the LLM-extracted quote
+    # comes from rendered text and has plain digits.  They must align via
+    # the shared normalisation, so the bbox is returned.
+    markdown = "Author<sup>1</sup> reported the variant."
+    spans = [
+        anchorite.SpanAnchor(span=(0, 39), page=0, box=anchorite.BBox(50, 100, 60, 400)),
+    ]
+    out = anchorite.resolve_quote(markdown, spans, "Author1 reported the variant")
+    assert out == [(0, anchorite.BBox(50, 100, 60, 400))]
+
+
+def test_resolve_quote_uses_nfkd_normalisation() -> None:
+    # Markdown has the precomposed accent; the LLM-extracted quote has the
+    # accent stripped.  NFKD decomposition + ASCII filter aligns them.
+    markdown = "Töpf et al. described the cohort."
+    spans = [
+        anchorite.SpanAnchor(span=(0, 33), page=0, box=anchorite.BBox(50, 100, 60, 400)),
+    ]
+    out = anchorite.resolve_quote(markdown, spans, "Topf et al. described the cohort")
+    assert out == [(0, anchorite.BBox(50, 100, 60, 400))]
+
+
+def test_resolve_quote_low_coverage_returns_empty() -> None:
+    markdown = "The quick brown fox jumps over the lazy dog."
+    spans = [
+        anchorite.SpanAnchor(span=(0, 44), page=0, box=anchorite.BBox(1, 1, 1, 1)),
+    ]
+    # Mostly content that doesn't appear in the markdown.
+    out = anchorite.resolve_quote(markdown, spans, "vienna sausage tetragrammaton mendelevium recombinant")
+    assert out == []
+
+
+def test_resolve_quote_empty_inputs() -> None:
+    spans = [anchorite.SpanAnchor(span=(0, 5), page=0, box=anchorite.BBox(0, 0, 0, 0))]
+    assert anchorite.resolve_quote("hello", spans, "") == []
+    assert anchorite.resolve_quote("hello", spans, "   ") == []
+    assert anchorite.resolve_quote("hello", [], "hello") == []

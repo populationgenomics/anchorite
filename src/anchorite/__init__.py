@@ -1,5 +1,6 @@
 """Anchorite: spatial text alignment connecting Markdown to PDF bounding boxes."""
 
+import bisect
 import dataclasses
 import logging
 import re
@@ -27,6 +28,7 @@ __all__ = [
     "Anchor",
     "BBox",
     "MarkdownSegment",
+    "SpanAnchor",
     "align",
     "annotate",
     "document",
@@ -39,6 +41,7 @@ __all__ = [
     "providers",
     "range_ops",
     "resolve",
+    "resolve_quote",
     "strip",
 ]
 
@@ -103,27 +106,31 @@ class _DocumentFragment(_NormalizedSpan):
 
 
 def _normalize(source: str, span: tuple[int, int] = (-1, -1)) -> tuple[bytes, tuple[int, ...]]:
+    """Normalise *source[span]* for fuzzy alignment; return (bytes, idx_map).
+
+    Delegates to ``md_association._normalize_strict`` so the bbox-generation
+    side and the quote-resolution side share a single normalisation scheme:
+    NFKD decomposition, HTML-tag stripping (Markdown is the only side this
+    function ever sees), zero-width combining marks, soft-hyphen-aware
+    flat-string construction (in ``_build_char_index``).  Without sharing,
+    a quote produced from the Markdown could fail to align against the
+    same Markdown its bboxes were derived from.
+
+    Bytes are encoded against ``_ALIGN_ALPHABET_STRICT`` (lowercase ASCII
+    + digits + space — 37 chars).  ``_ALIGN_ALPHABET`` here is a superset
+    that appends the mask sentinel ``#``; bytes 0..36 round-trip identically
+    so the resolver's score matrix (with mask penalty applied) accepts them
+    directly.
+    """
     if span == (-1, -1):
-        span = (0, len(source))
-
-    def _normalize_char(c: str) -> str:
-        if c.lower() in string.ascii_letters + string.digits:
-            return c.lower()
-        return " "
-
-    s, e = span
-    normalized: list[str] = []
-    normalized_to_source: list[int] = []
-
-    for i in range(s, e):
-        n = _normalize_char(source[i])
-        if n == " " and normalized and normalized[-1] == " ":
-            continue
-        normalized.append(n)
-        normalized_to_source.append(i)
-
-    normalized_to_source.append(e)
-    return seq_smith.encode("".join(normalized), _ALIGN_ALPHABET), tuple(normalized_to_source)
+        s, e = 0, len(source)
+    else:
+        s, e = span
+    text = source if (s == 0 and e == len(source)) else source[s:e]
+    norm_bytes, local_map = md_association._normalize_strict(text, strip_html=True)
+    if s == 0:
+        return norm_bytes, local_map
+    return norm_bytes, tuple(p + s for p in local_map)
 
 
 def align(
@@ -414,3 +421,129 @@ def resolve(
     norm_text, text_mapping = _normalize(stripped.plain_text)
 
     return {quote: _fuzzy_resolve_quote(norm_text, text_mapping, stripped.validation_map, quote) for quote in quotes}
+
+
+@dataclasses.dataclass(frozen=True)
+class SpanAnchor:
+    """A bounding box paired with its character range in the source Markdown.
+
+    The span is a half-open ``[start, end)`` interval into the Markdown text
+    used to derive the box.  ``resolve_quote`` walks a sequence of these,
+    finding every entry whose span overlaps where the quote aligns.
+    """
+
+    span: tuple[int, int]
+    """``(start, end)`` half-open char range in the source Markdown."""
+    page: int
+    """0-indexed PDF page."""
+    box: BBox
+    """Bounding box on that page."""
+
+
+def resolve_quote(
+    markdown: str,
+    spans: Sequence[SpanAnchor],
+    quote: str,
+    *,
+    min_score: int = _MIN_ALIGNMENT_SCORE,
+    warn_coverage: float = _WARN_COVERAGE,
+    fail_coverage: float = _FAIL_COVERAGE,
+) -> list[tuple[int, BBox]]:
+    """Locate ``quote`` in ``markdown`` and return overlapping anchor boxes.
+
+    Iteratively SW-aligns the normalised quote against the normalised
+    Markdown, masking matched query bytes after each pass so the same span
+    isn't claimed twice.  For every matched fragment, every ``SpanAnchor``
+    whose ``span`` overlaps the matched Markdown char range contributes its
+    ``(page, box)`` to the output.  Duplicate ``(page, box)`` pairs are
+    de-duplicated.
+
+    The same normalisation that ``md_association.associate`` uses to derive
+    the spans is used here: NFKD decomposition, HTML-tag stripping,
+    zero-width combining marks.  Quote text that aligned cleanly when the
+    bboxes were generated will therefore align cleanly here too — that
+    consistency is the whole point of routing the resolver through this
+    function rather than each consumer rolling its own SW pass.
+
+    Args:
+        markdown: The Markdown the bboxes were derived from.
+        spans: Sequence of ``SpanAnchor`` — typically built from a stored
+            ``bboxes.json``-style record list at load time.
+        quote: A verbatim quote (LLM-extracted, etc.) to locate.
+        min_score: Reject SW alignments scoring below this.  Defaults to
+            ``_MIN_ALIGNMENT_SCORE``.
+        warn_coverage: Log a warning when matched coverage falls below this
+            fraction of the normalised quote.
+        fail_coverage: Return ``[]`` when matched coverage falls below this
+            fraction.
+
+    Returns:
+        Sorted ``[(page, box), ...]`` for every anchor whose span overlaps
+        the matched markdown range.  Empty list on coverage failure.
+    """
+    clean_quote = quote.strip()
+    if not clean_quote:
+        return []
+
+    norm_quote, _ = _normalize(clean_quote)
+    if not norm_quote:
+        return []
+
+    norm_text, text_mapping = _normalize(markdown)
+
+    # Sort spans by start once so we can bisect each match fragment.
+    sorted_spans = sorted(spans, key=lambda sa: sa.span[0])
+    span_starts = [sa.span[0] for sa in sorted_spans]
+
+    found_locations: list[tuple[int, BBox]] = []
+    current_norm_quote = bytearray(norm_quote)
+    matched_len = 0
+    total_len = len(norm_quote)
+
+    for _ in range(10):  # iteration cap
+        if all(b == _MASK_BYTE for b in current_norm_quote):
+            break
+
+        alignment = seq_smith.local_align(
+            norm_text, bytes(current_norm_quote), _SCORE_MATRIX, _GAP_OPEN, _GAP_EXTEND,
+        )
+        if alignment.score < min_score:
+            break
+
+        match_found = False
+        for frag in alignment.fragments:
+            if frag.fragment_type == seq_smith.FragmentType.BGap:
+                continue
+
+            # Mask the consumed query bytes.
+            for j in range(frag.sb_start, frag.sb_start + frag.len):
+                current_norm_quote[j] = _MASK_BYTE
+            matched_len += frag.len
+            match_found = True
+
+            if frag.fragment_type == seq_smith.FragmentType.Match:
+                text_start = text_mapping[frag.sa_start]
+                text_end = text_mapping[frag.sa_start + frag.len]
+                # Find the latest span that starts at-or-before text_start —
+                # it may straddle the boundary — then scan forward until a
+                # span starts at-or-after text_end.
+                lo = max(0, bisect.bisect_right(span_starts, text_start) - 1)
+                for sa in sorted_spans[lo:]:
+                    s, e = sa.span
+                    if s >= text_end:
+                        break
+                    if e > text_start:
+                        found_locations.append((sa.page, sa.box))
+
+        if not match_found:
+            break
+
+    if matched_len < total_len * warn_coverage:
+        logger.warning(
+            "Low coverage for quote alignment: %d/%d for quote %r",
+            matched_len, total_len, quote,
+        )
+        if matched_len < total_len * fail_coverage:
+            return []
+
+    return sorted(set(found_locations))
