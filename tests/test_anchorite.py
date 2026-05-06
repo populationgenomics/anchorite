@@ -80,6 +80,7 @@ def test_anchorite_resolve_partial_quote() -> None:
 # resolve_quote: lit-manager-style API (markdown + (span, page, box) records)
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_quote_basic() -> None:
     markdown = "The quick brown fox jumps over the lazy dog."
     spans = [

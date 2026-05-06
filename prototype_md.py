@@ -10,11 +10,11 @@ from anchorite.anchors import Anchor
 from anchorite.md_association import associate, parse_markdown_segments
 
 _COLOURS = [
-    (220,  50,  50, 200),
-    ( 50, 130, 220, 200),
-    ( 40, 180,  80, 200),
-    (200, 130,  30, 200),
-    (150,  50, 200, 200),
+    (220, 50, 50, 200),
+    (50, 130, 220, 200),
+    (40, 180, 80, 200),
+    (200, 130, 30, 200),
+    (150, 50, 200, 200),
 ]
 
 

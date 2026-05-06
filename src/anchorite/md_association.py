@@ -40,12 +40,26 @@ from .anchors import Anchor, BBox
 # ---------------------------------------------------------------------------
 
 _CHAR_NORM: dict[str, str] = {
-    "\ufb00": "ff", "\ufb01": "fi", "\ufb02": "fl",
-    "\ufb03": "ffi", "\ufb04": "ffl", "\ufb05": "st", "\ufb06": "st",
-    "\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"',
+    "\ufb00": "ff",
+    "\ufb01": "fi",
+    "\ufb02": "fl",
+    "\ufb03": "ffi",
+    "\ufb04": "ffl",
+    "\ufb05": "st",
+    "\ufb06": "st",
+    "\u2018": "'",
+    "\u2019": "'",
+    "\u201c": '"',
+    "\u201d": '"',
     "\u201a": ",",
-    "\u2013": "-", "\u2014": "--", "\u2212": "-", "\u2010": "-", "\u2011": "-",
-    "\u00ad": "", "\u00a0": " ", "\ufffe": "",
+    "\u2013": "-",
+    "\u2014": "--",
+    "\u2212": "-",
+    "\u2010": "-",
+    "\u2011": "-",
+    "\u00ad": "",
+    "\u00a0": " ",
+    "\ufffe": "",
 }
 
 
@@ -73,7 +87,7 @@ def _extract_page_chars(page: pdfium.PdfPage) -> list[_Char]:
         obj_text = bytes(buf).decode("utf-16-le").rstrip("\x00")
 
         m = obj.get_matrix()
-        font_size = obj.get_font_size() * math.sqrt(m.a ** 2 + m.b ** 2)
+        font_size = obj.get_font_size() * math.sqrt(m.a**2 + m.b**2)
 
         obj_pos = 0
         while obj_pos < len(obj_text) and char_index < total_chars:
@@ -88,7 +102,7 @@ def _extract_page_chars(page: pdfium.PdfPage) -> list[_Char]:
                         cp = 0x10000 + (cp - 0xD800) * 0x400 + (cp_low - 0xDC00)
                         ci_for_box = char_index
                         char_index += 2  # consume both surrogate indices
-                        obj_pos += 1     # but only one code point in obj_text
+                        obj_pos += 1  # but only one code point in obj_text
                     else:
                         char_index += 1
                         obj_pos += 1
@@ -128,6 +142,7 @@ def _extract_page_chars(page: pdfium.PdfPage) -> list[_Char]:
 # ---------------------------------------------------------------------------
 # Flat char string with position index
 # ---------------------------------------------------------------------------
+
 
 class _CharIndex(NamedTuple):
     flat_str: str
@@ -334,22 +349,62 @@ def _normalize_loose(text: str, *, strip_html: bool = False) -> tuple[bytes, tup
 
 _SUPERSCRIPT_DIGITS = "⁰¹²³⁴⁵⁶⁷⁸⁹"
 
-_ABBREVIATIONS: frozenset[str] = frozenset({
-    "al", "fig", "figs", "eq", "eqs", "vs", "etc",
-    "dr", "mr", "mrs", "ms", "prof", "inc", "ltd", "co", "jr", "sr",
-    "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
-    "vol", "no", "pp", "p", "ed", "eds", "ref", "refs",
-    "approx", "dept", "est", "max", "min", "cf", "viz",
-})
+_ABBREVIATIONS: frozenset[str] = frozenset(
+    {
+        "al",
+        "fig",
+        "figs",
+        "eq",
+        "eqs",
+        "vs",
+        "etc",
+        "dr",
+        "mr",
+        "mrs",
+        "ms",
+        "prof",
+        "inc",
+        "ltd",
+        "co",
+        "jr",
+        "sr",
+        "jan",
+        "feb",
+        "mar",
+        "apr",
+        "jun",
+        "jul",
+        "aug",
+        "sep",
+        "oct",
+        "nov",
+        "dec",
+        "vol",
+        "no",
+        "pp",
+        "p",
+        "ed",
+        "eds",
+        "ref",
+        "refs",
+        "approx",
+        "dept",
+        "est",
+        "max",
+        "min",
+        "cf",
+        "viz",
+    }
+)
 
 # Sentence boundary: terminal punctuation, optional reference markers
 # (superscripts or a space-separated digit run), then whitespace, then uppercase.
 _SENT_END_RE = re.compile(
     r"[.!?]"
     r"[" + _SUPERSCRIPT_DIGITS + r"]*"  # optional superscript refs directly after punct
-    r"(?:\s+\d[\d,\-]*)?"               # optional space + numeric refs (e.g. ". 1,2")
-    r"\s+"                               # required whitespace before next sentence
-    r"(?=[A-Z])",                        # lookahead: next char is uppercase
+    r"(?:\s+\d[\d,\-]*)?"  # optional space + numeric refs (e.g. ". 1,2")
+    r"\s+"  # required whitespace before next sentence
+    r"(?=[A-Z])",  # lookahead: next char is uppercase
 )
 
 
@@ -382,6 +437,7 @@ def _split_sentences(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 # Markdown segment parsing
 # ---------------------------------------------------------------------------
+
 
 @dataclasses.dataclass(frozen=True)
 class MarkdownSegment:
@@ -463,9 +519,7 @@ def _segments_from_block(
 
     # ── Affiliation / footnote block (lines with superscript prefix) ─────────
     non_empty = [l for l in lines if l.strip()]
-    if len(non_empty) > 1 and sum(
-        1 for l in non_empty if _SUPER_PREFIX_RE.match(l.strip())
-    ) >= len(non_empty) * 0.5:
+    if len(non_empty) > 1 and sum(1 for l in non_empty if _SUPER_PREFIX_RE.match(l.strip())) >= len(non_empty) * 0.5:
         return [seg(line) for line in non_empty]
 
     # ── Table (GFM pipe syntax) ───────────────────────────────────────────────
@@ -542,6 +596,7 @@ def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
 # ---------------------------------------------------------------------------
 # Association: markdown segment → PDF bbox
 # ---------------------------------------------------------------------------
+
 
 def _chars_in_range(
     chars: list[_Char],
@@ -637,8 +692,6 @@ def _residual_string(
     return "".join(parts), pos_map
 
 
-
-
 def _aln_to_flat_ranges(
     aln: object,
     ref_to_flat: tuple[int, ...],
@@ -647,10 +700,12 @@ def _aln_to_flat_ranges(
     for frag in aln.fragments:
         if frag.fragment_type != seq_smith.FragmentType.Match:
             continue
-        flat_ranges.append((
-            ref_to_flat[frag.sa_start],
-            ref_to_flat[frag.sa_start + frag.len],
-        ))
+        flat_ranges.append(
+            (
+                ref_to_flat[frag.sa_start],
+                ref_to_flat[frag.sa_start + frag.len],
+            )
+        )
     return flat_ranges
 
 
@@ -676,10 +731,7 @@ def _align_against(
     # Reject weak partial hits: require at least half the segment to be covered.
     # This catches cases like matching only "conflicting" from "Conflicting
     # interpretations" when the heading doesn't appear in the PDF.
-    seg_covered = sum(
-        f.len for f in aln.fragments
-        if f.fragment_type == seq_smith.FragmentType.Match
-    )
+    seg_covered = sum(f.len for f in aln.fragments if f.fragment_type == seq_smith.FragmentType.Match)
     if seg_covered * 2 < len(norm_seg):
         return None
     best_score = aln.score
@@ -687,18 +739,18 @@ def _align_against(
     # Iteratively search for an earlier match with the same score.
     current_aln = aln
     while True:
-        match_starts = [
-            f.sa_start
-            for f in current_aln.fragments
-            if f.fragment_type == seq_smith.FragmentType.Match
-        ]
+        match_starts = [f.sa_start for f in current_aln.fragments if f.fragment_type == seq_smith.FragmentType.Match]
         if not match_starts:
             break
         cutoff = min(match_starts)
         if cutoff == 0:
             break  # already at the start
         earlier_aln = seq_smith.local_align(
-            reference[:cutoff], norm_seg, score_matrix, _GAP_OPEN, _GAP_EXTEND
+            reference[:cutoff],
+            norm_seg,
+            score_matrix,
+            _GAP_OPEN,
+            _GAP_EXTEND,
         )
         if earlier_aln.score < best_score:
             break  # no earlier match reaches the same score
@@ -781,10 +833,7 @@ def associate(
     ) -> list[_Char]:
         indices: set[int] = set()
         for fs, fe in flat_ranges:
-            indices.update(
-                flat_to_char[j]
-                for j in range(fs, min(fe, len(flat_to_char)))
-            )
+            indices.update(flat_to_char[j] for j in range(fs, min(fe, len(flat_to_char))))
         return [chars[i] for i in sorted(indices)]
 
     def _try_page_residual(
@@ -808,17 +857,14 @@ def associate(
             return None
 
         def _align(norm_fn, score_matrix):
-            res_norm, res_to_res = norm_fn(residual)               # PDF
-            seg_norm, _ = norm_fn(seg.text, strip_html=True)        # markdown
+            res_norm, res_to_res = norm_fn(residual)  # PDF
+            seg_norm, _ = norm_fn(seg.text, strip_html=True)  # markdown
             if not seg_norm:
                 return None
             hit = _align_against(res_norm, res_to_res, seg_norm, score_matrix, threshold)
             if hit is None:
                 return None
-            flat_ranges = [
-                (pos_map[rs], pos_map[min(re, len(pos_map) - 1)])
-                for rs, re in hit[1]
-            ]
+            flat_ranges = [(pos_map[rs], pos_map[min(re, len(pos_map) - 1)]) for rs, re in hit[1]]
             return hit[0], flat_ranges
 
         result = _align(_normalize_strict, _SCORE_MATRIX_STRICT)
@@ -924,9 +970,8 @@ def associate(
     for i in sorted(phase1_page.keys()):
         seg = segments[i]
         matched_page = phase1_page[i]
-        norm_len = (
-            len(_normalize_strict(seg.text, strip_html=True)[0])
-            or len(_normalize_loose(seg.text, strip_html=True)[0])
+        norm_len = len(_normalize_strict(seg.text, strip_html=True)[0]) or len(
+            _normalize_loose(seg.text, strip_html=True)[0]
         )
         threshold = max(5, min(min_score, norm_len))
         result = _try_page_residual(matched_page, seg, threshold)
@@ -937,7 +982,7 @@ def associate(
     phase1_count = sum(1 for r in results if r is not None)
     print(
         f"Phase 1 (conservative HSP): {phase1_count}/{len(segments)} segments"
-        f" matched ({100 * phase1_count // max(len(segments), 1)}%)"
+        f" matched ({100 * phase1_count // max(len(segments), 1)}%)",
     )
 
     # ── Phase 2: page-constrained matching ────────────────────────────────────
@@ -951,9 +996,8 @@ def associate(
         if seg.page is not None and seg.page >= num_pages:
             continue
 
-        norm_len = (
-            len(_normalize_strict(seg.text, strip_html=True)[0])
-            or len(_normalize_loose(seg.text, strip_html=True)[0])
+        norm_len = len(_normalize_strict(seg.text, strip_html=True)[0]) or len(
+            _normalize_loose(seg.text, strip_html=True)[0]
         )
         threshold = max(5, min(min_score, norm_len))
 

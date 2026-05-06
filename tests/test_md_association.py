@@ -21,26 +21,17 @@ from anchorite.md_association import (
 # Parser: page hint behaviour
 # ---------------------------------------------------------------------------
 
-class TestParseMarkdownSegments:
 
+class TestParseMarkdownSegments:
     def test_with_markers_assigns_integer_pages(self) -> None:
-        md = (
-            "<!--page-->\n\n"
-            "First page sentence.\n\n"
-            "<!--page-->\n\n"
-            "Second page sentence.\n"
-        )
+        md = "<!--page-->\n\nFirst page sentence.\n\n<!--page-->\n\nSecond page sentence.\n"
         segs = parse_markdown_segments(md)
         pages = [s.page for s in segs]
         assert pages == [0, 1]
         assert all(isinstance(s.page, int) for s in segs)
 
     def test_without_markers_yields_none_pages(self) -> None:
-        md = (
-            "First sentence.\n\n"
-            "Second sentence.\n\n"
-            "Third sentence.\n"
-        )
+        md = "First sentence.\n\nSecond sentence.\n\nThird sentence.\n"
         segs = parse_markdown_segments(md)
         assert len(segs) == 3
         assert all(s.page is None for s in segs)
@@ -62,12 +53,7 @@ class TestParseMarkdownSegments:
     def test_no_markers_segment_structure_matches_marked_structure(self) -> None:
         # Stripping markers must not change segment granularity (heading,
         # sentences, list items) — only the page assignment changes.
-        body = (
-            "# Heading\n\n"
-            "First sentence. Second sentence.\n\n"
-            "- item one\n"
-            "- item two\n"
-        )
+        body = "# Heading\n\nFirst sentence. Second sentence.\n\n- item one\n- item two\n"
         with_markers = "<!--page-->\n\n" + body
         without_markers = body
 
@@ -114,7 +100,8 @@ def _pairs() -> list[tuple[pathlib.Path, pathlib.Path]]:
 
 @pytest.mark.parametrize(("pdf_path", "md_path"), _pairs())
 def test_no_markers_matches_marker_assignments(
-    pdf_path: pathlib.Path, md_path: pathlib.Path,
+    pdf_path: pathlib.Path,
+    md_path: pathlib.Path,
 ) -> None:
     """No-marker associate() should assign each segment to the same page as
     the marker'd associate() does.  Bbox shapes need not be byte-identical
@@ -139,8 +126,7 @@ def test_no_markers_matches_marker_assignments(
     # Coverage must be reasonably high — the no-marker path shouldn't lose
     # most segments to false-uniqueness rejections.
     assert len(common) >= 0.8 * len(marked_pages), (
-        f"no-marker path matched {len(common)}/{len(marked_pages)} of marker'd "
-        f"segments; expected ≥80%"
+        f"no-marker path matched {len(common)}/{len(marked_pages)} of marker'd segments; expected ≥80%"
     )
 
     # Page assignments for shared segments must agree.
@@ -156,6 +142,7 @@ def test_no_markers_matches_marker_assignments(
 # Type contract
 # ---------------------------------------------------------------------------
 
+
 def test_segment_page_can_be_none() -> None:
     """``MarkdownSegment.page`` accepts ``None`` (frozen-dataclass type-check)."""
     seg = MarkdownSegment(text="hello", page=None, md_start=0, md_end=5)
@@ -165,6 +152,7 @@ def test_segment_page_can_be_none() -> None:
 # ---------------------------------------------------------------------------
 # Normalisation: HTML tags must be zero-width
 # ---------------------------------------------------------------------------
+
 
 class TestHtmlTagsInNormalisation:
     """HTML tags surviving into Markdown (`<sup>`, `<a id="...">`, etc.) must
@@ -225,6 +213,7 @@ class TestHtmlTagsInNormalisation:
 # Normalisation: NFKD compatibility decomposition
 # ---------------------------------------------------------------------------
 
+
 class TestNfkdNormalisation:
     """Each input character is NFKD-decomposed before classification, so
     accented letters keep their base form, ligatures expand, superscript
@@ -248,7 +237,9 @@ class TestNfkdNormalisation:
 
     def test_superscript_digits_become_plain(self) -> None:
         # ⁶¹RNRKRKAEPY⁷⁰ used to lose the superscripts entirely.
-        assert md_association._normalize_loose("⁶¹RNRKRKAEPY⁷⁰")[0] == md_association._normalize_loose("61RNRKRKAEPY70")[0]
+        assert (
+            md_association._normalize_loose("⁶¹RNRKRKAEPY⁷⁰")[0] == md_association._normalize_loose("61RNRKRKAEPY70")[0]
+        )
         assert md_association._normalize_loose("H²O")[0] == md_association._normalize_loose("H2O")[0]
 
     def test_math_alphanumeric_symbols(self) -> None:
@@ -269,7 +260,7 @@ class TestNfkdNormalisation:
         # NFKD decomposes 'ö' to 'o' + U+0308 combining diaeresis.  The
         # combining mark must not contribute an output byte.
         norm, idx_map = md_association._normalize_loose("ö")
-        assert len(norm) == 1   # just 'o', no combining mark
+        assert len(norm) == 1  # just 'o', no combining mark
         assert list(idx_map) == [0, 1]
 
     def test_strict_mode_emits_space_for_pure_punctuation(self) -> None:
@@ -285,18 +276,12 @@ class TestNfkdNormalisation:
         # ``to pf`` instead of ``topf``.
         decomposed = "T" + "o" + "̈" + "p" + "f"
         precomposed = "Töpf"
-        assert (
-            md_association._normalize_strict(decomposed)[0]
-            == md_association._normalize_strict(precomposed)[0]
-        )
+        assert md_association._normalize_strict(decomposed)[0] == md_association._normalize_strict(precomposed)[0]
 
     def test_decomposed_input_normalises_like_precomposed_loose(self) -> None:
         decomposed = "T" + "o" + "̈" + "p" + "f"
         precomposed = "Töpf"
-        assert (
-            md_association._normalize_loose(decomposed)[0]
-            == md_association._normalize_loose(precomposed)[0]
-        )
+        assert md_association._normalize_loose(decomposed)[0] == md_association._normalize_loose(precomposed)[0]
 
     def test_combining_mark_omits_idx_map_entry(self) -> None:
         # The combining mark must produce no normalised byte and no idx_map
@@ -312,21 +297,27 @@ class TestNfkdNormalisation:
 # _build_char_index: line-break and soft-hyphen handling
 # ---------------------------------------------------------------------------
 
+
 def _line(text: str, *, baseline: float, x0: float = 0.0, font_size: float = 10.0) -> list:
     """Build a sequence of ``_Char`` records on one visual line."""
     chars = []
     cursor = x0
     for c in text:
-        chars.append(md_association._Char(
-            text=c, x0=cursor, y0=baseline, x1=cursor + font_size * 0.6,
-            y1=baseline + font_size, font_size=font_size,
-        ))
+        chars.append(
+            md_association._Char(
+                text=c,
+                x0=cursor,
+                y0=baseline,
+                x1=cursor + font_size * 0.6,
+                y1=baseline + font_size,
+                font_size=font_size,
+            )
+        )
         cursor += font_size * 0.6
     return chars
 
 
 class TestBuildCharIndex:
-
     def test_line_break_inserts_space(self) -> None:
         # ``we`` at the end of one line, ``identified`` at the start of the
         # next.  Without the line-break space the flat string would read

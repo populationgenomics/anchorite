@@ -454,7 +454,11 @@ def quote_locates(
         if all(b == _MASK_BYTE for b in current):
             break
         alignment = seq_smith.local_align(
-            norm_text, bytes(current), _SCORE_MATRIX, _GAP_OPEN, _GAP_EXTEND,
+            norm_text,
+            bytes(current),
+            _SCORE_MATRIX,
+            _GAP_OPEN,
+            _GAP_EXTEND,
         )
         if alignment.score < min_score:
             break
@@ -562,7 +566,11 @@ def resolve_quote(
             break
 
         alignment = seq_smith.local_align(
-            norm_text, bytes(current_norm_quote), _SCORE_MATRIX, _GAP_OPEN, _GAP_EXTEND,
+            norm_text,
+            bytes(current_norm_quote),
+            _SCORE_MATRIX,
+            _GAP_OPEN,
+            _GAP_EXTEND,
         )
         if alignment.score < min_score:
             break
@@ -596,7 +604,9 @@ def resolve_quote(
     if matched_len < total_len * warn_coverage:
         logger.warning(
             "Low coverage for quote alignment: %d/%d for quote %r",
-            matched_len, total_len, quote,
+            matched_len,
+            total_len,
+            quote,
         )
         if matched_len < total_len * fail_coverage:
             return []

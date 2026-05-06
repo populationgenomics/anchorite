@@ -84,12 +84,12 @@ async def process_document(
         markdown_content = markdown
         if isinstance(anchor_provider, providers.MarkdownAnchorProvider):
             await asyncio.gather(
-                *[anchor_provider.process_chunk(chunk) for chunk in chunk_list]
+                *[anchor_provider.process_chunk(chunk) for chunk in chunk_list],
             )
             flat_anchors = await anchor_provider.finalize(markdown_content)
         elif anchor_provider is not None:
             all_anchors = await asyncio.gather(
-                *[anchor_provider.generate_anchors(chunk) for chunk in chunk_list]
+                *[anchor_provider.generate_anchors(chunk) for chunk in chunk_list],
             )
             flat_anchors = [a for chunk_anchors in all_anchors for a in chunk_anchors]
         else:
