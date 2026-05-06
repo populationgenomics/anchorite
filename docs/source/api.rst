@@ -21,12 +21,12 @@ API Reference
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: anchorite.types
+.. automodule:: anchorite.bbox_alignment
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: anchorite.bbox_alignment
+.. automodule:: anchorite.md_association
    :members:
    :undoc-members:
    :show-inheritance:

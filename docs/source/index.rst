@@ -13,4 +13,5 @@ Welcome to the documentation for `anchorite`.
    :caption: Contents:
 
    readme
+   md_association
    api
