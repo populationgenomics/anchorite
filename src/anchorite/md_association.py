@@ -95,11 +95,11 @@ def _extract_page_chars(page: pdfium.PdfPage) -> list[_Char]:
             # PDFium counts non-BMP characters (e.g. Mathematical Italic symbols,
             # U+1D400–U+1D7FF) as two UTF-16 surrogate-pair indices.  Detect a
             # high surrogate and reassemble the full code point from the pair.
-            if 0xD800 <= cp <= 0xDBFF:
+            if _HIGH_SURROGATE_LO <= cp <= _HIGH_SURROGATE_HI:
                 if char_index + 1 < total_chars:
                     cp_low = pdfium_c.FPDFText_GetUnicode(textpage, char_index + 1)
-                    if 0xDC00 <= cp_low <= 0xDFFF:
-                        cp = 0x10000 + (cp - 0xD800) * 0x400 + (cp_low - 0xDC00)
+                    if _LOW_SURROGATE_LO <= cp_low <= _LOW_SURROGATE_HI:
+                        cp = _NON_BMP_BASE + (cp - _HIGH_SURROGATE_LO) * 0x400 + (cp_low - _LOW_SURROGATE_LO)
                         ci_for_box = char_index
                         char_index += 2  # consume both surrogate indices
                         obj_pos += 1  # but only one code point in obj_text
@@ -111,7 +111,7 @@ def _extract_page_chars(page: pdfium.PdfPage) -> list[_Char]:
                     char_index += 1
                     obj_pos += 1
                     continue
-            elif 0xDC00 <= cp <= 0xDFFF:
+            elif _LOW_SURROGATE_LO <= cp <= _LOW_SURROGATE_HI:
                 # Orphaned low surrogate — should not occur; skip.
                 char_index += 1
                 obj_pos += 1
@@ -218,6 +218,11 @@ _ALIGN_ALPHABET_LOOSE = string.ascii_lowercase + string.digits
 _SCORE_MATRIX_LOOSE = seq_smith.make_score_matrix(_ALIGN_ALPHABET_LOOSE, +1, -1)
 _GAP_OPEN, _GAP_EXTEND = -2, -2
 _MIN_SCORE = 10
+
+# UTF-16 surrogate ranges for non-BMP code points returned by PDFium.
+_HIGH_SURROGATE_LO, _HIGH_SURROGATE_HI = 0xD800, 0xDBFF
+_LOW_SURROGATE_LO, _LOW_SURROGATE_HI = 0xDC00, 0xDFFF
+_NON_BMP_BASE = 0x10000
 # Phase 1 (conservative HSP-based): pages to search around the page marker.
 _PHASE1_PAGE_SLACK = 10
 # Phase 1: best score must be >= this multiple of the second-best (cross-page AND within-page).
