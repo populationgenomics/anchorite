@@ -29,7 +29,7 @@ class AlignmentResult:
 
 async def process_document(
     chunks: Iterable[document.DocumentChunk],
-    markdown_provider: providers.MarkdownProvider,
+    markdown_provider: providers.MarkdownProvider | None = None,
     anchor_provider: providers.AnchorProvider | providers.MarkdownAnchorProvider | None = None,
     *,
     markdown: str | None = None,
@@ -58,7 +58,7 @@ async def process_document(
             parallel, then assembled before alignment.
         markdown_provider: Generates Markdown text for a chunk (e.g. an LLM call).
             Run concurrently with anchor generation when ``anchor_provider`` is set.
-            Ignored when ``markdown`` is supplied.
+            Required when ``markdown`` is not supplied; ignored otherwise.
         anchor_provider: Generates anchors for a chunk (e.g. an OCR call), or a
             ``MarkdownAnchorProvider`` that uses the assembled Markdown to guide
             anchor extraction from PDF char data.  If ``None``, alignment is skipped
@@ -79,6 +79,9 @@ async def process_document(
         and the fraction of Markdown characters covered by aligned anchors.
     """
     chunk_list = list(chunks)
+
+    if markdown is None and markdown_provider is None:
+        raise ValueError("process_document requires either markdown or markdown_provider")
 
     if markdown is not None:
         markdown_content = markdown
