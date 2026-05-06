@@ -103,6 +103,27 @@ def test_resolve_quote_overlapping_spans() -> None:
     assert (0, anchorite.BBox(2, 2, 2, 2)) in out
 
 
+def test_resolve_quote_returns_all_boxes_for_duplicate_starts() -> None:
+    # A multi-line anchor (e.g. a wrapped sentence) emits one SpanAnchor per
+    # visual line, all sharing the same span start/end.  Every box must be
+    # returned — earlier implementations relied on ``bisect_right - 1`` and
+    # silently dropped all but the last record at a given start position.
+    markdown = "A very long sentence that wraps across three visual lines on the page."
+    line1 = anchorite.BBox(10, 10, 20, 100)
+    line2 = anchorite.BBox(22, 10, 32, 100)
+    line3 = anchorite.BBox(34, 10, 44, 200)
+    spans = [
+        anchorite.SpanAnchor(span=(0, len(markdown)), page=0, box=line1),
+        anchorite.SpanAnchor(span=(0, len(markdown)), page=0, box=line2),
+        anchorite.SpanAnchor(span=(0, len(markdown)), page=0, box=line3),
+    ]
+    out = anchorite.resolve_quote(markdown, spans, markdown)
+    pages = sorted({(p, b) for p, b in out})
+    assert (0, line1) in pages
+    assert (0, line2) in pages
+    assert (0, line3) in pages
+
+
 def test_resolve_quote_uses_html_aware_normalisation() -> None:
     # The Markdown carries ``<sup>1</sup>`` markup; the LLM-extracted quote
     # comes from rendered text and has plain digits.  They must align via

@@ -540,7 +540,15 @@ def resolve_quote(
 
     norm_text, text_mapping = _normalize(markdown)
 
-    # Sort spans by start once so we can bisect each match fragment.
+    # Sort spans by start once.  Multiple spans may share the same start —
+    # one ``SpanAnchor`` per visual line of a multi-line anchor produces N
+    # records all keyed at the same Markdown-character start position — so
+    # the iteration uses ``bisect_left`` to bound the *upper* end of the
+    # candidate window and then walks every span whose start is < text_end,
+    # checking the overlap condition explicitly.  A naive
+    # ``bisect_right - 1`` would land on the last duplicate-start record
+    # and skip the earlier ones, returning only one bbox for a wrapped
+    # sentence.
     sorted_spans = sorted(spans, key=lambda sa: sa.span[0])
     span_starts = [sa.span[0] for sa in sorted_spans]
 
@@ -573,14 +581,12 @@ def resolve_quote(
             if frag.fragment_type == seq_smith.FragmentType.Match:
                 text_start = text_mapping[frag.sa_start]
                 text_end = text_mapping[frag.sa_start + frag.len]
-                # Find the latest span that starts at-or-before text_start —
-                # it may straddle the boundary — then scan forward until a
-                # span starts at-or-after text_end.
-                lo = max(0, bisect.bisect_right(span_starts, text_start) - 1)
-                for sa in sorted_spans[lo:]:
+                # All overlap candidates have ``span_start < text_end`` —
+                # find the upper bound and walk every earlier span,
+                # accepting those whose end exceeds ``text_start``.
+                hi = bisect.bisect_left(span_starts, text_end)
+                for sa in sorted_spans[:hi]:
                     s, e = sa.span
-                    if s >= text_end:
-                        break
                     if e > text_start:
                         found_locations.append((sa.page, sa.box))
 
