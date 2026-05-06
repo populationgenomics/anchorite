@@ -277,3 +277,68 @@ class TestNfkdNormalisation:
         # space in strict mode — preserve the existing behaviour.
         norm, _ = md_association._normalize_strict("a — b")
         assert norm == md_association._normalize_strict("a   b")[0]
+
+
+# ---------------------------------------------------------------------------
+# _build_char_index: line-break and soft-hyphen handling
+# ---------------------------------------------------------------------------
+
+def _line(text: str, *, baseline: float, x0: float = 0.0, font_size: float = 10.0) -> list:
+    """Build a sequence of ``_Char`` records on one visual line."""
+    chars = []
+    cursor = x0
+    for c in text:
+        chars.append(md_association._Char(
+            text=c, x0=cursor, y0=baseline, x1=cursor + font_size * 0.6,
+            y1=baseline + font_size, font_size=font_size,
+        ))
+        cursor += font_size * 0.6
+    return chars
+
+
+class TestBuildCharIndex:
+
+    def test_line_break_inserts_space(self) -> None:
+        # ``we`` at the end of one line, ``identified`` at the start of the
+        # next.  Without the line-break space the flat string would read
+        # ``weidentified``.
+        chars = _line("we", baseline=100.0) + _line("identified", baseline=80.0)
+        ci = md_association._build_char_index(chars)
+        assert ci.flat_str == "we identified"
+
+    def test_horizontal_word_gap_inserts_space(self) -> None:
+        # Two words on the same line with a horizontal gap > 20 % of font size.
+        chars_a = _line("hello", baseline=100.0)
+        chars_b = _line("world", baseline=100.0, x0=chars_a[-1].x1 + 5.0)
+        ci = md_association._build_char_index(chars_a + chars_b)
+        assert ci.flat_str == "hello world"
+
+    def test_soft_hyphen_at_line_break_reconnects(self) -> None:
+        # Typeset ``induc-`` at the end of one line, ``tion`` at the start of
+        # the next — this is a soft-hyphenated word that should reconnect to
+        # ``induction`` (matching the Markdown's un-hyphenated form).
+        chars = _line("induc-", baseline=100.0) + _line("tion", baseline=80.0)
+        ci = md_association._build_char_index(chars)
+        assert ci.flat_str == "induction"
+
+    def test_hyphen_at_line_break_after_digit_keeps_hyphen(self) -> None:
+        # Numeric range ``2009-`` followed by ``2010`` on the next line.  The
+        # surrounding chars aren't alphabetic, so the hyphen-suppression
+        # heuristic must NOT fire — a space is inserted as for any line break.
+        chars = _line("2009-", baseline=100.0) + _line("2010", baseline=80.0)
+        ci = md_association._build_char_index(chars)
+        assert ci.flat_str == "2009- 2010"
+
+    def test_hyphen_at_line_break_before_digit_keeps_hyphen(self) -> None:
+        # Hyphenated identifier ``cohort-`` followed by ``38`` on the next
+        # line.  The next char isn't alphabetic, so we keep the hyphen.
+        chars = _line("cohort-", baseline=100.0) + _line("38", baseline=80.0)
+        ci = md_association._build_char_index(chars)
+        assert ci.flat_str == "cohort- 38"
+
+    def test_mid_line_hyphen_unaffected(self) -> None:
+        # ``e-mail`` on a single line: the hyphen stays even though it sits
+        # between two letters, because it isn't at a line break.
+        chars = _line("e-mail", baseline=100.0)
+        ci = md_association._build_char_index(chars)
+        assert ci.flat_str == "e-mail"

@@ -150,6 +150,15 @@ def _build_char_index(chars: list[_Char]) -> _CharIndex:
       because PDFium's coordinate stream emits no whitespace at line
       breaks, and the alignment string drifts out of sync with the
       Markdown.
+
+    End-of-line soft hyphens are reconnected: when the line-break-trailing
+    char is ``-`` between two alphabetic glyphs, both the hyphen and the
+    inserted space are dropped, so the typeset ``induc-`` + ``tion``
+    reconnects to ``induction`` (matching the Markdown's un-hyphenated
+    form).  Numeric ranges like ``2009-`` + ``2010`` keep the hyphen
+    because the surrounding glyphs aren't alphabetic.  Dash variants
+    (en-dash, em-dash, hyphen-minus) have already been normalised to
+    ``-`` during char extraction, so a single literal check suffices.
     """
     parts: list[str] = []
     flat_to_char: list[int] = []
@@ -163,6 +172,20 @@ def _build_char_index(chars: list[_Char]) -> _CharIndex:
             x_gap = nxt.x0 - ch.x1
             y_drop = abs(nxt.y0 - ch.y0)
             line_break = nxt.x0 < ch.x0 or y_drop > ch.font_size * 0.5
+            if (
+                line_break
+                and len(parts) >= 2
+                and parts[-1] == "-"
+                and parts[-2].isalpha()
+                and nxt.text
+                and nxt.text[0].isalpha()
+            ):
+                # Soft hyphen between two letters at a line break: drop
+                # the hyphen and insert no space.  The next iteration
+                # appends the next char's letters directly.
+                parts.pop()
+                flat_to_char.pop()
+                continue
             if x_gap > ch.font_size * 0.2 or line_break:
                 parts.append(" ")
                 flat_to_char.append(i)
