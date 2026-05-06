@@ -27,7 +27,7 @@ import pathlib
 import re
 import string
 import unicodedata
-from typing import NamedTuple
+from typing import Literal, NamedTuple, overload
 
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
@@ -757,6 +757,25 @@ def _align_against(
         current_aln = earlier_aln
 
     return best_score, _aln_to_flat_ranges(current_aln, ref_to_flat)
+
+
+@overload
+def associate(
+    pdf_path: pathlib.Path,
+    markdown: str,
+    min_score: int = ...,
+    return_pass_info: Literal[False] = ...,
+) -> list[Anchor]: ...
+
+
+@overload
+def associate(
+    pdf_path: pathlib.Path,
+    markdown: str,
+    min_score: int = ...,
+    *,
+    return_pass_info: Literal[True],
+) -> tuple[list[Anchor], list[int]]: ...
 
 
 def associate(
