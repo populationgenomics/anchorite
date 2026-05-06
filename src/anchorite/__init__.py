@@ -39,6 +39,7 @@ __all__ = [
     "parse_markdown_segments",
     "process_document",
     "providers",
+    "quote_locates",
     "range_ops",
     "resolve",
     "resolve_quote",
@@ -421,6 +422,54 @@ def resolve(
     norm_text, text_mapping = _normalize(stripped.plain_text)
 
     return {quote: _fuzzy_resolve_quote(norm_text, text_mapping, stripped.validation_map, quote) for quote in quotes}
+
+
+def quote_locates(
+    markdown: str,
+    quote: str,
+    *,
+    min_score: int = _MIN_ALIGNMENT_SCORE,
+    fail_coverage: float = _FAIL_COVERAGE,
+) -> bool:
+    """Return ``True`` iff ``quote`` aligns to ``markdown`` with sufficient confidence.
+
+    Uses the same SW + masking pipeline as ``resolve_quote`` but skips the
+    span-overlap step.  Suitable for validating that an LLM-emitted quote
+    is grounded in the document before returning it to the user.
+    """
+    clean_quote = quote.strip()
+    if not clean_quote:
+        return False
+
+    norm_quote, _ = _normalize(clean_quote)
+    if not norm_quote:
+        return False
+
+    norm_text, _ = _normalize(markdown)
+
+    current = bytearray(norm_quote)
+    matched_len = 0
+    total_len = len(norm_quote)
+    for _ in range(10):
+        if all(b == _MASK_BYTE for b in current):
+            break
+        alignment = seq_smith.local_align(
+            norm_text, bytes(current), _SCORE_MATRIX, _GAP_OPEN, _GAP_EXTEND,
+        )
+        if alignment.score < min_score:
+            break
+        progressed = False
+        for frag in alignment.fragments:
+            if frag.fragment_type == seq_smith.FragmentType.BGap:
+                continue
+            for j in range(frag.sb_start, frag.sb_start + frag.len):
+                current[j] = _MASK_BYTE
+            matched_len += frag.len
+            progressed = True
+        if not progressed:
+            break
+
+    return matched_len >= total_len * fail_coverage
 
 
 @dataclasses.dataclass(frozen=True)
