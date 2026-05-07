@@ -4,18 +4,25 @@
 
 **Spatial text alignment for document AI pipelines.**
 
-`anchorite` aligns generated Markdown text back to the physical bounding boxes that an OCR engine found on the original document pages. It bridges the gap between generative AI (which produces high-quality, readable Markdown) and traditional OCR (which provides precise coordinates) by finding where each OCR word or phrase appears in the generated output.
+`anchorite` connects generated Markdown text to physical bounding boxes on the source document pages. It bridges the gap between text-based representations (LLM-generated Markdown, OCR layout markup, JATS XML rendered to Markdown) and the precise coordinates a viewer needs to highlight quoted text on the original page.
 
 ---
 
 ## The problem
 
-Modern document AI pipelines often combine two sources:
+Modern document AI pipelines combine readable text with physical coordinates from a variety of sources:
 
 1. **A generative model** (Gemini, Claude, GPT-4) that reads a page image and produces clean, well-structured Markdown.
-2. **An OCR engine** (Google Document AI, Tesseract, Docling) that identifies individual words and their bounding boxes on the page.
+2. **An OCR engine** (Google Document AI, Tesseract, Docling) that identifies words and their bounding boxes.
+3. **Native PDF text** extracted via `pypdfium2` from publisher PDFs.
+4. **JATS XML** distributed by PMC and other publishers, alongside the same paper's PDF.
 
-The generative model's output is readable and accurate but has no coordinates. The OCR output has precise coordinates but poor structure. `anchorite` fuses them: it takes the Markdown as the ground truth for text content and finds the corresponding bounding box for each OCR word or phrase within it.
+Most pipelines have abundant *content* but no coordinates, or precise *coordinates* but poor structure. `anchorite` fuses them. It supports two complementary directions:
+
+- **OCR anchors → Markdown:** align a list of OCR-derived `Anchor` objects to a Markdown string and inject coordinate spans (`align`, `annotate`).
+- **Markdown → PDF char layer:** align Markdown segments back to per-character bounding boxes extracted directly from a PDF (`md_association.associate`).
+
+Both produce the same `Anchor` data shape, so downstream resolution (`resolve`, `resolve_quote`, `quote_locates`) is identical regardless of which path produced the anchors.
 
 ---
 
@@ -29,9 +36,11 @@ pip install anchorite
 
 ## Core concepts
 
-**`Anchor`** — a piece of OCR text with its location: a `text` string, a `page` number (0-indexed), and a `BBox` (bounding box in 0–1000 normalised coordinates).
+**`Anchor`** — a fragment of text linked to a page region: a `text` string, a `page` number (0-indexed), and a tuple of `BBox`es (one per visual line the anchor covers).
 
-**`BBox`** — a bounding box `(top, left, bottom, right)`.
+**`BBox`** — a bounding box `(top, left, bottom, right)`, integer coordinates in 0–1000 normalised page space.
+
+**`SpanAnchor`** — an anchor paired with its character range in the source Markdown: `(span: (int, int), page: int, box: BBox)`. Lit-manager-style sidecar formats that store `[{"span": [s, e], "page": p, "rect": [t, l, b, r]}, …]` map directly onto a list of `SpanAnchor`s, which `resolve_quote` consumes.
 
 **`alignment`** — a `dict[Anchor, tuple[int, int]]` mapping each anchor to a `(start, end)` character span in the Markdown string.
 
@@ -61,18 +70,55 @@ annotated = anchorite.annotate(markdown, alignment)
 
 The annotated Markdown is otherwise valid Markdown and can be rendered normally; the `<span>` tags carry coordinate metadata as HTML attributes.
 
-### 2. Resolve quotes to coordinates
+### 2. Derive anchors from a PDF + Markdown directly
 
-Given annotated Markdown and a list of verbatim quotes (e.g. extracted by an LLM), find the bounding boxes that each quote covers. Useful for grounding LLM citations.
+When the Markdown is independently authoritative (JATS XML rendered to Markdown, hand-curated content, an LLM rewrite that you trust), you can skip the OCR engine and align the Markdown segments to per-character bounding boxes that `pypdfium2` extracts straight from the PDF. `md_association.associate` handles the segmentation and two-phase alignment in one call.
+
+```python
+import pathlib
+from anchorite.md_association import associate
+
+anchors = associate(
+    pathlib.Path("paper.pdf"),
+    pathlib.Path("paper.md").read_text(),
+)
+# Returns a list[Anchor], one per matched Markdown segment, in document order.
+```
+
+Page-break markers (`<!--page-->`) in the input are used as a search-window hint for cost; they're optional. Without them, phase 1 falls back to searching every page. See `docs/source/md_association.md` for the algorithm and tunables.
+
+### 3. Resolve quotes to coordinates
+
+Given a list of verbatim quotes (e.g. citations extracted by an LLM), find the bounding boxes that each quote covers. Two API shapes depending on what you have on hand:
+
+**`resolve_quote`** — when you've stored Markdown and a list of `(span, page, box)` records on disk (the typical sidecar shape):
+
+```python
+spans = [
+    anchorite.SpanAnchor(span=(0, 25), page=0, box=anchorite.BBox(10, 10, 20, 20)),
+    anchorite.SpanAnchor(span=(25, 44), page=1, box=anchorite.BBox(30, 30, 40, 40)),
+]
+located = anchorite.resolve_quote(markdown, spans, "quick brown fox jumps")
+# [(0, BBox(10, 10, 20, 20))]
+```
+
+**`resolve`** — when you've stored *annotated* Markdown (with `<span data-bbox=…>` tags inline, as produced by `annotate`):
 
 ```python
 locations = anchorite.resolve(annotated, quotes=["Observations of a Nebula"])
 # {"Observations of a Nebula": [(0, BBox(52, 120, 68, 880))]}
 ```
 
-`resolve` uses fuzzy iterative matching so it tolerates minor transcription differences. Each quote maps to a list of `(page, BBox)` pairs — one per distinct OCR anchor the quote overlaps.
+Both use the same fuzzy iterative Smith-Waterman pipeline and the same shared normaliser used during anchor generation, so a quote that aligned cleanly at ingest aligns cleanly here too. Each quote maps to a sorted list of `(page, BBox)` pairs — one per distinct anchor the quote overlaps.
 
-### 3. Strip annotations for downstream validation
+For callers that only need to know whether a quote can be grounded (LLM tool-call validation, "did the model hallucinate this?"), `quote_locates(markdown, quote) -> bool` skips the span-overlap step:
+
+```python
+if anchorite.quote_locates(markdown, quote):
+    ...  # the LLM's quote actually appears in the source
+```
+
+### 4. Strip annotations for downstream validation
 
 `strip` is the inverse of `annotate`. It removes the `<span>` tags and returns a plain-text string alongside a validation map you can use to check whether a generated quote is grounded in the source document.
 
@@ -82,7 +128,7 @@ stripped = anchorite.strip(annotated)
 # stripped.validation_map  — list of (start, end, Anchor) in plain_text
 ```
 
-### 4. Orchestrated multi-page processing
+### 5. Orchestrated multi-page processing
 
 For pipelines that process multi-page documents, `process_document` handles parallelism, page-chunk assembly, and alignment in one call. You supply pre-chunked document data and implement two provider protocols.
 
@@ -175,6 +221,26 @@ Removes `<span>` tags and returns a `StrippedMarkdown` with fields:
 
 Resolves a list of verbatim quote strings to their bounding boxes using fuzzy iterative Smith-Waterman alignment against the stripped text. Returns `dict[str, list[tuple[int, BBox]]]` mapping each quote to a list of `(page, BBox)` pairs.
 
+### `anchorite.resolve_quote(markdown, spans, quote, *, min_score, warn_coverage, fail_coverage)`
+
+The bbox-records variant of `resolve`. Locates `quote` in `markdown` via the same iterative SW pipeline, then returns every `SpanAnchor` whose `span` overlaps the matched region as a sorted, de-duplicated `[(page, BBox), …]` list. Suitable for callers that store Markdown and bbox records separately rather than as inline `<span>` tags.
+
+| Parameter | Default | Description |
+|---|---|---|
+| `min_score` | `15` | Reject SW alignments scoring below this threshold. |
+| `warn_coverage` | `0.5` | Log a warning when matched coverage falls below this fraction. |
+| `fail_coverage` | `0.3` | Return `[]` when matched coverage falls below this fraction. |
+
+### `anchorite.quote_locates(markdown, quote, *, min_score, fail_coverage)`
+
+Boolean variant of `resolve_quote` for grounding checks. Returns `True` iff the quote aligns with sufficient confidence; no span list required.
+
+### `anchorite.md_association.associate(pdf_path, markdown, *, min_score, return_pass_info)`
+
+Aligns Markdown segments (sentences, headings, list items, table cells) to per-character bounding boxes extracted from a PDF via `pypdfium2`. Returns `list[Anchor]` in document order. With `return_pass_info=True` returns `(anchors, passes)`, where `passes[i]` is `1` for a phase-1 (conservative HSP) match or `2` for a phase-2 (page-constrained) match.
+
+`<!--page-->` markers in the Markdown are an optional search-window hint; without them, phase 1 searches every page.
+
 ### `anchorite.process_document(chunks, markdown_provider, anchor_provider, *, ...)`
 
 Orchestrates multi-chunk document alignment. Returns `AlignmentResult`.
@@ -191,9 +257,24 @@ Orchestrates multi-chunk document alignment. Returns `AlignmentResult`.
 
 ### Normalisation
 
-Before any alignment, text is normalised to a reduced alphabet: letters are lowercased, all non-alphanumeric characters (punctuation, whitespace variants) are mapped to a single space, and consecutive spaces are collapsed to one. This makes the alignment robust to minor formatting differences between the OCR text and the generated Markdown (e.g. hyphenation, ligatures, smart quotes).
+Before any alignment, text is normalised to a reduced alphabet through a single shared pipeline used by every entry point in the package — `align`, `associate`, `resolve`, `resolve_quote`, `quote_locates`. Sharing the normaliser is what guarantees that a quote produced from a piece of Markdown will align against the same Markdown its bboxes were derived from.
+
+Each input character runs through:
+
+1. **NFKD compatibility decomposition.** Accented letters split into a base letter plus combining marks (`Töpf` → `T`, `o`, U+0308, `p`, `f`); ligatures expand (`ﬁ` → `fi`); superscript and subscript digits become plain digits (`²` → `2`); Mathematical Alphanumeric Symbols map to ASCII (`𝑆` → `S`).
+2. **ASCII-alphanumeric filter.** Decomposed characters that aren't `[a-z0-9]` (case-folded) are dropped — combining marks, punctuation, and unmapped Unicode all fall away.
+3. **Combining-mark guard.** Unicode `M*`-category characters (the residual combining marks from the previous step) are zero-width: they emit no alphanum output *and* don't trigger the punctuation-collapses-to-space branch in strict mode. This makes precomposed (`ö`) and decomposed (`o` + U+0308) input produce identical alignment bytes.
+4. **Strict vs. loose alphabet.** Strict normalisation collapses non-alphanumeric runs to a single space; loose normalisation drops spaces entirely. Loose is the fallback when strict can't recover the segment text (e.g. letter-spaced display headings — `C A S E  R E P O R T` aligns to `CASEREPORT` only when spaces are dropped).
+5. **HTML-tag stripping (Markdown side only).** When `strip_html=True` is set — automatically the case for every Markdown call site — `<…>` tag spans are zero-width, so `Author<sup>1</sup>` aligns as `author1` rather than `authorsup1sup`. PDF-side text never strips tags: a literal `<` or `>` extracted from the PDF is real content (`p < 0.05`, `Vol < 100`).
+
+PDF char extraction adds two more steps before normalisation:
+
+- **Soft-hyphen reconnection.** End-of-line `induc-` followed by start-of-line `tion` reconnects to `induction` rather than emitting `induc- tion`. Triggered only when both surrounding glyphs are alphabetic, so numeric ranges like `2009- 2010` keep the hyphen.
+- **Line-break space insertion.** PDFium emits no whitespace at line breaks (the next char's *x* coordinate jumps backward instead). The flat-string builder detects line breaks (next char's baseline drops by ≥ 50 % of font size, or its *x* sits to the left of the current char) and inserts a space, so `we` + `identified` doesn't concatenate to `weidentified`.
 
 ### Document fragmentation
+
+(The remainder of this section describes the `align` algorithm — OCR anchors → Markdown spans. The complementary algorithm, `md_association.associate` — Markdown segments → PDF char bboxes — has its own document at `docs/source/md_association.md`.)
 
 The Markdown is split at HTML comment markers (e.g. `<!--page-->`, `<!--table: 1-->`) into contiguous fragments. Each fragment inherits a page range from its position in the assembled document, which is used to restrict which anchors can match it — anchors are only compared against fragments whose page range includes the anchor's page number.
 

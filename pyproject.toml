@@ -28,6 +28,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pillow>=12.1.1",
     "pre-commit",
     "pytest",
     "pytest-asyncio",
@@ -57,7 +58,18 @@ known-first-party = ["anchorite"]
     "S101",
     "S102",
     "PLR2004",
-    "SLF001"
+    "SLF001",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+"src/anchorite/md_association.py" = [
+    # Module legitimately handles ambiguous Unicode (math-italic letters,
+    # multiplication sign, en-dash) as part of NFKC/NFKD normalisation, so
+    # the ambiguous-character lints fire on intentional examples.
+    "RUF001",
+    "RUF002",
+    "RUF003",
 ]
 
 [tool.mypy]
