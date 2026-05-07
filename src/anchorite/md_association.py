@@ -800,84 +800,94 @@ def _align_against(
     return best_score, _aln_to_flat_ranges(current_aln, ref_to_flat)
 
 
-@overload
-def associate(
-    pdf_path: pathlib.Path,
-    markdown: str,
-    min_score: int = ...,
-    return_pass_info: Literal[False] = ...,
-) -> list[Anchor]: ...
+@dataclasses.dataclass
+class _PageData:
+    """Per-page PDF data needed for alignment and bbox derivation.
+
+    Single source of truth for "PDF page → cached char data" across
+    ``associate()`` and ``pdf_index.PdfIndex``.  Both call
+    ``_extract_page_data`` to populate; alignment never re-reads the PDF.
+    """
+
+    chars: list[_Char]
+    """Per-character extraction output for this page."""
+    char_index: _CharIndex
+    """Flat string + per-position char index for this page."""
+    width: float
+    """Page width in PDF points."""
+    height: float
+    """Page height in PDF points."""
+    origin_x: float
+    """Mediabox left origin in PDF points."""
+    origin_y: float
+    """Mediabox bottom origin in PDF points."""
 
 
-@overload
-def associate(
-    pdf_path: pathlib.Path,
-    markdown: str,
-    min_score: int = ...,
-    *,
-    return_pass_info: Literal[True],
-) -> tuple[list[Anchor], list[int]]: ...
+def _extract_page_data(pdf: pdfium.PdfDocument) -> list[_PageData]:
+    """Extract per-page chars, dimensions, and origin from an open PDF document.
+
+    Eager: every page is read up front.  Both ``associate()`` and
+    ``pdf_index.PdfIndex`` need most or all pages anyway, and a single read
+    pass keeps both consumers off divergent PDFium code paths.
+    """
+    page_data: list[_PageData] = []
+    for page_idx in range(len(pdf)):
+        page = pdf[page_idx]
+        chars = _extract_page_chars(page)
+        ci = _build_char_index(chars)
+        mb = page.get_mediabox()
+        page_data.append(
+            _PageData(
+                chars=chars,
+                char_index=ci,
+                width=page.get_width(),
+                height=page.get_height(),
+                origin_x=mb[0],
+                origin_y=mb[1],
+            ),
+        )
+    return page_data
 
 
-def associate(  # noqa: C901, PLR0912, PLR0915
-    pdf_path: pathlib.Path,
+@dataclasses.dataclass(frozen=True)
+class _AlignmentOutcome:
+    """Per-segment alignment result, parallel to ``parse_markdown_segments(md)``.
+
+    ``anchors`` and ``passes`` carry the public ``associate()`` outputs;
+    ``matched_chars_per_segment`` is the extra detail ``pdf_index.PdfIndex``
+    needs to rebuild its flat string in markdown order using only the chars
+    each segment actually claimed.
+    """
+
+    anchors: list[Anchor]
+    """Matched anchors in markdown order (unmatched segments omitted)."""
+    passes: list[int]
+    """Parallel to ``anchors``: 1 = phase 1, 2 = phase 2."""
+    matched_chars_per_segment: list[tuple[int, list[int]] | None]
+    """Per *parsed* segment in markdown order (length =
+    ``len(parse_markdown_segments(markdown))``): ``(page_idx, sorted_char_indices)``
+    when matched, or ``None``.  ``char_indices`` are sorted indices into
+    ``page_data[page_idx].chars``.
+    """
+
+
+def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
+    page_data: list[_PageData],
     markdown: str,
     min_score: int = _MIN_SCORE,
-    return_pass_info: bool = False,
-) -> list[Anchor] | tuple[list[Anchor], list[int]]:
-    """Align each Markdown segment to the PDF and return one Anchor per segment.
+) -> _AlignmentOutcome:
+    """Two-phase alignment of markdown segments against pre-extracted page data.
 
-    Uses a two-phase approach:
-
-    **Phase 1 (conservative):** Normalise both segment and page text to
-    alphanumeric characters only (no spaces), then run ungapped local alignment
-    (HSPs) with k=2.  A segment is assigned to a page only when:
-
-    * The best HSP covers ≥ ``_PHASE1_MIN_COVERAGE`` of the segment.
-    * The best HSP is ≥ ``_PHASE1_UNIQUENESS_RATIO`` × the second-best, both
-      *within* the winning page and *across* all candidate pages.
-
-    Accepted segments are then precisely aligned (with spaces, gapped SW) to
-    the *residual* of their assigned page to obtain bounding boxes.
-
-    **Phase 2 (page-constrained):** Segments not matched in phase 1 are
-    re-attempted using the document-order constraint: since the Markdown is in
-    reading order, any unmatched segment must lie between the pages of its
-    nearest matched neighbours.  The search range ``[prev_page, next_page]``
-    is derived from the phase-1 results; no uniqueness requirement applies.
-
-    Args:
-        pdf_path: Path to the PDF file.
-        markdown: The Markdown to align.  May contain ``<!--page-->`` page-
-            break markers (used as phase-1 search-window hints); if omitted,
-            phase 1 searches every page.
-        min_score: Score cap for the adaptive alignment threshold.
-        return_pass_info: If True, return ``(anchors, passes)`` where *passes*
-            is a parallel list of ints: 1 = phase 1, 2 = phase 2.
-
-    Returns:
-        One ``Anchor`` per successfully matched segment, in Markdown order.
-        Segments that cannot be matched are omitted.
-        When *return_pass_info* is True, returns ``(anchors, passes)``.
+    Behaviour and tuning are identical to the previous in-line implementation
+    inside ``associate()``; the body has only been parameterised on
+    ``page_data`` so a second consumer (``pdf_index.PdfIndex``) can reuse the
+    alignment without re-reading the PDF.
     """
     segments = parse_markdown_segments(markdown)
     if not segments:
-        return ([], []) if return_pass_info else []
+        return _AlignmentOutcome(anchors=[], passes=[], matched_chars_per_segment=[])
 
-    doc = pdfium.PdfDocument(pdf_path)
-    num_pages = len(doc)
-
-    page_chars: dict[int, list[_Char]] = {}
-    page_char_index: dict[int, _CharIndex] = {}
-
-    def _get_page_data(page_idx: int) -> tuple[list[_Char], _CharIndex]:
-        if page_idx not in page_chars:
-            page = doc[page_idx]
-            chars = _extract_page_chars(page)
-            ci = _build_char_index(chars)
-            page_chars[page_idx] = chars
-            page_char_index[page_idx] = ci
-        return page_chars[page_idx], page_char_index[page_idx]
+    num_pages = len(page_data)
 
     # results[i]: Anchor for segments[i], or None if unmatched.
     results: list[Anchor | None] = [None] * len(segments)
@@ -885,16 +895,18 @@ def associate(  # noqa: C901, PLR0912, PLR0915
     confidence: list[int] = [0] * len(segments)
     # Consumed flat-string ranges per page (raw; merged on demand).
     page_matched_ranges: dict[int, list[tuple[int, int]]] = {}
+    # Per-segment matched (page_idx, sorted_char_indices) for downstream
+    # consumers (PdfIndex cleanup); None for unmatched segments.
+    matched_chars_per_segment: list[tuple[int, list[int]] | None] = [None] * len(segments)
 
     def _chars_from_flat_ranges(
-        chars: list[_Char],
         flat_to_char: list[int],
         flat_ranges: list[tuple[int, int]],
-    ) -> list[_Char]:
+    ) -> list[int]:
         indices: set[int] = set()
         for fs, fe in flat_ranges:
             indices.update(flat_to_char[j] for j in range(fs, min(fe, len(flat_to_char))))
-        return [chars[i] for i in sorted(indices)]
+        return sorted(indices)
 
     def _try_page_residual(  # noqa: C901
         page_idx: int,
@@ -907,12 +919,12 @@ def associate(  # noqa: C901, PLR0912, PLR0915
         """
         if page_idx < 0 or page_idx >= num_pages:
             return None
-        chars, ci = _get_page_data(page_idx)
-        if not chars:
+        pd = page_data[page_idx]
+        if not pd.chars:
             return None
 
         covered = _merge_ranges(page_matched_ranges.get(page_idx, []))
-        residual, pos_map = _residual_string(ci.flat_str, covered)
+        residual, pos_map = _residual_string(pd.char_index.flat_str, covered)
         if not residual:
             return None
 
@@ -964,24 +976,24 @@ def associate(  # noqa: C901, PLR0912, PLR0915
         matched_page: int,
         conf: int,
     ) -> None:
-        chars, ci = _get_page_data(matched_page)
-        matched_chars = _chars_from_flat_ranges(chars, ci.flat_to_char, flat_ranges)
-        if not matched_chars:
+        pd = page_data[matched_page]
+        char_indices = _chars_from_flat_ranges(pd.char_index.flat_to_char, flat_ranges)
+        if not char_indices:
             return
-        page_obj = doc[matched_page]
-        mediabox = page_obj.get_mediabox()
+        matched_chars = [pd.chars[j] for j in char_indices]
         boxes = tuple(
             _line_bboxes(
                 matched_chars,
-                page_obj.get_width(),
-                page_obj.get_height(),
-                mediabox[0],
-                mediabox[1],
+                pd.width,
+                pd.height,
+                pd.origin_x,
+                pd.origin_y,
             ),
         )
         if boxes:
             results[i] = Anchor(text=seg.text, page=matched_page, boxes=boxes)
             confidence[i] = conf
+            matched_chars_per_segment[i] = (matched_page, char_indices)
             page_matched_ranges.setdefault(matched_page, []).extend(flat_ranges)
 
     # ── Phase 1: conservative HSP-based page assignment ──────────────────────
@@ -998,7 +1010,7 @@ def associate(  # noqa: C901, PLR0912, PLR0915
 
     def _get_alphanum_page(page_idx: int) -> bytes:
         if page_idx not in page_alphanum_bytes:
-            _, ci = _get_page_data(page_idx)
+            ci = page_data[page_idx].char_index
             norm_bytes, _ = _normalize_loose(ci.flat_str)  # PDF: don't strip HTML
             page_alphanum_bytes[page_idx] = norm_bytes
         return page_alphanum_bytes[page_idx]
@@ -1119,8 +1131,78 @@ def associate(  # noqa: C901, PLR0912, PLR0915
             _, flat_ranges, matched_page = best
             _accept_match(seg, i, flat_ranges, matched_page, 2)
 
-    anchors = [a for a, c in zip(results, confidence, strict=True) if a is not None]
+    anchors = [a for a in results if a is not None]
+    passes = [c for a, c in zip(results, confidence, strict=True) if a is not None]
+    return _AlignmentOutcome(
+        anchors=anchors,
+        passes=passes,
+        matched_chars_per_segment=matched_chars_per_segment,
+    )
+
+
+@overload
+def associate(
+    pdf_path: pathlib.Path,
+    markdown: str,
+    min_score: int = ...,
+    return_pass_info: Literal[False] = ...,
+) -> list[Anchor]: ...
+
+
+@overload
+def associate(
+    pdf_path: pathlib.Path,
+    markdown: str,
+    min_score: int = ...,
+    *,
+    return_pass_info: Literal[True],
+) -> tuple[list[Anchor], list[int]]: ...
+
+
+def associate(
+    pdf_path: pathlib.Path,
+    markdown: str,
+    min_score: int = _MIN_SCORE,
+    return_pass_info: bool = False,
+) -> list[Anchor] | tuple[list[Anchor], list[int]]:
+    """Align each Markdown segment to the PDF and return one Anchor per segment.
+
+    Uses a two-phase approach:
+
+    **Phase 1 (conservative):** Normalise both segment and page text to
+    alphanumeric characters only (no spaces), then run ungapped local alignment
+    (HSPs) with k=2.  A segment is assigned to a page only when:
+
+    * The best HSP covers ≥ ``_PHASE1_MIN_COVERAGE`` of the segment.
+    * The best HSP is ≥ ``_PHASE1_UNIQUENESS_RATIO`` × the second-best, both
+      *within* the winning page and *across* all candidate pages.
+
+    Accepted segments are then precisely aligned (with spaces, gapped SW) to
+    the *residual* of their assigned page to obtain bounding boxes.
+
+    **Phase 2 (page-constrained):** Segments not matched in phase 1 are
+    re-attempted using the document-order constraint: since the Markdown is in
+    reading order, any unmatched segment must lie between the pages of its
+    nearest matched neighbours.  The search range ``[prev_page, next_page]``
+    is derived from the phase-1 results; no uniqueness requirement applies.
+
+    Args:
+        pdf_path: Path to the PDF file.
+        markdown: The Markdown to align.  May contain ``<!--page-->`` page-
+            break markers (used as phase-1 search-window hints); if omitted,
+            phase 1 searches every page.
+        min_score: Score cap for the adaptive alignment threshold.
+        return_pass_info: If True, return ``(anchors, passes)`` where *passes*
+            is a parallel list of ints: 1 = phase 1, 2 = phase 2.
+
+    Returns:
+        One ``Anchor`` per successfully matched segment, in Markdown order.
+        Segments that cannot be matched are omitted.
+        When *return_pass_info* is True, returns ``(anchors, passes)``.
+    """
+    doc = pdfium.PdfDocument(pdf_path)
+    page_data = _extract_page_data(doc)
+    outcome = _align_markdown_to_pages(page_data, markdown, min_score)
     if return_pass_info:
-        passes = [c for a, c in zip(results, confidence, strict=True) if a is not None]
-        return anchors, passes
-    return anchors
+        return outcome.anchors, outcome.passes
+    return outcome.anchors
