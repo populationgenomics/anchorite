@@ -16,18 +16,21 @@ from . import (
     md_association,
     md_segments,
     orchestrator,
+    pdf_index,
     providers,
     range_ops,
 )
 from .anchors import Anchor, BBox
 from .md_segments import MarkdownSegment, parse_markdown_segments
 from .orchestrator import AlignmentResult, process_document
+from .pdf_index import PdfIndex
 
 __all__ = [
     "AlignmentResult",
     "Anchor",
     "BBox",
     "MarkdownSegment",
+    "PdfIndex",
     "SpanAnchor",
     "align",
     "annotate",
@@ -37,6 +40,7 @@ __all__ = [
     "md_segments",
     "orchestrator",
     "parse_markdown_segments",
+    "pdf_index",
     "process_document",
     "providers",
     "quote_locates",

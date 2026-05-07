@@ -692,9 +692,7 @@ def _line_bboxes(
             band_y0 = ch.y0
             band_y1 = ch.y1
 
-    return [
-        _bbox_from_chars(cluster, page_width, page_height, origin_x, origin_y) for cluster in clusters
-    ]
+    return [_bbox_from_chars(cluster, page_width, page_height, origin_x, origin_y) for cluster in clusters]
 
 
 def _merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
