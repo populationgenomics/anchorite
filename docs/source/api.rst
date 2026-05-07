@@ -30,3 +30,8 @@ API Reference
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. automodule:: anchorite.pdf_index
+   :members:
+   :undoc-members:
+   :show-inheritance:

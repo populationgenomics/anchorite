@@ -118,6 +118,23 @@ if anchorite.quote_locates(markdown, quote):
     ...  # the LLM's quote actually appears in the source
 ```
 
+**`PdfIndex`** — when you have raw PDF bytes and a list of quotes and want to skip the Markdown / Anchor pipeline entirely (e.g. the upstream LLM emitted citations against a PDF you already have on disk):
+
+```python
+index = anchorite.PdfIndex(pdf_bytes)
+located = index.resolve(["Observations of a Nebula", "first 19 nebulae"])
+# {"Observations of a Nebula": [(0, BBox(52, 120, 68, 880))],
+#  "first 19 nebulae": [(2, BBox(...)), ...]}
+```
+
+Construction extracts per-character bounding boxes from every page (the expensive step); `.resolve` is then cheap and batches all quotes through a single `seq_smith.local_global_align_many` pass. Pages are 0-indexed.
+
+You can optionally pass a Markdown transcription at construction time. The Markdown is aligned against the extracted PDF chars and used to clean up the cached flat string — chars the LLM didn't transcribe (running heads, page numbers, footnote markers) get dropped. The Markdown is then discarded; the index stays Markdown-free, but the cache is higher quality:
+
+```python
+index = anchorite.PdfIndex(pdf_bytes, markdown=llm_emitted_markdown)
+```
+
 ### 4. Strip annotations for downstream validation
 
 `strip` is the inverse of `annotate`. It removes the `<span>` tags and returns a plain-text string alongside a validation map you can use to check whether a generated quote is grounded in the source document.
@@ -234,6 +251,19 @@ The bbox-records variant of `resolve`. Locates `quote` in `markdown` via the sam
 ### `anchorite.quote_locates(markdown, quote, *, min_score, fail_coverage)`
 
 Boolean variant of `resolve_quote` for grounding checks. Returns `True` iff the quote aligns with sufficient confidence; no span list required.
+
+### `anchorite.PdfIndex(pdf_data, *, markdown=None)`
+
+A pre-extracted PDF index for batched quote-to-bbox resolution. Construction reads per-character bounding boxes from every page once; `.resolve(quotes, *, min_score, num_threads)` then aligns every quote in a single `seq_smith.local_global_align_many` call and returns `dict[str, list[tuple[int, BBox]]]`. Pages are 0-indexed. Empty / whitespace / unmatchable quotes map to `[]`.
+
+When `markdown` is supplied at construction, it's used to clean up the cached flat string (matched-only chars in Markdown order, untranscribed runs dropped) and then discarded — the index stays Markdown-free.
+
+| Parameter | Default | Description |
+|---|---|---|
+| `min_score` | `15` | Reject alignments scoring below this. |
+| `num_threads` | `None` | Thread count for batched alignment; `None` defers to seq_smith's default. |
+
+Construction is not thread-safe (PDFium isn't); serialise concurrent `PdfIndex(...)` calls in the caller. `.resolve` after construction is thread-safe.
 
 ### `anchorite.md_association.associate(pdf_path, markdown, *, min_score, return_pass_info)`
 
