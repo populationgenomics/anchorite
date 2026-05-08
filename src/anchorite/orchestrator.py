@@ -5,6 +5,7 @@ import dataclasses
 from collections.abc import Iterable
 
 from . import anchors, bbox_alignment, document, providers
+from .annotation import annotate
 from .markdown import renumber_markers
 
 
@@ -21,10 +22,7 @@ class AlignmentResult:
 
     def annotate(self) -> str:
         """Annotates the markdown content with anchor spans."""
-        # Import here to avoid circular import
-        from . import annotate as annotate_fn
-
-        return annotate_fn(self.markdown_content, self.anchor_spans)
+        return annotate(self.markdown_content, self.anchor_spans)
 
 
 async def process_document(  # noqa: C901, PLR0912
