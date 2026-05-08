@@ -23,6 +23,7 @@ import pypdfium2 as pdfium
 import seq_smith
 
 from . import md_association
+from .normalize import SCORE_MATRIX_STRICT, normalize_strict
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -163,7 +164,7 @@ class PdfIndex:
 
         # Normalise once for resolve().  ``norm_to_flat`` has a sentinel at
         # position ``len(flat_norm)`` for exclusive-end lookups.
-        flat_norm, norm_to_flat = md_association._normalize_strict(flat_str)  # noqa: SLF001
+        flat_norm, norm_to_flat = normalize_strict(flat_str)
         self._flat_norm = flat_norm
         self._norm_to_flat = norm_to_flat
 
@@ -205,7 +206,7 @@ class PdfIndex:
             clean = quote.strip()
             if not clean:
                 continue
-            nq, _ = md_association._normalize_strict(clean)  # noqa: SLF001
+            nq, _ = normalize_strict(clean)
             if nq:
                 norm_quotes.append(nq)
                 quote_keys.append(quote)
@@ -216,7 +217,7 @@ class PdfIndex:
         alignments = seq_smith.local_global_align_many(
             self._flat_norm,
             norm_quotes,
-            md_association._SCORE_MATRIX_STRICT,  # noqa: SLF001
+            SCORE_MATRIX_STRICT,
             _GAP_OPEN,
             _GAP_EXTEND,
             num_threads=num_threads,

@@ -21,6 +21,11 @@ API Reference
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: anchorite.normalize
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: anchorite.bbox_alignment
    :members:
    :undoc-members:

@@ -15,6 +15,7 @@ from . import (
     markdown,
     md_association,
     md_segments,
+    normalize,
     orchestrator,
     pdf_index,
     providers,
@@ -22,6 +23,7 @@ from . import (
 )
 from .anchors import Anchor, BBox
 from .md_segments import MarkdownSegment, parse_markdown_segments
+from .normalize import normalize_strict
 from .orchestrator import AlignmentResult, process_document
 from .pdf_index import PdfIndex
 
@@ -38,6 +40,7 @@ __all__ = [
     "markdown",
     "md_association",
     "md_segments",
+    "normalize",
     "orchestrator",
     "parse_markdown_segments",
     "pdf_index",
@@ -59,6 +62,11 @@ logger = logging.getLogger(__name__)
 # are set to a large negative value so the aligner never matches through it.
 _MASK_CHAR = "#"
 
+# Alignment alphabet used by the resolvers: the strict normaliser's alphabet
+# (lowercase ASCII + digits + space) plus the mask sentinel ``#``.  Bytes 0..36
+# round-trip identically against ``normalize.ALIGN_ALPHABET_STRICT`` so the
+# resolver's score matrix accepts directly-normalised quotes without
+# re-encoding.
 _ALIGN_ALPHABET = string.ascii_lowercase + string.digits + " " + _MASK_CHAR
 _NON_WORD_CHARS = seq_smith.encode(" ", _ALIGN_ALPHABET)
 _SCORE_MATRIX = seq_smith.make_score_matrix(_ALIGN_ALPHABET, +1, -1)
@@ -74,69 +82,6 @@ _MIN_ALIGNMENT_SCORE = 15
 # Coverage thresholds: warn below 50%, reject below 30%.
 _WARN_COVERAGE = 0.5
 _FAIL_COVERAGE = 0.3
-
-
-@dataclasses.dataclass(frozen=True)
-class _NormalizedSpan:
-    source: str
-    normalized: bytes
-    normalized_to_source: tuple[int, ...]
-
-    def __len__(self) -> int:
-        return len(self.normalized)
-
-    def _trim(self) -> None:
-        normalized = self.normalized.lstrip(_NON_WORD_CHARS)
-        left_trimmed = len(self.normalized) - len(normalized)
-        normalized = normalized.rstrip(_NON_WORD_CHARS)
-        right_trimmed = len(self.normalized) - len(normalized) - left_trimmed
-        if right_trimmed == 0:
-            normalized_to_source = self.normalized_to_source[left_trimmed:]
-        else:
-            normalized_to_source = self.normalized_to_source[left_trimmed:-right_trimmed]
-        object.__setattr__(self, "normalized", normalized)
-        object.__setattr__(self, "normalized_to_source", normalized_to_source)
-
-    def __post_init__(self) -> None:
-        self._trim()
-
-
-@dataclasses.dataclass(frozen=True)
-class _AnchorFragment(_NormalizedSpan):
-    anchor: Anchor
-
-
-@dataclasses.dataclass(frozen=True)
-class _DocumentFragment(_NormalizedSpan):
-    page_range: tuple[int, int]
-
-
-def _normalize(source: str, span: tuple[int, int] = (-1, -1)) -> tuple[bytes, tuple[int, ...]]:
-    """Normalise *source[span]* for fuzzy alignment; return (bytes, idx_map).
-
-    Delegates to ``md_association._normalize_strict`` so the bbox-generation
-    side and the quote-resolution side share a single normalisation scheme:
-    NFKD decomposition, HTML-tag stripping (Markdown is the only side this
-    function ever sees), zero-width combining marks, soft-hyphen-aware
-    flat-string construction (in ``_build_char_index``).  Without sharing,
-    a quote produced from the Markdown could fail to align against the
-    same Markdown its bboxes were derived from.
-
-    Bytes are encoded against ``_ALIGN_ALPHABET_STRICT`` (lowercase ASCII
-    + digits + space — 37 chars).  ``_ALIGN_ALPHABET`` here is a superset
-    that appends the mask sentinel ``#``; bytes 0..36 round-trip identically
-    so the resolver's score matrix (with mask penalty applied) accepts them
-    directly.
-    """
-    if span == (-1, -1):
-        s, e = 0, len(source)
-    else:
-        s, e = span
-    text = source if (s == 0 and e == len(source)) else source[s:e]
-    norm_bytes, local_map = md_association._normalize_strict(text, strip_html=True)  # noqa: SLF001
-    if s == 0:
-        return norm_bytes, local_map
-    return norm_bytes, tuple(p + s for p in local_map)
 
 
 def align(
@@ -364,7 +309,7 @@ def _fuzzy_resolve_quote(
     if not clean_quote:
         return []
 
-    norm_quote, _ = _normalize(clean_quote)
+    norm_quote, _ = normalize_strict(clean_quote, strip_html=True)
     if not norm_quote:
         return []
 
@@ -424,7 +369,7 @@ def resolve(
         overlaps the matched region. A single quote may span multiple anchors.
     """
     stripped = strip(annotated_md)
-    norm_text, text_mapping = _normalize(stripped.plain_text)
+    norm_text, text_mapping = normalize_strict(stripped.plain_text, strip_html=True)
 
     return {quote: _fuzzy_resolve_quote(norm_text, text_mapping, stripped.validation_map, quote) for quote in quotes}
 
@@ -446,11 +391,11 @@ def quote_locates(
     if not clean_quote:
         return False
 
-    norm_quote, _ = _normalize(clean_quote)
+    norm_quote, _ = normalize_strict(clean_quote, strip_html=True)
     if not norm_quote:
         return False
 
-    norm_text, _ = _normalize(markdown)
+    norm_text, _ = normalize_strict(markdown, strip_html=True)
 
     current = bytearray(norm_quote)
     matched_len = 0
@@ -543,11 +488,11 @@ def resolve_quote(  # noqa: C901, PLR0912
     if not clean_quote:
         return []
 
-    norm_quote, _ = _normalize(clean_quote)
+    norm_quote, _ = normalize_strict(clean_quote, strip_html=True)
     if not norm_quote:
         return []
 
-    norm_text, text_mapping = _normalize(markdown)
+    norm_text, text_mapping = normalize_strict(markdown, strip_html=True)
 
     # Sort spans by start once.  Multiple spans may share the same start —
     # one ``SpanAnchor`` per visual line of a multi-line anchor produces N
@@ -568,8 +513,7 @@ def resolve_quote(  # noqa: C901, PLR0912
     max_end_prefix: list[int] = []
     running_max = 0
     for sa in sorted_spans:
-        if sa.span[1] > running_max:
-            running_max = sa.span[1]
+        running_max = max(running_max, sa.span[1])
         max_end_prefix.append(running_max)
 
     found_locations: list[tuple[int, BBox]] = []
@@ -605,7 +549,7 @@ def resolve_quote(  # noqa: C901, PLR0912
             if frag.fragment_type == seq_smith.FragmentType.Match:
                 # Trim trailing / leading space bytes from the matched
                 # reference run before mapping to Markdown char positions.
-                # ``_normalize`` collapses any non-alnum run to a single
+                # ``normalize_strict`` collapses any non-alnum run to a single
                 # space byte and records the *first* original char of the
                 # run.  A trailing-space match therefore advances
                 # ``text_end`` past the entire whitespace run — into the
