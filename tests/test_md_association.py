@@ -110,7 +110,7 @@ def test_no_markers_matches_marker_assignments(
     """
     marked_md = md_path.read_text()
     # Strip markers to simulate JATS-derived markdown.
-    bare_md = md_association._PAGE_MARKER_RE.sub("", marked_md)
+    bare_md = marked_md.replace("<!--page-->", "")
 
     marked_anchors = associate(pdf_path, marked_md)
     bare_anchors = associate(pdf_path, bare_md)
