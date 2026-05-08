@@ -149,7 +149,6 @@ def test_segment_page_can_be_none() -> None:
     assert seg.page is None
 
 
-
 # ---------------------------------------------------------------------------
 # _build_char_index: line-break and soft-hyphen handling
 # ---------------------------------------------------------------------------
@@ -227,7 +226,11 @@ class TestBboxFromCharsOrigin:
         chars = _line("hello", baseline=100.0, x0=50.0)
         bbox = md_association._bbox_from_chars(chars, page_width=600.0, page_height=800.0)
         bbox_zero = md_association._bbox_from_chars(
-            chars, page_width=600.0, page_height=800.0, origin_x=0.0, origin_y=0.0,
+            chars,
+            page_width=600.0,
+            page_height=800.0,
+            origin_x=0.0,
+            origin_y=0.0,
         )
         assert bbox == bbox_zero
 
@@ -238,7 +241,11 @@ class TestBboxFromCharsOrigin:
         chars = _line("hello", baseline=100.0, x0=50.0)
         unshifted = md_association._bbox_from_chars(chars, page_width=600.0, page_height=800.0)
         shifted = md_association._bbox_from_chars(
-            chars, page_width=600.0, page_height=800.0, origin_x=50.0, origin_y=100.0,
+            chars,
+            page_width=600.0,
+            page_height=800.0,
+            origin_x=50.0,
+            origin_y=100.0,
         )
         # The shifted bbox should equal the unshifted bbox computed against
         # chars whose absolute coords were already pre-subtracted.
@@ -252,7 +259,11 @@ class TestBboxFromCharsOrigin:
         # for each line cluster.
         chars = _line("a", baseline=100.0, x0=50.0) + _line("b", baseline=80.0, x0=50.0)
         boxes = md_association._line_bboxes(
-            chars, page_width=600.0, page_height=800.0, origin_x=50.0, origin_y=70.0,
+            chars,
+            page_width=600.0,
+            page_height=800.0,
+            origin_x=50.0,
+            origin_y=70.0,
         )
         assert len(boxes) == 2
         for box in boxes:

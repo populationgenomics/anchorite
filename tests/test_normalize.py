@@ -35,8 +35,7 @@ class TestHtmlTagsInNormalisation:
         text = "Author<sup>1</sup>"
         plain = "Author1"
         assert (
-            normalize.normalize_loose(text, strip_html=True)[0]
-            == normalize.normalize_loose(plain, strip_html=True)[0]
+            normalize.normalize_loose(text, strip_html=True)[0] == normalize.normalize_loose(plain, strip_html=True)[0]
         )
 
     def test_default_does_not_strip(self) -> None:
@@ -94,8 +93,7 @@ class TestMarkdownLinksInNormalisation:
         text = "see [phosphosite](https://www.phosphosite.org/homeAction.action) for details"
         plain = "see phosphosite for details"
         assert (
-            normalize.normalize_loose(text, strip_html=True)[0]
-            == normalize.normalize_loose(plain, strip_html=True)[0]
+            normalize.normalize_loose(text, strip_html=True)[0] == normalize.normalize_loose(plain, strip_html=True)[0]
         )
 
     def test_autolink_with_duplicate_text_collapses(self) -> None:
@@ -104,8 +102,7 @@ class TestMarkdownLinksInNormalisation:
         text = "[https://x.org](https://x.org)"
         plain = "https://x.org"
         assert (
-            normalize.normalize_loose(text, strip_html=True)[0]
-            == normalize.normalize_loose(plain, strip_html=True)[0]
+            normalize.normalize_loose(text, strip_html=True)[0] == normalize.normalize_loose(plain, strip_html=True)[0]
         )
 
     def test_citation_reference_normalises_to_marker(self) -> None:
@@ -114,8 +111,7 @@ class TestMarkdownLinksInNormalisation:
         text = "...nucleus ([6](#R6))."
         plain = "...nucleus (6)."
         assert (
-            normalize.normalize_loose(text, strip_html=True)[0]
-            == normalize.normalize_loose(plain, strip_html=True)[0]
+            normalize.normalize_loose(text, strip_html=True)[0] == normalize.normalize_loose(plain, strip_html=True)[0]
         )
 
     def test_html_inside_link_text_is_also_stripped(self) -> None:
@@ -124,8 +120,7 @@ class TestMarkdownLinksInNormalisation:
         text = "see [<sup>1</sup>](#R1) above"
         plain = "see 1 above"
         assert (
-            normalize.normalize_loose(text, strip_html=True)[0]
-            == normalize.normalize_loose(plain, strip_html=True)[0]
+            normalize.normalize_loose(text, strip_html=True)[0] == normalize.normalize_loose(plain, strip_html=True)[0]
         )
 
     def test_default_does_not_strip_link(self) -> None:
@@ -165,9 +160,7 @@ class TestNfkdNormalisation:
 
     def test_superscript_digits_become_plain(self) -> None:
         # ⁶¹RNRKRKAEPY⁷⁰ used to lose the superscripts entirely.
-        assert (
-            normalize.normalize_loose("⁶¹RNRKRKAEPY⁷⁰")[0] == normalize.normalize_loose("61RNRKRKAEPY70")[0]
-        )
+        assert normalize.normalize_loose("⁶¹RNRKRKAEPY⁷⁰")[0] == normalize.normalize_loose("61RNRKRKAEPY70")[0]
         assert normalize.normalize_loose("H²O")[0] == normalize.normalize_loose("H2O")[0]
 
     def test_math_alphanumeric_symbols(self) -> None:
