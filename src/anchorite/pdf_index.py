@@ -1,17 +1,17 @@
 """PDF-quote alignment: resolve verbatim quotes to bounding boxes.
 
-Given raw PDF bytes, ``PdfIndex`` extracts per-character bounding boxes
+Given raw PDF bytes, ``PdfIndex`` extracts per-atom bounding boxes
 from every page and builds a document-wide flat string for batched
 Smith-Waterman alignment.  Quote resolution is then a cheap dictionary
 lookup against the cached state.
 
 Optionally accepts a Markdown transcription of the document at
 construction time: the markdown is aligned against the extracted PDF
-chars (sharing ``md_association``'s alignment surface), and the matched
-chars rebuild the cached flat string in markdown order with chars the
+atoms (sharing ``md_association``'s alignment surface), and the matched
+atoms rebuild the cached flat string in markdown order with atoms the
 LLM didn't transcribe (running heads, page numbers, footnote markers)
 removed.  The markdown is then discarded — the resolver only ever sees
-PDF chars.
+PDF atoms.
 """
 
 from __future__ import annotations
@@ -25,12 +25,12 @@ import seq_smith
 
 from . import md_association
 from .normalize import SCORE_MATRIX_STRICT, normalize_strict
+from .pdf_atoms import Atom, PageData, build_atom_index, extract_page_data, line_bboxes
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from .anchors import BBox
-    from .md_association import _Char
 
 logger = logging.getLogger(__name__)
 
@@ -47,23 +47,23 @@ _MIN_ALIGNMENT_SCORE = 15
 class _PageBBoxData:
     """Slim per-page state retained after flat-string assembly.
 
-    ``_PageData`` carries a per-page ``_CharIndex`` (``flat_str`` plus a
-    ``flat_to_char`` int list) needed to *build* the document-wide flat
+    ``PageData`` carries a per-page ``AtomIndex`` (``flat_str`` plus a
+    ``flat_to_atom`` int list) needed to *build* the document-wide flat
     string.  Once that's done, ``_bboxes_for_alignment`` only needs the
-    raw chars and the page geometry — keep just those for the lifetime
+    raw atoms and the page geometry — keep just those for the lifetime
     of the index.
     """
 
-    chars: list[_Char]
+    atoms: list[Atom]
     width: float
     height: float
     origin_x: float
     origin_y: float
 
     @classmethod
-    def from_page_data(cls, pd: md_association._PageData) -> _PageBBoxData:
+    def from_page_data(cls, pd: PageData) -> _PageBBoxData:
         return cls(
-            chars=pd.chars,
+            atoms=pd.atoms,
             width=pd.width,
             height=pd.height,
             origin_x=pd.origin_x,
@@ -71,96 +71,96 @@ class _PageBBoxData:
         )
 
 
-def _build_index_from_chars(
-    page_data: list[md_association._PageData],
+def _build_index_from_atoms(
+    page_data: list[PageData],
 ) -> tuple[str, list[int], list[int]]:
-    """Build the markdown-free flat string from every extracted PDF char.
+    """Build the markdown-free flat string from every extracted PDF atom.
 
-    Returns ``(flat_str, flat_to_page, flat_to_page_char)``.  Page boundaries
-    are marked by a single space whose ``flat_to_page_char`` entry is ``-1``.
-    Within a page, the per-char flat string from ``_build_char_index`` is
+    Returns ``(flat_str, flat_to_page, flat_to_page_atom)``.  Page boundaries
+    are marked by a single space whose ``flat_to_page_atom`` entry is ``-1``.
+    Within a page, the per-page flat string from ``build_atom_index`` is
     used verbatim — including its space-at-gap and soft-hyphen logic.
     """
     flat_parts: list[str] = []
     flat_to_page: list[int] = []
-    flat_to_page_char: list[int] = []
+    flat_to_page_atom: list[int] = []
     for page_idx, pd in enumerate(page_data):
         if flat_parts:
             flat_parts.append(" ")
             flat_to_page.append(page_idx)
-            flat_to_page_char.append(-1)
-        ci = pd.char_index
-        for i, c in enumerate(ci.flat_str):
+            flat_to_page_atom.append(-1)
+        ai = pd.atom_index
+        for i, c in enumerate(ai.flat_str):
             flat_parts.append(c)
             flat_to_page.append(page_idx)
-            flat_to_page_char.append(ci.flat_to_char[i])
-    return "".join(flat_parts), flat_to_page, flat_to_page_char
+            flat_to_page_atom.append(ai.flat_to_atom[i])
+    return "".join(flat_parts), flat_to_page, flat_to_page_atom
 
 
 def _build_index_from_alignment(
-    page_data: list[md_association._PageData],
+    page_data: list[PageData],
     outcome: md_association._AlignmentOutcome,
 ) -> tuple[str, list[int], list[int]]:
-    """Build the cleaned flat string from chars matched by markdown alignment.
+    """Build the cleaned flat string from atoms matched by markdown alignment.
 
     Walks segments in markdown order; for each matched segment, includes
-    only the chars the alignment actually claimed, runs them back through
-    ``_build_char_index`` for space-at-gap / soft-hyphen handling, and
-    appends the result.  Unmatched segments and unmatched-on-a-page chars
+    only the atoms the alignment actually claimed, runs them back through
+    ``build_atom_index`` for space-at-gap / soft-hyphen handling, and
+    appends the result.  Unmatched segments and unmatched-on-a-page atoms
     are dropped — that's the "denoise" effect: running heads, page numbers,
     footnote markers the LLM didn't transcribe never enter the cache.
 
     Segment separators: a single space between segments, with
-    ``flat_to_page_char = -1``.
+    ``flat_to_page_atom = -1``.
 
-    Returns ``(flat_str, flat_to_page, flat_to_page_char)``.
+    Returns ``(flat_str, flat_to_page, flat_to_page_atom)``.
     """
     flat_parts: list[str] = []
     flat_to_page: list[int] = []
-    flat_to_page_char: list[int] = []
+    flat_to_page_atom: list[int] = []
 
-    for entry in outcome.matched_chars_per_segment:
+    for entry in outcome.matched_atoms_per_segment:
         if entry is None:
             continue
-        page, char_indices = entry
-        if not char_indices:
+        page, atom_indices = entry
+        if not atom_indices:
             continue
 
         if flat_parts:
             flat_parts.append(" ")
             flat_to_page.append(page)
-            flat_to_page_char.append(-1)
+            flat_to_page_atom.append(-1)
 
-        chars_subset = [page_data[page].chars[j] for j in char_indices]
-        sub_ci = md_association._build_char_index(chars_subset)  # noqa: SLF001
-        for i, c in enumerate(sub_ci.flat_str):
+        atoms_subset = [page_data[page].atoms[j] for j in atom_indices]
+        sub_ai = build_atom_index(atoms_subset)
+        for i, c in enumerate(sub_ai.flat_str):
             flat_parts.append(c)
             flat_to_page.append(page)
-            # ``sub_ci.flat_to_char`` indexes into ``chars_subset``; map back
-            # to the absolute char index on ``page_data[page].chars`` via
-            # ``char_indices``.  Inserted-space positions inherit the
-            # preceding char's absolute index (matches ``_build_char_index``
-            # behaviour for in-page chars), so a match fragment that lands
-            # on an inserted space resolves to the char before the gap
+            # ``sub_ai.flat_to_atom`` indexes into ``atoms_subset``; map back
+            # to the absolute atom index on ``page_data[page].atoms`` via
+            # ``atom_indices``.  Inserted-space positions inherit the
+            # preceding atom's absolute index (matches ``build_atom_index``
+            # behaviour for in-page atoms), so a match fragment that lands
+            # on an inserted space resolves to the atom before the gap
             # rather than vanishing.
-            flat_to_page_char.append(char_indices[sub_ci.flat_to_char[i]])
+            flat_to_page_atom.append(atom_indices[sub_ai.flat_to_atom[i]])
 
-    return "".join(flat_parts), flat_to_page, flat_to_page_char
+    return "".join(flat_parts), flat_to_page, flat_to_page_atom
 
 
 class PdfIndex:
-    """Pre-extracted PDF char data for batched quote→bbox resolution.
+    """Pre-extracted PDF atom data for batched quote→bbox resolution.
 
-    Construction extracts per-character bounding boxes from every page and
+    Construction extracts per-atom bounding boxes from every page and
     builds a document-wide flat string.  This is the expensive step.  Once
     built, ``resolve`` is cheap and may be called repeatedly.
 
-    When ``markdown`` is supplied, it is aligned to the extracted PDF chars
+    When ``markdown`` is supplied, it is aligned to the extracted PDF atoms
     via ``md_association`` and used to clean up the cached flat string —
-    matched-only chars in markdown order, with running heads / page numbers /
+    matched-only atoms in markdown order, with running heads / page numbers /
     footnote markers the LLM didn't transcribe dropped.  The markdown is
     not stored; after construction the index is markdown-free, and
-    ``resolve`` matches LLM-emitted quotes against the cleaned PDF chars.
+    ``resolve`` matches LLM-emitted quotes against the cleaned PDF text.
 
     Pages in the returned ``(page, BBox)`` tuples are **0-indexed**, matching
     ``anchorite.Anchor.page``.
@@ -173,24 +173,24 @@ class PdfIndex:
 
     def __init__(self, pdf_data: bytes, *, markdown: str | None = None) -> None:
         doc = pdfium.PdfDocument(pdf_data)
-        page_data = md_association._extract_page_data(doc)  # noqa: SLF001
+        page_data = extract_page_data(doc)
 
         if markdown is not None:
             outcome = md_association._align_markdown_to_pages(page_data, markdown)  # noqa: SLF001
-            flat_str, flat_to_page, flat_to_page_char = _build_index_from_alignment(page_data, outcome)
+            flat_str, flat_to_page, flat_to_page_atom = _build_index_from_alignment(page_data, outcome)
         else:
-            flat_str, flat_to_page, flat_to_page_char = _build_index_from_chars(page_data)
+            flat_str, flat_to_page, flat_to_page_atom = _build_index_from_atoms(page_data)
 
-        # Drop the per-page ``_CharIndex`` now that the flat string is
-        # assembled: ``resolve`` only needs chars + geometry.  Long-lived
+        # Drop the per-page ``AtomIndex`` now that the flat string is
+        # assembled: ``resolve`` only needs atoms + geometry.  Long-lived
         # indices would otherwise carry a redundant per-page flat_str and
-        # flat_to_char list for no reason.
+        # flat_to_atom list for no reason.
         self._page_data: list[_PageBBoxData] = [_PageBBoxData.from_page_data(pd) for pd in page_data]
         del page_data
 
         self._flat_str = flat_str
         self._flat_to_page = flat_to_page
-        self._flat_to_page_char = flat_to_page_char
+        self._flat_to_page_atom = flat_to_page_atom
 
         # Normalise once for resolve().  ``norm_to_flat`` has a sentinel at
         # position ``len(flat_norm)`` for exclusive-end lookups.
@@ -273,15 +273,15 @@ class PdfIndex:
 
         Returns ``[]`` when ``aln.score < min_score``.  Match fragments are
         walked, each fragment's normalised range is mapped back through
-        ``_norm_to_flat`` to the flat string, then to per-page char indices,
+        ``_norm_to_flat`` to the flat string, then to per-page atom indices,
         which are line-clustered to produce one BBox per visual line per
         page.
         """
         if aln.score < min_score:
             return []
 
-        # Per page, the set of matched char indices (into page_data[p].chars).
-        per_page_chars: dict[int, set[int]] = {}
+        # Per page, the set of matched atom indices (into page_data[p].atoms).
+        per_page_atoms: dict[int, set[int]] = {}
         for frag in aln.fragments:
             if frag.fragment_type != seq_smith.FragmentType.Match:
                 continue
@@ -289,17 +289,17 @@ class PdfIndex:
             flat_end = self._norm_to_flat[frag.sa_start + frag.len]
             for fi in range(flat_start, min(flat_end, len(self._flat_to_page))):
                 page = self._flat_to_page[fi]
-                char_idx = self._flat_to_page_char[fi]
-                if char_idx < 0:
+                atom_idx = self._flat_to_page_atom[fi]
+                if atom_idx < 0:
                     continue  # inter-segment / inter-page separator
-                per_page_chars.setdefault(page, set()).add(char_idx)
+                per_page_atoms.setdefault(page, set()).add(atom_idx)
 
         results: list[tuple[int, BBox]] = []
-        for page in sorted(per_page_chars):
+        for page in sorted(per_page_atoms):
             pd = self._page_data[page]
-            chars = [pd.chars[i] for i in sorted(per_page_chars[page])]
-            boxes = md_association._line_bboxes(  # noqa: SLF001
-                chars,
+            atoms = [pd.atoms[i] for i in sorted(per_page_atoms[page])]
+            boxes = line_bboxes(
+                atoms,
                 pd.width,
                 pd.height,
                 pd.origin_x,

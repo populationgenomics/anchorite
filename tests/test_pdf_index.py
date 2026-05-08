@@ -47,9 +47,9 @@ def test_construction_no_markdown_populates_cache() -> None:
 
     assert index._flat_str
     assert len(index._flat_to_page) == len(index._flat_str)
-    assert len(index._flat_to_page_char) == len(index._flat_str)
-    # Single page → no inter-page separators with char_idx == -1.
-    assert all(c >= 0 for c in index._flat_to_page_char)
+    assert len(index._flat_to_page_atom) == len(index._flat_str)
+    # Single page → no inter-page separators with atom_idx == -1.
+    assert all(c >= 0 for c in index._flat_to_page_atom)
     # Norm-to-flat sentinel.
     assert index._norm_to_flat[-1] == len(index._flat_str)
     assert len(index._norm_to_flat) == len(index._flat_norm) + 1
@@ -59,8 +59,8 @@ def test_construction_inserts_separator_between_pages() -> None:
     pdf = _make_pdf([_PAGE0, _PAGE1])
     index = PdfIndex(pdf)
 
-    # Exactly one inter-page separator (-1 char-idx) between two pages.
-    seps = [i for i, ci in enumerate(index._flat_to_page_char) if ci < 0]
+    # Exactly one inter-page separator (-1 atom-idx) between two pages.
+    seps = [i for i, ci in enumerate(index._flat_to_page_atom) if ci < 0]
     assert len(seps) == 1
 
 
@@ -208,7 +208,7 @@ def test_construction_with_markdown_resolves_known_quote() -> None:
     assert {p for p, _ in boxes} == {0}
 
 
-def test_construction_with_markdown_drops_unmatched_chars() -> None:
+def test_construction_with_markdown_drops_unmatched_atoms() -> None:
     # Page 0 carries text the markdown describes; page 1's text is *not*
     # in the markdown, so the cleanup path drops it.  A quote drawn from
     # page 1 should then fail to resolve.
