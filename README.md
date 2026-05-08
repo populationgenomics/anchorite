@@ -271,6 +271,18 @@ Aligns Markdown segments (sentences, headings, list items, table cells) to per-c
 
 `<!--page-->` markers in the Markdown are an optional search-window hint; without them, phase 1 searches every page.
 
+### `anchorite.normalize`
+
+The shared text-normalisation module that every alignment site in the package routes through — bbox generation (`md_association`, `bbox_alignment`) and quote resolution (`resolve`, `resolve_quote`, `quote_locates`, `PdfIndex.resolve`) all call into it, so a quote produced from a piece of Markdown is guaranteed to align against the same Markdown its bboxes were derived from. See [Normalisation](#normalisation) below for the algorithm.
+
+| Symbol | Description |
+|---|---|
+| `normalize_strict(text, *, strip_html=False)` | Lowercase ASCII + digits, non-alphanumeric runs collapsed to a single space. Returns `(normalized_bytes, idx_map)` where `idx_map[i]` is the source-text offset of the char that contributed `normalized_bytes[i]`, with a sentinel at index `len(normalized_bytes)`. Re-exported as `anchorite.normalize_strict`. |
+| `normalize_loose(text, *, strip_html=False)` | Same as strict but spaces are dropped entirely. The fallback when strict can't recover the segment text (e.g. letter-spaced display headings — `C A S E  R E P O R T` aligns to `CASEREPORT` only when spaces are dropped). |
+| `ALIGN_ALPHABET_STRICT` / `ALIGN_ALPHABET_LOOSE` | Alphabet strings the encoders use; pair with `seq_smith.encode` if you need to encode against the same byte mapping. |
+| `SCORE_MATRIX_STRICT` / `SCORE_MATRIX_LOOSE` | `seq_smith.make_score_matrix` outputs (`+1` match, `-1` mismatch) for the matching alphabet. |
+| `strip_spans(text)` | Returns sorted, merged character spans whose content is zero-width for alignment (HTML tags and the wrapper portions of inline Markdown links). |
+
 ### `anchorite.process_document(chunks, markdown_provider, anchor_provider, *, ...)`
 
 Orchestrates multi-chunk document alignment. Returns `AlignmentResult`.
@@ -287,7 +299,7 @@ Orchestrates multi-chunk document alignment. Returns `AlignmentResult`.
 
 ### Normalisation
 
-Before any alignment, text is normalised to a reduced alphabet through a single shared pipeline used by every entry point in the package — `align`, `associate`, `resolve`, `resolve_quote`, `quote_locates`. Sharing the normaliser is what guarantees that a quote produced from a piece of Markdown will align against the same Markdown its bboxes were derived from.
+Before any alignment, text is normalised to a reduced alphabet through a single shared pipeline used by every entry point in the package — `align`, `associate`, `resolve`, `resolve_quote`, `quote_locates`, `PdfIndex.resolve`. The pipeline lives in [`anchorite.normalize`](#anchoritenormalize) (`normalize_strict` / `normalize_loose`); sharing it is what guarantees that a quote produced from a piece of Markdown will align against the same Markdown its bboxes were derived from.
 
 Each input character runs through:
 
