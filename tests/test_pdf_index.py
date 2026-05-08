@@ -141,6 +141,38 @@ def test_resolve_every_input_quote_is_a_dict_key() -> None:
     assert set(result.keys()) == set(quotes)
 
 
+def test_resolve_deduplicates_identical_inputs() -> None:
+    pdf = _make_pdf([_PAGE0])
+    index = PdfIndex(pdf)
+
+    quote = "the quick brown fox"
+    result = index.resolve([quote, quote, quote])
+
+    # Identical inputs collapse onto a single key with the expected match.
+    assert list(result.keys()) == [quote]
+    assert result[quote]
+
+
+def test_resolve_deduplicates_normalisation_equivalents() -> None:
+    pdf = _make_pdf([_PAGE0])
+    index = PdfIndex(pdf)
+
+    # Whitespace and case variants normalise to the same bytes; each input
+    # string remains a distinct dict key but all share the same bbox list.
+    variants = [
+        "the quick brown fox",
+        "THE QUICK BROWN FOX",
+        "the   quick\tbrown  fox",
+    ]
+    result = index.resolve(variants)
+
+    assert set(result.keys()) == set(variants)
+    first = result[variants[0]]
+    assert first
+    for v in variants[1:]:
+        assert result[v] == first
+
+
 def test_resolve_num_threads_pass_through() -> None:
     pdf = _make_pdf([_PAGE0, _PAGE1])
     index = PdfIndex(pdf)

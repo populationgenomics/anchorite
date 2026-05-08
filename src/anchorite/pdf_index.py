@@ -192,39 +192,45 @@ class PdfIndex:
         Returns:
             ``{quote: [(page_idx, bbox), ...]}`` for every input quote.
             Pages are 0-indexed.  Quotes appear as keys in the same form
-            they were supplied (post-deduplication: identical input strings
-            collapse onto a single key).
+            they were supplied; quotes that normalise to the same bytes
+            (including identical inputs) share a single alignment and
+            receive identical bbox lists.
         """
         results: dict[str, list[tuple[int, BBox]]] = {q: [] for q in quotes}
 
         if not quotes or not self._flat_str:
             return results
 
-        norm_quotes: list[bytes] = []
-        quote_keys: list[str] = []  # parallel to norm_quotes
+        # Dedup by normalised bytes: identical inputs and inputs that differ
+        # only in characters the normaliser folds (case, whitespace, etc.)
+        # share one alignment.  Each unique norm fans back out to every
+        # input key it came from.
+        norm_to_keys: dict[bytes, list[str]] = {}
         for quote in quotes:
             clean = quote.strip()
             if not clean:
                 continue
             nq, _ = normalize_strict(clean)
             if nq:
-                norm_quotes.append(nq)
-                quote_keys.append(quote)
+                norm_to_keys.setdefault(nq, []).append(quote)
 
-        if not norm_quotes:
+        if not norm_to_keys:
             return results
 
+        unique_norms = list(norm_to_keys)
         alignments = seq_smith.local_global_align_many(
             self._flat_norm,
-            norm_quotes,
+            unique_norms,
             SCORE_MATRIX_STRICT,
             _GAP_OPEN,
             _GAP_EXTEND,
             num_threads=num_threads,
         )
 
-        for key, aln in zip(quote_keys, alignments, strict=True):
-            results[key] = self._bboxes_for_alignment(aln, min_score)
+        for norm, aln in zip(unique_norms, alignments, strict=True):
+            boxes = self._bboxes_for_alignment(aln, min_score)
+            for key in norm_to_keys[norm]:
+                results[key] = boxes
 
         return results
 
