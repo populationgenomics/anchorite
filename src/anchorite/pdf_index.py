@@ -16,6 +16,7 @@ PDF chars.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from typing import TYPE_CHECKING
 
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from .anchors import BBox
+    from .md_association import _Char
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +41,34 @@ _GAP_EXTEND = -2
 
 # Minimum alignment score to accept a match (≈15 matched chars).
 _MIN_ALIGNMENT_SCORE = 15
+
+
+@dataclasses.dataclass(frozen=True)
+class _PageBBoxData:
+    """Slim per-page state retained after flat-string assembly.
+
+    ``_PageData`` carries a per-page ``_CharIndex`` (``flat_str`` plus a
+    ``flat_to_char`` int list) needed to *build* the document-wide flat
+    string.  Once that's done, ``_bboxes_for_alignment`` only needs the
+    raw chars and the page geometry — keep just those for the lifetime
+    of the index.
+    """
+
+    chars: list[_Char]
+    width: float
+    height: float
+    origin_x: float
+    origin_y: float
+
+    @classmethod
+    def from_page_data(cls, pd: md_association._PageData) -> _PageBBoxData:
+        return cls(
+            chars=pd.chars,
+            width=pd.width,
+            height=pd.height,
+            origin_x=pd.origin_x,
+            origin_y=pd.origin_y,
+        )
 
 
 def _build_index_from_chars(
@@ -151,12 +181,12 @@ class PdfIndex:
         else:
             flat_str, flat_to_page, flat_to_page_char = _build_index_from_chars(page_data)
 
-        # Slim ``page_data`` for caching: drop char_index after this point —
-        # ``resolve`` only needs ``chars`` (for line_bboxes input) and the
-        # page dimensions / origin.  ``char_index.flat_str`` was the input
-        # to flat-string assembly; once assembled, it's redundant and would
-        # only inflate memory residency for long-lived indices.
-        self._page_data = page_data
+        # Drop the per-page ``_CharIndex`` now that the flat string is
+        # assembled: ``resolve`` only needs chars + geometry.  Long-lived
+        # indices would otherwise carry a redundant per-page flat_str and
+        # flat_to_char list for no reason.
+        self._page_data: list[_PageBBoxData] = [_PageBBoxData.from_page_data(pd) for pd in page_data]
+        del page_data
 
         self._flat_str = flat_str
         self._flat_to_page = flat_to_page
