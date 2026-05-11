@@ -118,6 +118,23 @@ if anchorite.quote_locates(markdown, quote):
     ...  # the LLM's quote actually appears in the source
 ```
 
+**`PdfIndex`** — when you have raw PDF bytes and a list of quotes and want to skip the Markdown / Anchor pipeline entirely (e.g. the upstream LLM emitted citations against a PDF you already have on disk):
+
+```python
+index = anchorite.PdfIndex(pdf_bytes)
+located = index.resolve(["Observations of a Nebula", "first 19 nebulae"])
+# {"Observations of a Nebula": [(0, BBox(52, 120, 68, 880))],
+#  "first 19 nebulae": [(2, BBox(...)), ...]}
+```
+
+Construction extracts per-character bounding boxes from every page (the expensive step); `.resolve` is then cheap and batches all quotes through a single `seq_smith.local_global_align_many` pass. Pages are 0-indexed.
+
+You can optionally pass a Markdown transcription at construction time. The Markdown is aligned against the extracted PDF chars and used to clean up the cached flat string — chars the LLM didn't transcribe (running heads, page numbers, footnote markers) get dropped. The Markdown is then discarded; the index stays Markdown-free, but the cache is higher quality:
+
+```python
+index = anchorite.PdfIndex(pdf_bytes, markdown=llm_emitted_markdown)
+```
+
 ### 4. Strip annotations for downstream validation
 
 `strip` is the inverse of `annotate`. It removes the `<span>` tags and returns a plain-text string alongside a validation map you can use to check whether a generated quote is grounded in the source document.
@@ -235,11 +252,36 @@ The bbox-records variant of `resolve`. Locates `quote` in `markdown` via the sam
 
 Boolean variant of `resolve_quote` for grounding checks. Returns `True` iff the quote aligns with sufficient confidence; no span list required.
 
+### `anchorite.PdfIndex(pdf_data, *, markdown=None)`
+
+A pre-extracted PDF index for batched quote-to-bbox resolution. Construction reads per-character bounding boxes from every page once; `.resolve(quotes, *, min_score, num_threads)` then aligns every quote in a single `seq_smith.local_global_align_many` call and returns `dict[str, list[tuple[int, BBox]]]`. Pages are 0-indexed. Empty / whitespace / unmatchable quotes map to `[]`.
+
+When `markdown` is supplied at construction, it's used to clean up the cached flat string (matched-only chars in Markdown order, untranscribed runs dropped) and then discarded — the index stays Markdown-free.
+
+| Parameter | Default | Description |
+|---|---|---|
+| `min_score` | `15` | Reject alignments scoring below this. |
+| `num_threads` | `None` | Thread count for batched alignment; `None` defers to seq_smith's default. |
+
+Construction is not thread-safe (PDFium isn't); serialise concurrent `PdfIndex(...)` calls in the caller. `.resolve` after construction is thread-safe.
+
 ### `anchorite.md_association.associate(pdf_path, markdown, *, min_score, return_pass_info)`
 
 Aligns Markdown segments (sentences, headings, list items, table cells) to per-character bounding boxes extracted from a PDF via `pypdfium2`. Returns `list[Anchor]` in document order. With `return_pass_info=True` returns `(anchors, passes)`, where `passes[i]` is `1` for a phase-1 (conservative HSP) match or `2` for a phase-2 (page-constrained) match.
 
 `<!--page-->` markers in the Markdown are an optional search-window hint; without them, phase 1 searches every page.
+
+### `anchorite.normalize`
+
+The shared text-normalisation module that every alignment site in the package routes through — bbox generation (`md_association`, `bbox_alignment`) and quote resolution (`resolve`, `resolve_quote`, `quote_locates`, `PdfIndex.resolve`) all call into it, so a quote produced from a piece of Markdown is guaranteed to align against the same Markdown its bboxes were derived from. See [Normalisation](#normalisation) below for the algorithm.
+
+| Symbol | Description |
+|---|---|
+| `normalize_strict(text, *, strip_html=False)` | Lowercase ASCII + digits, non-alphanumeric runs collapsed to a single space. Returns `(normalized_bytes, idx_map)` where `idx_map[i]` is the source-text offset of the char that contributed `normalized_bytes[i]`, with a sentinel at index `len(normalized_bytes)`. Re-exported as `anchorite.normalize_strict`. |
+| `normalize_loose(text, *, strip_html=False)` | Same as strict but spaces are dropped entirely. The fallback when strict can't recover the segment text (e.g. letter-spaced display headings — `C A S E  R E P O R T` aligns to `CASEREPORT` only when spaces are dropped). |
+| `ALIGN_ALPHABET_STRICT` / `ALIGN_ALPHABET_LOOSE` | Alphabet strings the encoders use; pair with `seq_smith.encode` if you need to encode against the same byte mapping. |
+| `SCORE_MATRIX_STRICT` / `SCORE_MATRIX_LOOSE` | `seq_smith.make_score_matrix` outputs (`+1` match, `-1` mismatch) for the matching alphabet. |
+| `strip_spans(text)` | Returns sorted, merged character spans whose content is zero-width for alignment (HTML tags and the wrapper portions of inline Markdown links). |
 
 ### `anchorite.process_document(chunks, markdown_provider, anchor_provider, *, ...)`
 
@@ -257,7 +299,7 @@ Orchestrates multi-chunk document alignment. Returns `AlignmentResult`.
 
 ### Normalisation
 
-Before any alignment, text is normalised to a reduced alphabet through a single shared pipeline used by every entry point in the package — `align`, `associate`, `resolve`, `resolve_quote`, `quote_locates`. Sharing the normaliser is what guarantees that a quote produced from a piece of Markdown will align against the same Markdown its bboxes were derived from.
+Before any alignment, text is normalised to a reduced alphabet through a single shared pipeline used by every entry point in the package — `align`, `associate`, `resolve`, `resolve_quote`, `quote_locates`, `PdfIndex.resolve`. The pipeline lives in [`anchorite.normalize`](#anchoritenormalize) (`normalize_strict` / `normalize_loose`); sharing it is what guarantees that a quote produced from a piece of Markdown will align against the same Markdown its bboxes were derived from.
 
 Each input character runs through:
 

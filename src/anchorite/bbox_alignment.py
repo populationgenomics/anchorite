@@ -4,17 +4,16 @@ import collections
 import dataclasses
 import logging
 import re
-import string
 from collections.abc import Iterator, Sequence
 
 import seq_smith
 
 from . import anchors, range_ops
+from .normalize import ALIGN_ALPHABET_STRICT, SCORE_MATRIX_STRICT, normalize_strict
 
-_ALIGN_ALPHABET = string.ascii_lowercase + string.digits + " "
-_NON_WORD_CHARS = seq_smith.encode(" ", _ALIGN_ALPHABET)
+_NON_WORD_CHARS = seq_smith.encode(" ", ALIGN_ALPHABET_STRICT)
 _GAP_OPEN, _GAP_EXTEND = -2, -2
-_SCORE_MATRIX = seq_smith.make_score_matrix(_ALIGN_ALPHABET, +1, -1)
+_SCORE_MATRIX = SCORE_MATRIX_STRICT
 _UNIQUENESS_THRESHOLD = 0.5
 _MIN_OVERLAP = 0.9
 
@@ -65,34 +64,8 @@ class _DocumentFragment(_NormalizedSpan):
     """Range of pages (start, end) this fragment might span."""
 
 
-def _normalize(source: str, span: tuple[int, int] = (-1, -1)) -> tuple[bytes, tuple[int, ...]]:
-    if span == (-1, -1):
-        span = (0, len(source))
-
-    def _normalize_char(c: str) -> str:
-        if c.lower() in string.ascii_letters + string.digits:
-            return c.lower()
-        return " "
-
-    s, e = span
-    normalized: list[str] = []
-    normalized_to_source: list[int] = []
-
-    for i in range(s, e):
-        n = _normalize_char(source[i])
-        if n == " " and normalized and normalized[-1] == " ":
-            continue
-        normalized.append(n)
-        normalized_to_source.append(i)
-
-    normalized_to_source.append(e)
-
-    span_bytes = seq_smith.encode("".join(normalized), _ALIGN_ALPHABET)
-    return span_bytes, tuple(normalized_to_source)
-
-
 def _make_anchor_fragment(anchor: anchors.Anchor) -> _AnchorFragment:
-    span_bytes, normalized_to_source = _normalize(anchor.text)
+    span_bytes, normalized_to_source = normalize_strict(anchor.text)
     return _AnchorFragment(anchor.text, span_bytes, normalized_to_source, anchor)
 
 
@@ -101,8 +74,15 @@ def _make_document_fragment(
     page_range: tuple[int, int],
     span: tuple[int, int] = (-1, -1),
 ) -> _DocumentFragment:
-    span_bytes, normalized_to_source = _normalize(source, span)
-    return _DocumentFragment(source, span_bytes, normalized_to_source, page_range)
+    if span == (-1, -1):
+        s, e = 0, len(source)
+    else:
+        s, e = span
+    text = source if (s == 0 and e == len(source)) else source[s:e]
+    span_bytes, local_map = normalize_strict(text)
+    if s != 0:
+        local_map = tuple(p + s for p in local_map)
+    return _DocumentFragment(source, span_bytes, local_map, page_range)
 
 
 def _a_end(f: seq_smith.AlignmentFragment) -> int:

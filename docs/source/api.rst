@@ -21,12 +21,22 @@ API Reference
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: anchorite.normalize
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: anchorite.bbox_alignment
    :members:
    :undoc-members:
    :show-inheritance:
 
 .. automodule:: anchorite.md_association
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: anchorite.pdf_index
    :members:
    :undoc-members:
    :show-inheritance:

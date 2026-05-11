@@ -26,7 +26,6 @@ import logging
 import math
 import pathlib
 import re
-import string
 import unicodedata
 from collections.abc import Callable
 from typing import Literal, NamedTuple, overload
@@ -36,6 +35,12 @@ import pypdfium2.raw as pdfium_c
 import seq_smith
 
 from .anchors import Anchor, BBox
+from .normalize import (
+    SCORE_MATRIX_LOOSE,
+    SCORE_MATRIX_STRICT,
+    normalize_loose,
+    normalize_strict,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -213,13 +218,9 @@ def _build_char_index(chars: list[_Char]) -> _CharIndex:
 
 
 # ---------------------------------------------------------------------------
-# Normalisation
+# Alignment configuration
 # ---------------------------------------------------------------------------
 
-_ALIGN_ALPHABET_STRICT = string.ascii_lowercase + string.digits + " "
-_SCORE_MATRIX_STRICT = seq_smith.make_score_matrix(_ALIGN_ALPHABET_STRICT, +1, -1)
-_ALIGN_ALPHABET_LOOSE = string.ascii_lowercase + string.digits
-_SCORE_MATRIX_LOOSE = seq_smith.make_score_matrix(_ALIGN_ALPHABET_LOOSE, +1, -1)
 _GAP_OPEN, _GAP_EXTEND = -2, -2
 _MIN_SCORE = 10
 
@@ -237,148 +238,6 @@ _PHASE1_UNIQUENESS_RATIO = 2.0
 _PHASE1_MIN_COVERAGE = 0.9
 # Phase 1: segments with fewer alphanum chars than this are skipped (too short to be unique).
 _PHASE1_MIN_LEN = 10
-
-
-# HTML tags that survive into Markdown (e.g. ``<sup>`` from JATS-derived
-# articles, ``<a id="...">`` anchors) must not contribute alphanum bytes to
-# the alignment string — otherwise ``<sup>1</sup>`` becomes the letters
-# ``sup1sup`` and the matching PDF text ``1`` aligns nowhere near it.  Both
-# normalisers detect tag spans in advance and skip past them, leaving the
-# index map pointing at the original text offsets.
-_HTML_TAG_RE = re.compile(r"<[^>]+>")
-
-# Inline Markdown links ``[text](url)``.  Renders as just ``text`` in the PDF,
-# but a naïve normalisation contributes both the visible text *and* the URL
-# target — so an autolink ``[https://x.org](https://x.org/path)`` doubles its
-# alphanum footprint.  When the segment is significantly longer than its PDF
-# counterpart the alignment's coverage gates reject the match.  We treat the
-# wrapper (``[`` and ``](url)``) as zero-width, leaving the inner link text
-# to align like ordinary prose.
-#
-# The regex is deliberately conservative: link text and URL must each be
-# single-line and contain no nested ``]`` / ``)``.  Edge cases (URLs with
-# balanced parens, nested brackets) fall through to the existing behaviour.
-_MD_LINK_RE = re.compile(r"\[([^\]\n]+)\]\(([^)\n]*)\)")
-
-
-def _strip_spans(text: str) -> list[tuple[int, int]]:
-    """Return sorted, merged character spans whose content is zero-width for
-    alignment: HTML tags and the wrapper portions of inline Markdown links.
-    """
-    spans: list[tuple[int, int]] = [(m.start(), m.end()) for m in _HTML_TAG_RE.finditer(text)]
-    for m in _MD_LINK_RE.finditer(text):
-        spans.append((m.start(), m.start(1)))  # leading '['
-        spans.append((m.end(1), m.end()))  # trailing '](url)'
-    spans.sort()
-    merged: list[tuple[int, int]] = []
-    for s, e in spans:
-        if merged and merged[-1][1] >= s:
-            merged[-1] = (merged[-1][0], max(merged[-1][1], e))
-        else:
-            merged.append((s, e))
-    return merged
-
-
-_ASCII_ALNUM = frozenset(string.ascii_lowercase + string.digits)
-
-
-def _nfkd_alnum(c: str) -> str:
-    """Return the lowercase-ASCII-alphanum letters NFKD-decomposed from *c*.
-
-    NFKD applies compatibility decompositions, which lets us recover the base
-    letter from accented characters (``ö`` → ``o`` + combining diaeresis),
-    expand ligatures (``ﬁ`` → ``fi``), turn superscript and subscript digits
-    into plain digits (``²`` → ``2``), and map Mathematical Alphanumeric
-    Symbols and other compatibility characters to their ASCII equivalents.
-    Combining marks and other non-ASCII components of the decomposition are
-    discarded.  The empty string is returned when nothing alphanumeric remains.
-    """
-    out = []
-    for d in unicodedata.normalize("NFKD", c):
-        ld = d.lower()
-        if ld in _ASCII_ALNUM:
-            out.append(ld)
-    return "".join(out)
-
-
-def _normalize_strict(text: str, *, strip_html: bool = False) -> tuple[bytes, tuple[int, ...]]:
-    """Lowercase + collapse non-alphanumeric runs to a single space.
-
-    Each input character is NFKD-decomposed before classification (see
-    ``_nfkd_alnum``), so accented letters and ligatures contribute their
-    base letters rather than dropping out as non-ASCII.
-
-    Combining marks (Unicode general category ``M*``) are zero-width: they
-    don't emit alphanum bytes and don't trigger the punctuation-collapses-to-
-    space branch.  This keeps decomposed input (``o`` + ``U+0308``)
-    indistinguishable from precomposed input (``ö``) in the alignment string.
-
-    Args:
-        text: The text to normalise.
-        strip_html: When True, ``<...>``-style tags are treated as zero-width
-            (their tag-name letters don't contribute alignment bytes).  Only
-            safe for Markdown input — pdfium-extracted PDF text contains
-            literal ``<`` / ``>`` characters when those glyphs appear in the
-            document (e.g. ``p < 0.05``), and stripping them silently drops
-            real content.  Defaults to False (PDF-safe).
-    """
-    skip_spans = _strip_spans(text) if strip_html else []
-    normalized: list[str] = []
-    idx_map: list[int] = []
-    span_iter = iter(skip_spans)
-    next_span = next(span_iter, None)
-    i = 0
-    while i < len(text):
-        if next_span is not None and i == next_span[0]:
-            i = next_span[1]
-            next_span = next(span_iter, None)
-            continue
-        c = text[i]
-        emitted = _nfkd_alnum(c)
-        if emitted:
-            for d in emitted:
-                normalized.append(d)
-                idx_map.append(i)
-        elif unicodedata.category(c).startswith("M"):
-            pass  # combining mark — zero-width, neither letter nor separator
-        elif normalized and normalized[-1] != " ":
-            normalized.append(" ")
-            idx_map.append(i)
-        i += 1
-    idx_map.append(len(text))
-    return seq_smith.encode("".join(normalized), _ALIGN_ALPHABET_STRICT), tuple(idx_map)
-
-
-def _normalize_loose(text: str, *, strip_html: bool = False) -> tuple[bytes, tuple[int, ...]]:
-    """Keep only lowercase letters and digits; strip everything else.
-
-    Used as a fallback for segments that fail the strict pass.  Discarding
-    spaces means that letter-spaced display headings like
-    ``C A S E  R E P O R T`` normalise to the same sequence as
-    ``CASE REPORT``, at the cost of losing word-boundary information.
-
-    Each input character is NFKD-decomposed before classification (see
-    ``_nfkd_alnum``).
-
-    See ``_normalize_strict`` for the meaning of ``strip_html``.
-    """
-    skip_spans = _strip_spans(text) if strip_html else []
-    normalized: list[str] = []
-    idx_map: list[int] = []
-    span_iter = iter(skip_spans)
-    next_span = next(span_iter, None)
-    i = 0
-    while i < len(text):
-        if next_span is not None and i == next_span[0]:
-            i = next_span[1]
-            next_span = next(span_iter, None)
-            continue
-        for d in _nfkd_alnum(text[i]):
-            normalized.append(d)
-            idx_map.append(i)
-        i += 1
-    idx_map.append(len(text))
-    return seq_smith.encode("".join(normalized), _ALIGN_ALPHABET_LOOSE), tuple(idx_map)
 
 
 # ---------------------------------------------------------------------------
@@ -692,9 +551,7 @@ def _line_bboxes(
             band_y0 = ch.y0
             band_y1 = ch.y1
 
-    return [
-        _bbox_from_chars(cluster, page_width, page_height, origin_x, origin_y) for cluster in clusters
-    ]
+    return [_bbox_from_chars(cluster, page_width, page_height, origin_x, origin_y) for cluster in clusters]
 
 
 def _merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
@@ -800,6 +657,346 @@ def _align_against(
     return best_score, _aln_to_flat_ranges(current_aln, ref_to_flat)
 
 
+@dataclasses.dataclass
+class _PageData:
+    """Per-page PDF data needed for alignment and bbox derivation.
+
+    Single source of truth for "PDF page → cached char data" across
+    ``associate()`` and ``pdf_index.PdfIndex``.  Both call
+    ``_extract_page_data`` to populate; alignment never re-reads the PDF.
+    """
+
+    chars: list[_Char]
+    """Per-character extraction output for this page."""
+    char_index: _CharIndex
+    """Flat string + per-position char index for this page."""
+    width: float
+    """Page width in PDF points."""
+    height: float
+    """Page height in PDF points."""
+    origin_x: float
+    """Mediabox left origin in PDF points."""
+    origin_y: float
+    """Mediabox bottom origin in PDF points."""
+
+
+def _extract_page_data(pdf: pdfium.PdfDocument) -> list[_PageData]:
+    """Extract per-page chars, dimensions, and origin from an open PDF document.
+
+    Eager: every page is read up front.  Both ``associate()`` and
+    ``pdf_index.PdfIndex`` need most or all pages anyway, and a single read
+    pass keeps both consumers off divergent PDFium code paths.
+    """
+    page_data: list[_PageData] = []
+    for page_idx in range(len(pdf)):
+        page = pdf[page_idx]
+        chars = _extract_page_chars(page)
+        ci = _build_char_index(chars)
+        mb = page.get_mediabox()
+        page_data.append(
+            _PageData(
+                chars=chars,
+                char_index=ci,
+                width=page.get_width(),
+                height=page.get_height(),
+                origin_x=mb[0],
+                origin_y=mb[1],
+            ),
+        )
+    return page_data
+
+
+@dataclasses.dataclass(frozen=True)
+class _AlignmentOutcome:
+    """Per-segment alignment result, parallel to ``parse_markdown_segments(md)``.
+
+    ``anchors`` and ``passes`` carry the public ``associate()`` outputs;
+    ``matched_chars_per_segment`` is the extra detail ``pdf_index.PdfIndex``
+    needs to rebuild its flat string in markdown order using only the chars
+    each segment actually claimed.
+    """
+
+    anchors: list[Anchor]
+    """Matched anchors in markdown order (unmatched segments omitted)."""
+    passes: list[int]
+    """Parallel to ``anchors``: 1 = phase 1, 2 = phase 2."""
+    matched_chars_per_segment: list[tuple[int, list[int]] | None]
+    """Per *parsed* segment in markdown order (length =
+    ``len(parse_markdown_segments(markdown))``): ``(page_idx, sorted_char_indices)``
+    when matched, or ``None``.  ``char_indices`` are sorted indices into
+    ``page_data[page_idx].chars``.
+    """
+
+
+def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
+    page_data: list[_PageData],
+    markdown: str,
+    min_score: int = _MIN_SCORE,
+) -> _AlignmentOutcome:
+    """Two-phase alignment of markdown segments against pre-extracted page data.
+
+    Behaviour and tuning are identical to the previous in-line implementation
+    inside ``associate()``; the body has only been parameterised on
+    ``page_data`` so a second consumer (``pdf_index.PdfIndex``) can reuse the
+    alignment without re-reading the PDF.
+    """
+    segments = parse_markdown_segments(markdown)
+    if not segments:
+        return _AlignmentOutcome(anchors=[], passes=[], matched_chars_per_segment=[])
+
+    num_pages = len(page_data)
+
+    # results[i]: Anchor for segments[i], or None if unmatched.
+    results: list[Anchor | None] = [None] * len(segments)
+    # confidence[i]: 1 = phase 1 (conservative), 2 = phase 2 (page-constrained).
+    confidence: list[int] = [0] * len(segments)
+    # Consumed flat-string ranges per page (raw; merged on demand).
+    page_matched_ranges: dict[int, list[tuple[int, int]]] = {}
+    # Per-segment matched (page_idx, sorted_char_indices) for downstream
+    # consumers (PdfIndex cleanup); None for unmatched segments.
+    matched_chars_per_segment: list[tuple[int, list[int]] | None] = [None] * len(segments)
+
+    def _chars_from_flat_ranges(
+        flat_to_char: list[int],
+        flat_ranges: list[tuple[int, int]],
+    ) -> list[int]:
+        indices: set[int] = set()
+        for fs, fe in flat_ranges:
+            indices.update(flat_to_char[j] for j in range(fs, min(fe, len(flat_to_char))))
+        return sorted(indices)
+
+    def _try_page_residual(  # noqa: C901
+        page_idx: int,
+        seg: MarkdownSegment,
+        threshold: int,
+    ) -> tuple[int, list[tuple[int, int]]] | None:
+        """Align *seg* against the residual of *page_idx*.
+
+        Returns ``(score, flat_ranges)`` on success, else ``None``.
+        """
+        if page_idx < 0 or page_idx >= num_pages:
+            return None
+        pd = page_data[page_idx]
+        if not pd.chars:
+            return None
+
+        covered = _merge_ranges(page_matched_ranges.get(page_idx, []))
+        residual, pos_map = _residual_string(pd.char_index.flat_str, covered)
+        if not residual:
+            return None
+
+        def _align(
+            norm_fn: _NormFn,
+            score_matrix: object,
+        ) -> tuple[int, list[tuple[int, int]]] | None:
+            res_norm, res_to_res = norm_fn(residual)  # PDF
+            seg_norm, _ = norm_fn(seg.text, strip_html=True)  # markdown
+            if not seg_norm:
+                return None
+            hit = _align_against(res_norm, res_to_res, seg_norm, score_matrix, threshold)
+            if hit is None:
+                return None
+            # ``hit[1]`` ranges are in *residual* coordinates; map back through
+            # ``pos_map`` to original flat positions.  ``pos_map`` is
+            # non-contiguous when the residual was stitched from multiple
+            # uncovered slices — a single residual range may correspond to
+            # several disjoint flat ranges, with previously-matched chars
+            # masked between them.  Naively taking
+            # ``(pos_map[rs], pos_map[re])`` would re-include those masked
+            # chars and inflate the matched bbox set across content the
+            # alignment never actually claimed (e.g. into a neighbouring
+            # sentence whose lines fell between two matched chunks).
+            flat_ranges: list[tuple[int, int]] = []
+            for rs, rend in hit[1]:
+                if rs >= rend:
+                    continue
+                run_start = pos_map[rs]
+                prev = run_start
+                for k in range(rs + 1, rend):
+                    p = pos_map[k]
+                    if p != prev + 1:
+                        flat_ranges.append((run_start, prev + 1))
+                        run_start = p
+                    prev = p
+                flat_ranges.append((run_start, prev + 1))
+            return hit[0], flat_ranges
+
+        result = _align(normalize_strict, SCORE_MATRIX_STRICT)
+        if result is None:
+            result = _align(normalize_loose, SCORE_MATRIX_LOOSE)
+        return result
+
+    def _accept_match(
+        seg: MarkdownSegment,
+        i: int,
+        flat_ranges: list,
+        matched_page: int,
+        conf: int,
+    ) -> None:
+        pd = page_data[matched_page]
+        char_indices = _chars_from_flat_ranges(pd.char_index.flat_to_char, flat_ranges)
+        if not char_indices:
+            return
+        matched_chars = [pd.chars[j] for j in char_indices]
+        boxes = tuple(
+            _line_bboxes(
+                matched_chars,
+                pd.width,
+                pd.height,
+                pd.origin_x,
+                pd.origin_y,
+            ),
+        )
+        if boxes:
+            results[i] = Anchor(text=seg.text, page=matched_page, boxes=boxes)
+            confidence[i] = conf
+            matched_chars_per_segment[i] = (matched_page, char_indices)
+            page_matched_ranges.setdefault(matched_page, []).extend(flat_ranges)
+
+    # ── Phase 1: conservative HSP-based page assignment ──────────────────────
+    # Normalise segment and page to alphanumeric only (no spaces).  Collect
+    # the top-2 ungapped HSPs per candidate page, pool them globally, then
+    # accept the best one only when (a) it covers ≥ _PHASE1_MIN_COVERAGE of
+    # the segment and (b) it scores ≥ _PHASE1_UNIQUENESS_RATIO × the second-
+    # best HSP *anywhere* (same page or a different page — the location of
+    # the runner-up is irrelevant; only the score gap matters for whether
+    # the best hit is unambiguous).
+
+    # Lazy cache: alphanum-only bytes per page.
+    page_alphanum_bytes: dict[int, bytes] = {}
+
+    def _get_alphanum_page(page_idx: int) -> bytes:
+        if page_idx not in page_alphanum_bytes:
+            ci = page_data[page_idx].char_index
+            norm_bytes, _ = normalize_loose(ci.flat_str)  # PDF: don't strip HTML
+            page_alphanum_bytes[page_idx] = norm_bytes
+        return page_alphanum_bytes[page_idx]
+
+    # seg_idx → PDF page index assigned by phase 1.
+    phase1_page: dict[int, int] = {}
+
+    for i, seg in enumerate(segments):
+        if seg.page is not None and seg.page >= num_pages:
+            continue
+
+        norm_seg, _ = normalize_loose(seg.text, strip_html=True)
+        if len(norm_seg) < _PHASE1_MIN_LEN:
+            continue  # too short to identify uniquely
+
+        # Without a page hint, search every page; the uniqueness check below
+        # still suppresses ambiguous matches.  With a hint, restrict to a
+        # window around it for cost.
+        if seg.page is None:
+            candidate_pages = list(range(num_pages))
+        else:
+            p_lo = max(0, seg.page - _PHASE1_PAGE_SLACK)
+            p_hi = min(num_pages - 1, seg.page + _PHASE1_PAGE_SLACK)
+            candidate_pages = list(range(p_lo, p_hi + 1))
+        page_norms = [_get_alphanum_page(p) for p in candidate_pages]
+
+        # Top-2 ungapped HSPs of segment vs each candidate page.
+        top2_per_page = seq_smith.top_k_ungapped_local_align_many(
+            norm_seg,
+            page_norms,
+            SCORE_MATRIX_LOOSE,
+            k=2,
+            filter_overlap_a=False,
+            filter_overlap_b=False,
+        )
+
+        # Pool every HSP across every candidate page; pick the global best
+        # and runner-up regardless of which page each lives on.
+        pooled: list[tuple[int, int, int]] = []  # (score, len, page_idx)
+        for page_idx, hsps in zip(candidate_pages, top2_per_page, strict=True):
+            for hsp in hsps:
+                pooled.append((hsp.score, hsp.stats.len, page_idx))
+        if not pooled:
+            continue
+        pooled.sort(reverse=True)
+        best_score, best_len, best_page = pooled[0]
+
+        # Coverage: best HSP must span ≥ _PHASE1_MIN_COVERAGE of the segment.
+        if best_len < len(norm_seg) * _PHASE1_MIN_COVERAGE:
+            continue
+
+        # Uniqueness: best score must beat second-best by the configured
+        # ratio.  Score-only comparison; the runner-up's page doesn't matter.
+        if len(pooled) >= 2 and pooled[1][0] * _PHASE1_UNIQUENESS_RATIO > best_score:  # noqa: PLR2004
+            continue
+
+        phase1_page[i] = best_page
+
+    # ── Phase 1 refinement: full SW alignment on the assigned page ────────────
+    # Process in document order so residuals accumulate correctly across segments
+    # on the same page.
+    for i in sorted(phase1_page.keys()):
+        seg = segments[i]
+        matched_page = phase1_page[i]
+        norm_len = len(normalize_strict(seg.text, strip_html=True)[0]) or len(
+            normalize_loose(seg.text, strip_html=True)[0],
+        )
+        threshold = max(5, min(min_score, norm_len))
+        result = _try_page_residual(matched_page, seg, threshold)
+        if result is not None:
+            _, flat_ranges = result
+            _accept_match(seg, i, flat_ranges, matched_page, 1)
+
+    phase1_count = sum(1 for r in results if r is not None)
+    logger.info(
+        "Phase 1 (conservative HSP): %d/%d segments matched (%d%%)",
+        phase1_count,
+        len(segments),
+        100 * phase1_count // max(len(segments), 1),
+    )
+
+    # ── Phase 2: page-constrained matching ────────────────────────────────────
+    # For each segment not matched in phase 1, the document-order constraint
+    # limits it to pages in [prev_matched_page, next_matched_page].  Take the
+    # highest-scoring hit in that interval; no uniqueness requirement (the
+    # narrow window suppresses false positives).
+    for i, seg in enumerate(segments):
+        if results[i] is not None:
+            continue
+        if seg.page is not None and seg.page >= num_pages:
+            continue
+
+        norm_len = len(normalize_strict(seg.text, strip_html=True)[0]) or len(
+            normalize_loose(seg.text, strip_html=True)[0],
+        )
+        threshold = max(5, min(min_score, norm_len))
+
+        prev_page: int | None = None
+        for j in range(i - 1, -1, -1):
+            if results[j] is not None:
+                prev_page = results[j].page
+                break
+        next_page: int | None = None
+        for j in range(i + 1, len(results)):
+            if results[j] is not None:
+                next_page = results[j].page
+                break
+        p2_lo = prev_page if prev_page is not None else 0
+        p2_hi = next_page if next_page is not None else num_pages - 1
+
+        best: tuple[int, list, int] | None = None
+        for page in range(p2_lo, p2_hi + 1):
+            candidate = _try_page_residual(page, seg, threshold)
+            if candidate is not None and (best is None or candidate[0] > best[0]):
+                best = (candidate[0], candidate[1], page)
+
+        if best is not None:
+            _, flat_ranges, matched_page = best
+            _accept_match(seg, i, flat_ranges, matched_page, 2)
+
+    anchors = [a for a in results if a is not None]
+    passes = [c for a, c in zip(results, confidence, strict=True) if a is not None]
+    return _AlignmentOutcome(
+        anchors=anchors,
+        passes=passes,
+        matched_chars_per_segment=matched_chars_per_segment,
+    )
+
+
 @overload
 def associate(
     pdf_path: pathlib.Path,
@@ -819,7 +1016,7 @@ def associate(
 ) -> tuple[list[Anchor], list[int]]: ...
 
 
-def associate(  # noqa: C901, PLR0912, PLR0915
+def associate(
     pdf_path: pathlib.Path,
     markdown: str,
     min_score: int = _MIN_SCORE,
@@ -860,267 +1057,9 @@ def associate(  # noqa: C901, PLR0912, PLR0915
         Segments that cannot be matched are omitted.
         When *return_pass_info* is True, returns ``(anchors, passes)``.
     """
-    segments = parse_markdown_segments(markdown)
-    if not segments:
-        return ([], []) if return_pass_info else []
-
     doc = pdfium.PdfDocument(pdf_path)
-    num_pages = len(doc)
-
-    page_chars: dict[int, list[_Char]] = {}
-    page_char_index: dict[int, _CharIndex] = {}
-
-    def _get_page_data(page_idx: int) -> tuple[list[_Char], _CharIndex]:
-        if page_idx not in page_chars:
-            page = doc[page_idx]
-            chars = _extract_page_chars(page)
-            ci = _build_char_index(chars)
-            page_chars[page_idx] = chars
-            page_char_index[page_idx] = ci
-        return page_chars[page_idx], page_char_index[page_idx]
-
-    # results[i]: Anchor for segments[i], or None if unmatched.
-    results: list[Anchor | None] = [None] * len(segments)
-    # confidence[i]: 1 = phase 1 (conservative), 2 = phase 2 (page-constrained).
-    confidence: list[int] = [0] * len(segments)
-    # Consumed flat-string ranges per page (raw; merged on demand).
-    page_matched_ranges: dict[int, list[tuple[int, int]]] = {}
-
-    def _chars_from_flat_ranges(
-        chars: list[_Char],
-        flat_to_char: list[int],
-        flat_ranges: list[tuple[int, int]],
-    ) -> list[_Char]:
-        indices: set[int] = set()
-        for fs, fe in flat_ranges:
-            indices.update(flat_to_char[j] for j in range(fs, min(fe, len(flat_to_char))))
-        return [chars[i] for i in sorted(indices)]
-
-    def _try_page_residual(  # noqa: C901
-        page_idx: int,
-        seg: MarkdownSegment,
-        threshold: int,
-    ) -> tuple[int, list[tuple[int, int]]] | None:
-        """Align *seg* against the residual of *page_idx*.
-
-        Returns ``(score, flat_ranges)`` on success, else ``None``.
-        """
-        if page_idx < 0 or page_idx >= num_pages:
-            return None
-        chars, ci = _get_page_data(page_idx)
-        if not chars:
-            return None
-
-        covered = _merge_ranges(page_matched_ranges.get(page_idx, []))
-        residual, pos_map = _residual_string(ci.flat_str, covered)
-        if not residual:
-            return None
-
-        def _align(
-            norm_fn: _NormFn,
-            score_matrix: object,
-        ) -> tuple[int, list[tuple[int, int]]] | None:
-            res_norm, res_to_res = norm_fn(residual)  # PDF
-            seg_norm, _ = norm_fn(seg.text, strip_html=True)  # markdown
-            if not seg_norm:
-                return None
-            hit = _align_against(res_norm, res_to_res, seg_norm, score_matrix, threshold)
-            if hit is None:
-                return None
-            # ``hit[1]`` ranges are in *residual* coordinates; map back through
-            # ``pos_map`` to original flat positions.  ``pos_map`` is
-            # non-contiguous when the residual was stitched from multiple
-            # uncovered slices — a single residual range may correspond to
-            # several disjoint flat ranges, with previously-matched chars
-            # masked between them.  Naively taking
-            # ``(pos_map[rs], pos_map[re])`` would re-include those masked
-            # chars and inflate the matched bbox set across content the
-            # alignment never actually claimed (e.g. into a neighbouring
-            # sentence whose lines fell between two matched chunks).
-            flat_ranges: list[tuple[int, int]] = []
-            for rs, rend in hit[1]:
-                if rs >= rend:
-                    continue
-                run_start = pos_map[rs]
-                prev = run_start
-                for k in range(rs + 1, rend):
-                    p = pos_map[k]
-                    if p != prev + 1:
-                        flat_ranges.append((run_start, prev + 1))
-                        run_start = p
-                    prev = p
-                flat_ranges.append((run_start, prev + 1))
-            return hit[0], flat_ranges
-
-        result = _align(_normalize_strict, _SCORE_MATRIX_STRICT)
-        if result is None:
-            result = _align(_normalize_loose, _SCORE_MATRIX_LOOSE)
-        return result
-
-    def _accept_match(
-        seg: MarkdownSegment,
-        i: int,
-        flat_ranges: list,
-        matched_page: int,
-        conf: int,
-    ) -> None:
-        chars, ci = _get_page_data(matched_page)
-        matched_chars = _chars_from_flat_ranges(chars, ci.flat_to_char, flat_ranges)
-        if not matched_chars:
-            return
-        page_obj = doc[matched_page]
-        mediabox = page_obj.get_mediabox()
-        boxes = tuple(
-            _line_bboxes(
-                matched_chars,
-                page_obj.get_width(),
-                page_obj.get_height(),
-                mediabox[0],
-                mediabox[1],
-            ),
-        )
-        if boxes:
-            results[i] = Anchor(text=seg.text, page=matched_page, boxes=boxes)
-            confidence[i] = conf
-            page_matched_ranges.setdefault(matched_page, []).extend(flat_ranges)
-
-    # ── Phase 1: conservative HSP-based page assignment ──────────────────────
-    # Normalise segment and page to alphanumeric only (no spaces).  Collect
-    # the top-2 ungapped HSPs per candidate page, pool them globally, then
-    # accept the best one only when (a) it covers ≥ _PHASE1_MIN_COVERAGE of
-    # the segment and (b) it scores ≥ _PHASE1_UNIQUENESS_RATIO × the second-
-    # best HSP *anywhere* (same page or a different page — the location of
-    # the runner-up is irrelevant; only the score gap matters for whether
-    # the best hit is unambiguous).
-
-    # Lazy cache: alphanum-only bytes per page.
-    page_alphanum_bytes: dict[int, bytes] = {}
-
-    def _get_alphanum_page(page_idx: int) -> bytes:
-        if page_idx not in page_alphanum_bytes:
-            _, ci = _get_page_data(page_idx)
-            norm_bytes, _ = _normalize_loose(ci.flat_str)  # PDF: don't strip HTML
-            page_alphanum_bytes[page_idx] = norm_bytes
-        return page_alphanum_bytes[page_idx]
-
-    # seg_idx → PDF page index assigned by phase 1.
-    phase1_page: dict[int, int] = {}
-
-    for i, seg in enumerate(segments):
-        if seg.page is not None and seg.page >= num_pages:
-            continue
-
-        norm_seg, _ = _normalize_loose(seg.text, strip_html=True)
-        if len(norm_seg) < _PHASE1_MIN_LEN:
-            continue  # too short to identify uniquely
-
-        # Without a page hint, search every page; the uniqueness check below
-        # still suppresses ambiguous matches.  With a hint, restrict to a
-        # window around it for cost.
-        if seg.page is None:
-            candidate_pages = list(range(num_pages))
-        else:
-            p_lo = max(0, seg.page - _PHASE1_PAGE_SLACK)
-            p_hi = min(num_pages - 1, seg.page + _PHASE1_PAGE_SLACK)
-            candidate_pages = list(range(p_lo, p_hi + 1))
-        page_norms = [_get_alphanum_page(p) for p in candidate_pages]
-
-        # Top-2 ungapped HSPs of segment vs each candidate page.
-        top2_per_page = seq_smith.top_k_ungapped_local_align_many(
-            norm_seg,
-            page_norms,
-            _SCORE_MATRIX_LOOSE,
-            k=2,
-            filter_overlap_a=False,
-            filter_overlap_b=False,
-        )
-
-        # Pool every HSP across every candidate page; pick the global best
-        # and runner-up regardless of which page each lives on.
-        pooled: list[tuple[int, int, int]] = []  # (score, len, page_idx)
-        for page_idx, hsps in zip(candidate_pages, top2_per_page, strict=True):
-            for hsp in hsps:
-                pooled.append((hsp.score, hsp.stats.len, page_idx))
-        if not pooled:
-            continue
-        pooled.sort(reverse=True)
-        best_score, best_len, best_page = pooled[0]
-
-        # Coverage: best HSP must span ≥ _PHASE1_MIN_COVERAGE of the segment.
-        if best_len < len(norm_seg) * _PHASE1_MIN_COVERAGE:
-            continue
-
-        # Uniqueness: best score must beat second-best by the configured
-        # ratio.  Score-only comparison; the runner-up's page doesn't matter.
-        if len(pooled) >= 2 and pooled[1][0] * _PHASE1_UNIQUENESS_RATIO > best_score:  # noqa: PLR2004
-            continue
-
-        phase1_page[i] = best_page
-
-    # ── Phase 1 refinement: full SW alignment on the assigned page ────────────
-    # Process in document order so residuals accumulate correctly across segments
-    # on the same page.
-    for i in sorted(phase1_page.keys()):
-        seg = segments[i]
-        matched_page = phase1_page[i]
-        norm_len = len(_normalize_strict(seg.text, strip_html=True)[0]) or len(
-            _normalize_loose(seg.text, strip_html=True)[0],
-        )
-        threshold = max(5, min(min_score, norm_len))
-        result = _try_page_residual(matched_page, seg, threshold)
-        if result is not None:
-            _, flat_ranges = result
-            _accept_match(seg, i, flat_ranges, matched_page, 1)
-
-    phase1_count = sum(1 for r in results if r is not None)
-    logger.info(
-        "Phase 1 (conservative HSP): %d/%d segments matched (%d%%)",
-        phase1_count,
-        len(segments),
-        100 * phase1_count // max(len(segments), 1),
-    )
-
-    # ── Phase 2: page-constrained matching ────────────────────────────────────
-    # For each segment not matched in phase 1, the document-order constraint
-    # limits it to pages in [prev_matched_page, next_matched_page].  Take the
-    # highest-scoring hit in that interval; no uniqueness requirement (the
-    # narrow window suppresses false positives).
-    for i, seg in enumerate(segments):
-        if results[i] is not None:
-            continue
-        if seg.page is not None and seg.page >= num_pages:
-            continue
-
-        norm_len = len(_normalize_strict(seg.text, strip_html=True)[0]) or len(
-            _normalize_loose(seg.text, strip_html=True)[0],
-        )
-        threshold = max(5, min(min_score, norm_len))
-
-        prev_page: int | None = None
-        for j in range(i - 1, -1, -1):
-            if results[j] is not None:
-                prev_page = results[j].page
-                break
-        next_page: int | None = None
-        for j in range(i + 1, len(results)):
-            if results[j] is not None:
-                next_page = results[j].page
-                break
-        p2_lo = prev_page if prev_page is not None else 0
-        p2_hi = next_page if next_page is not None else num_pages - 1
-
-        best: tuple[int, list, int] | None = None
-        for page in range(p2_lo, p2_hi + 1):
-            candidate = _try_page_residual(page, seg, threshold)
-            if candidate is not None and (best is None or candidate[0] > best[0]):
-                best = (candidate[0], candidate[1], page)
-
-        if best is not None:
-            _, flat_ranges, matched_page = best
-            _accept_match(seg, i, flat_ranges, matched_page, 2)
-
-    anchors = [a for a, c in zip(results, confidence, strict=True) if a is not None]
+    page_data = _extract_page_data(doc)
+    outcome = _align_markdown_to_pages(page_data, markdown, min_score)
     if return_pass_info:
-        passes = [c for a, c in zip(results, confidence, strict=True) if a is not None]
-        return anchors, passes
-    return anchors
+        return outcome.anchors, outcome.passes
+    return outcome.anchors

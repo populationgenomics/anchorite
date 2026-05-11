@@ -27,7 +27,7 @@ class AlignmentResult:
         return annotate_fn(self.markdown_content, self.anchor_spans)
 
 
-async def process_document(
+async def process_document(  # noqa: C901, PLR0912
     chunks: Iterable[document.DocumentChunk],
     markdown_provider: providers.MarkdownProvider | None = None,
     anchor_provider: providers.AnchorProvider | providers.MarkdownAnchorProvider | None = None,
