@@ -11,6 +11,7 @@ import seq_smith
 
 from . import (
     bbox_alignment,
+    chained_alignment,
     document,
     markdown,
     md_association,
@@ -36,6 +37,7 @@ __all__ = [
     "SpanAnchor",
     "align",
     "annotate",
+    "chained_alignment",
     "document",
     "markdown",
     "md_association",

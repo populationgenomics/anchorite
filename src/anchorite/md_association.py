@@ -177,22 +177,13 @@ def _align_against(
 class _AlignmentOutcome:
     """Per-segment alignment result, parallel to ``parse_markdown_segments(md)``.
 
-    ``anchors`` and ``passes`` carry the public ``associate()`` outputs;
-    ``matched_atoms_per_segment`` is the extra detail ``pdf_index.PdfIndex``
-    needs to rebuild its flat string in markdown order using only the atoms
-    each segment actually claimed.
+    ``anchors`` and ``passes`` are the public ``associate()`` outputs.
     """
 
     anchors: list[Anchor]
     """Matched anchors in markdown order (unmatched segments omitted)."""
     passes: list[int]
     """Parallel to ``anchors``: 1 = phase 1, 2 = phase 2."""
-    matched_atoms_per_segment: list[tuple[int, list[int]] | None]
-    """Per *parsed* segment in markdown order (length =
-    ``len(parse_markdown_segments(markdown))``): ``(page_idx, sorted_atom_indices)``
-    when matched, or ``None``.  ``atom_indices`` are sorted indices into
-    ``page_data[page_idx].atoms``.
-    """
 
 
 def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
@@ -209,7 +200,7 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
     """
     segments = parse_markdown_segments(markdown)
     if not segments:
-        return _AlignmentOutcome(anchors=[], passes=[], matched_atoms_per_segment=[])
+        return _AlignmentOutcome(anchors=[], passes=[])
 
     num_pages = len(page_data)
 
@@ -219,9 +210,6 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
     confidence: list[int] = [0] * len(segments)
     # Consumed flat-string ranges per page (raw; merged on demand).
     page_matched_ranges: dict[int, list[tuple[int, int]]] = {}
-    # Per-segment matched (page_idx, sorted_atom_indices) for downstream
-    # consumers (PdfIndex cleanup); None for unmatched segments.
-    matched_atoms_per_segment: list[tuple[int, list[int]] | None] = [None] * len(segments)
 
     def _atoms_from_flat_ranges(
         flat_to_atom: list[int],
@@ -317,7 +305,6 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
         if boxes:
             results[i] = Anchor(text=seg.text, page=matched_page, boxes=boxes)
             confidence[i] = conf
-            matched_atoms_per_segment[i] = (matched_page, atom_indices)
             page_matched_ranges.setdefault(matched_page, []).extend(flat_ranges)
 
     # ── Phase 1: conservative HSP-based page assignment ──────────────────────
@@ -457,11 +444,7 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
 
     anchors = [a for a in results if a is not None]
     passes = [c for a, c in zip(results, confidence, strict=True) if a is not None]
-    return _AlignmentOutcome(
-        anchors=anchors,
-        passes=passes,
-        matched_atoms_per_segment=matched_atoms_per_segment,
-    )
+    return _AlignmentOutcome(anchors=anchors, passes=passes)
 
 
 @overload

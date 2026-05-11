@@ -31,6 +31,11 @@ API Reference
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: anchorite.chained_alignment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: anchorite.md_association
    :members:
    :undoc-members:
