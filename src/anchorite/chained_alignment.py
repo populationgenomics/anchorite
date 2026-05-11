@@ -198,7 +198,7 @@ def _seed_min_score_at_depth(top_level_min: int, depth: int) -> int:
     return max(3, top_level_min - 2 * depth)
 
 
-def _align(  # noqa: PLR0913
+def _align(
     seq_a: bytes,
     seq_b: bytes,
     score_matrix: npt.NDArray[np.int32],

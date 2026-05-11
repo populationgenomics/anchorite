@@ -312,9 +312,7 @@ def test_all_short_cells_row_survives_cleanup() -> None:
     # large drop here would indicate the cleanup is incorrectly
     # discarding row content.
     coverage = len(index_with_md._flat_str) / max(len(index_without_md._flat_str), 1)
-    assert coverage >= 0.9, (
-        f"unexpected coverage {coverage:.2%}; row content likely dropped"
-    )
+    assert coverage >= 0.9, f"unexpected coverage {coverage:.2%}; row content likely dropped"
 
     # Spot-check: digits from the row appear in the cleaned cache.
     # Using normalised bytes is robust to kerning-induced inserted
@@ -360,6 +358,4 @@ def test_hallucinated_markdown_does_not_break_real_content() -> None:
     assert index.resolve(["completely different content"])["completely different content"]
     # The hallucinated sentence should NOT resolve — its chars are not
     # in the PDF, so they're not in the cleaned cache either.
-    assert index.resolve(["hallucination that does not exist"])[
-        "hallucination that does not exist"
-    ] == []
+    assert index.resolve(["hallucination that does not exist"])["hallucination that does not exist"] == []

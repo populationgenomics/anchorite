@@ -8,6 +8,7 @@ small custom alphabet so the assertions stay readable.
 
 from __future__ import annotations
 
+import itertools
 import string
 
 import seq_smith
@@ -36,7 +37,7 @@ def _matched_b(pairs: list[tuple[int, int]]) -> set[int]:
 
 def _assert_monotonic_a(pairs: list[tuple[int, int]]) -> None:
     """The trace must be sorted on the A axis (the public contract)."""
-    for prev, curr in zip(pairs, pairs[1:]):
+    for prev, curr in itertools.pairwise(pairs):
         assert prev[0] <= curr[0], f"non-monotonic A coordinate: {prev} -> {curr}"
 
 
@@ -137,7 +138,7 @@ def test_a_has_noise_b_anchors_full_content() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Multi-region (chaining is meaningful)
+# Multi-region matches — where chaining is meaningful
 # ---------------------------------------------------------------------------
 
 
@@ -179,9 +180,7 @@ def test_order_reversal_picks_one_branch() -> None:
     india_start = a.index(_enc("india"))
     has_alpha = any(alpha_start <= i < alpha_start + 5 for i in matched_a)
     has_india = any(india_start <= i < india_start + 5 for i in matched_a)
-    assert has_alpha != has_india, (
-        "expected exactly one of the two reversed regions to be in the chain"
-    )
+    assert has_alpha != has_india, "expected exactly one of the two reversed regions to be in the chain"
 
 
 # ---------------------------------------------------------------------------
@@ -218,9 +217,7 @@ def test_short_cells_between_anchored_paragraphs() -> None:
     row_end = a.index(_enc(" discussion"))
     # Every byte of the table row must be matched — the bug case.
     for i in range(row_start, row_end):
-        assert i in matched_a, (
-            f"unmatched a={i} ({chr(a[i])!r}) in table row region"
-        )
+        assert i in matched_a, f"unmatched a={i} ({chr(a[i])!r}) in table row region"
 
 
 def test_all_short_cells_row_via_context() -> None:
@@ -247,9 +244,7 @@ def test_all_short_cells_row_via_context() -> None:
     row_start = a.index(_enc("31 m 28"))
     row_end = a.index(_enc(" narrative content after"))
     for i in range(row_start, row_end):
-        assert i in matched_a, (
-            f"unmatched a={i} ({chr(a[i])!r}) — all-short-cells row dropped"
-        )
+        assert i in matched_a, f"unmatched a={i} ({chr(a[i])!r}) — all-short-cells row dropped"
 
 
 # ---------------------------------------------------------------------------
@@ -286,5 +281,5 @@ def test_chain_respects_b_monotonicity() -> None:
     b = a  # clean identity case
     pairs = chained_alignment(a, b, _SCORE)
     b_indices = [b_ for _, b_ in pairs]
-    for prev, curr in zip(b_indices, b_indices[1:]):
+    for prev, curr in itertools.pairwise(b_indices):
         assert prev <= curr, "B coordinate went backwards on identical input"
