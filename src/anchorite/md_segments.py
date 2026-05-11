@@ -107,8 +107,10 @@ class MarkdownSegment:
 
     text: str
     """Segment text (Markdown syntax preserved, HTML comments stripped)."""
-    page: int
-    """PDF page index (0-based) inferred from surrounding ``<!--page-->`` markers."""
+    page: int | None
+    """PDF page index (0-based) inferred from surrounding ``<!--page-->`` markers,
+    or ``None`` when the source Markdown carries no page markers (in which case
+    the page is determined by the alignment itself)."""
     md_start: int
     """Start character offset of the enclosing block in the original Markdown."""
     md_end: int
@@ -128,7 +130,7 @@ _Seg = Callable[[str], MarkdownSegment]
 
 def _segments_from_heading(
     text: str,
-    page: int,
+    page: int | None,
     md_start: int,
     md_end: int,
     seg: _Seg,
@@ -181,7 +183,7 @@ def _segments_from_table(lines: list[str], seg: _Seg) -> list[MarkdownSegment]:
 
 def _segments_from_block(
     block_text: str,
-    page: int,
+    page: int | None,
     md_start: int,
     md_end: int,
 ) -> list[MarkdownSegment]:
@@ -217,20 +219,23 @@ def _segments_from_block(
 
 
 def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
-    """Parse Markdown into fine-grained segments with page hints.
+    """Parse Markdown into fine-grained segments, optionally with page hints.
 
     Produces one segment per heading, sentence, list item, blockquote line,
-    affiliation entry, or table cell.  ``<!--page-->`` comments advance the page
-    counter; all other HTML comments are stripped from segment text.
+    affiliation entry, or table cell.  All HTML comments are stripped from
+    segment text.
 
-    Args:
-        markdown: The complete assembled Markdown with ``<!--page-->``
-            page-break markers.
+    Page-hint behaviour:
 
-    Returns:
-        List of segments in document order.  Each segment carries the PDF page
-        index (0-based) inferred from the nearest preceding ``<!--page-->``
-        marker.  Segments before the first marker are excluded.
+    * If the Markdown contains one or more ``<!--page-->`` markers, the markers
+      seed each segment's ``page`` field; content preceding the first marker
+      is dropped (it isn't pinned to any page).  This is the typical input
+      shape produced by chunked OCR pipelines, where a marker is emitted at
+      every page break.
+    * If the Markdown contains no markers at all (e.g. JATS XML rendered to
+      Markdown, where page boundaries aren't carried by the source), every
+      segment's ``page`` is ``None`` and the page is determined later by the
+      alignment.
     """
     # Ensure every <!--page--> marker sits in its own blank-line-delimited block.
     # Without this, a marker that immediately follows a paragraph (no blank line)
@@ -239,8 +244,12 @@ def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
     markdown = re.sub(r"(?<!\n\n)(<!--page-->)", r"\n\n\1", markdown)
     markdown = re.sub(r"(<!--page-->)(?!\n)", r"\1\n\n", markdown)
 
+    has_markers = _PAGE_MARKER_RE.search(markdown) is not None
+
     segments: list[MarkdownSegment] = []
-    current_page = -1
+    # marker_page tracks the page counter when the source uses markers.  In
+    # the no-marker case it's irrelevant — every segment carries ``page=None``.
+    marker_page = -1
 
     block_start = 0
     for m in re.finditer(r"\n{2,}|\Z", markdown, re.MULTILINE):
@@ -250,12 +259,17 @@ def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
         block_start = m.end()
 
         for _ in _PAGE_MARKER_RE.finditer(block_raw):
-            current_page += 1
+            marker_page += 1
 
-        if current_page < 0:
-            continue
+        page: int | None
+        if has_markers:
+            if marker_page < 0:
+                continue  # Pre-marker content is unpinned; drop it.
+            page = marker_page
+        else:
+            page = None
 
         text = _COMMENT_RE.sub("", block_raw).strip()
-        segments.extend(_segments_from_block(text, current_page, md_start, md_end))
+        segments.extend(_segments_from_block(text, page, md_start, md_end))
 
     return segments
