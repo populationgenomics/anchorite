@@ -20,12 +20,12 @@ def test_ocr_result_annotate() -> None:
 
     annotated = result.annotate()
 
-    # Expected format: <span data-bbox="{top},{left},{bottom},{right}" data-page="{page}">{text}</span>
+    # Expected format: <anchorite-span data-bbox="{top},{left},{bottom},{right}" data-page="{page}">{text}</anchorite-span>
     # bbox1: 0,0,5,1 -> "0,0,5,1"
-    tag1_start = '<span data-bbox="0,0,5,1" data-page="1">'
-    tag_end = "</span>"
+    tag1_start = '<anchorite-span data-bbox="0,0,5,1" data-page="1">'
+    tag_end = "</anchorite-span>"
 
-    tag2_start = '<span data-bbox="6,6,11,1" data-page="1">'
+    tag2_start = '<anchorite-span data-bbox="6,6,11,1" data-page="1">'
 
     expected = f"{tag1_start}Hello{tag_end} {tag2_start}World{tag_end}"
 
@@ -45,9 +45,9 @@ def test_ocr_result_annotate_overlap() -> None:
 
     annotated = result.annotate()
 
-    tag1_start = '<span data-bbox="0,0,5,1" data-page="1">'
-    tag2_start = '<span data-bbox="0,0,1,1" data-page="1">'
-    tag_end = "</span>"
+    tag1_start = '<anchorite-span data-bbox="0,0,5,1" data-page="1">'
+    tag2_start = '<anchorite-span data-bbox="0,0,1,1" data-page="1">'
+    tag_end = "</anchorite-span>"
 
     expected = f"{tag1_start}{tag2_start}He{tag_end}llo{tag_end}"
     assert annotated == expected
@@ -62,9 +62,9 @@ def test_annotate_abutting_spans() -> None:
 
     annotated = anchorite.annotate(content, {bbox_a: (0, 5), bbox_b: (5, 14)})
 
-    tag_a = '<span data-bbox="0,0,10,100" data-page="0">'
-    tag_b = '<span data-bbox="10,0,20,100" data-page="0">'
-    end = "</span>"
+    tag_a = '<anchorite-span data-bbox="0,0,10,100" data-page="0">'
+    tag_b = '<anchorite-span data-bbox="10,0,20,100" data-page="0">'
+    end = "</anchorite-span>"
 
     expected = f"{tag_a}under{end}{tag_b}diagnosed{end}"
     assert annotated == expected
