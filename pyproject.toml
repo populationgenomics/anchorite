@@ -71,6 +71,13 @@ known-first-party = ["anchorite"]
     "RUF002",
     "RUF003",
 ]
+"src/anchorite/pdf_atoms.py" = [
+    # The per-glyph normalisation table contains ambiguous Unicode
+    # (math-italic letters, en-dash, multiplication sign, soft hyphen, NBSP).
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
 
 [tool.mypy]
 python_version = "3.11"

@@ -36,6 +36,11 @@ API Reference
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: anchorite.pdf_atoms
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: anchorite.pdf_index
    :members:
    :undoc-members:

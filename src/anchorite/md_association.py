@@ -23,17 +23,14 @@ the accidents of PDF typesetting.
 
 import dataclasses
 import logging
-import math
 import pathlib
-import unicodedata
 from collections.abc import Callable
-from typing import Literal, NamedTuple, overload
+from typing import Literal, overload
 
 import pypdfium2 as pdfium
-import pypdfium2.raw as pdfium_c
 import seq_smith
 
-from .anchors import Anchor, BBox
+from .anchors import Anchor
 from .md_segments import MarkdownSegment, parse_markdown_segments
 from .normalize import (
     SCORE_MATRIX_LOOSE,
@@ -41,181 +38,13 @@ from .normalize import (
     normalize_loose,
     normalize_strict,
 )
+from .pdf_atoms import (
+    PageData,
+    extract_page_data,
+    line_bboxes,
+)
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Character extraction
-# ---------------------------------------------------------------------------
-
-_CHAR_NORM: dict[str, str] = {
-    "\ufb00": "ff",
-    "\ufb01": "fi",
-    "\ufb02": "fl",
-    "\ufb03": "ffi",
-    "\ufb04": "ffl",
-    "\ufb05": "st",
-    "\ufb06": "st",
-    "\u2018": "'",
-    "\u2019": "'",
-    "\u201c": '"',
-    "\u201d": '"',
-    "\u201a": ",",
-    "\u2013": "-",
-    "\u2014": "--",
-    "\u2212": "-",
-    "\u2010": "-",
-    "\u2011": "-",
-    "\u00ad": "",
-    "\u00a0": " ",
-    "\ufffe": "",
-}
-
-
-@dataclasses.dataclass(frozen=True)
-class _Char:
-    text: str
-    x0: float
-    y0: float  # bottom in PDF coords (pts, origin bottom-left)
-    x1: float
-    y1: float  # top in PDF coords
-    font_size: float
-
-
-def _extract_page_chars(page: pdfium.PdfPage) -> list[_Char]:  # noqa: C901, PLR0912
-    """Extract non-whitespace chars with bboxes from a single page."""
-    textpage = page.get_textpage()
-    total_chars = textpage.count_chars()
-    chars: list[_Char] = []
-    char_index = 0
-
-    for obj in page.get_objects(filter=[pdfium_c.FPDF_PAGEOBJ_TEXT]):
-        buf_size = pdfium_c.FPDFTextObj_GetText(obj, textpage, None, 0)
-        buf = (pdfium_c.FPDF_WCHAR * buf_size)()
-        pdfium_c.FPDFTextObj_GetText(obj, textpage, buf, buf_size)
-        obj_text = bytes(buf).decode("utf-16-le").rstrip("\x00")
-
-        m = obj.get_matrix()
-        font_size = obj.get_font_size() * math.sqrt(m.a**2 + m.b**2)
-
-        obj_pos = 0
-        while obj_pos < len(obj_text) and char_index < total_chars:
-            cp = pdfium_c.FPDFText_GetUnicode(textpage, char_index)
-            # PDFium counts non-BMP characters (e.g. Mathematical Italic symbols,
-            # U+1D400–U+1D7FF) as two UTF-16 surrogate-pair indices.  Detect a
-            # high surrogate and reassemble the full code point from the pair.
-            if _HIGH_SURROGATE_LO <= cp <= _HIGH_SURROGATE_HI:
-                if char_index + 1 < total_chars:
-                    cp_low = pdfium_c.FPDFText_GetUnicode(textpage, char_index + 1)
-                    if _LOW_SURROGATE_LO <= cp_low <= _LOW_SURROGATE_HI:
-                        cp = _NON_BMP_BASE + (cp - _HIGH_SURROGATE_LO) * 0x400 + (cp_low - _LOW_SURROGATE_LO)
-                        ci_for_box = char_index
-                        char_index += 2  # consume both surrogate indices
-                        obj_pos += 1  # but only one code point in obj_text
-                    else:
-                        char_index += 1
-                        obj_pos += 1
-                        continue
-                else:
-                    char_index += 1
-                    obj_pos += 1
-                    continue
-            elif _LOW_SURROGATE_LO <= cp <= _LOW_SURROGATE_HI:
-                # Orphaned low surrogate — should not occur; skip.
-                char_index += 1
-                obj_pos += 1
-                continue
-            else:
-                ci_for_box = char_index
-                char_index += 1
-
-            text = chr(cp)
-            if text in ("\r", "\n"):
-                # Line-break markers inserted by PDFium are absent from obj_text.
-                continue  # char_index already advanced; do NOT advance obj_pos
-            obj_pos += 1
-
-            if not text.isspace():
-                normalized = _CHAR_NORM.get(text, text)
-                # Map Mathematical Alphanumeric Symbols and other compatibility
-                # characters to ASCII equivalents (e.g. 𝑆𝑒𝑛𝑠𝑖𝑡𝑖𝑣𝑖𝑡𝑦 → Sensitivity).
-                normalized = unicodedata.normalize("NFKC", normalized)
-                if normalized:
-                    left, bottom, right, top = textpage.get_charbox(ci_for_box, loose=False)
-                    if right > left and top > bottom:
-                        chars.append(_Char(normalized, left, bottom, right, top, font_size))
-
-    return chars
-
-
-# ---------------------------------------------------------------------------
-# Flat char string with position index
-# ---------------------------------------------------------------------------
-
-
-class _CharIndex(NamedTuple):
-    flat_str: str
-    """The flat text string built from the page's chars."""
-    flat_to_char: list[int]
-    """flat_to_char[i] = index into chars for flat_str[i]."""
-
-
-def _build_char_index(chars: list[_Char]) -> _CharIndex:
-    """Build a flat string and a per-character index mapping back to chars.
-
-    Inserts a space between successive chars when either:
-
-    * the horizontal gap to the next char exceeds 20 % of font size (an
-      intra-line word break), or
-    * the next char drops to a different visual line — its baseline is
-      shifted vertically by more than 50 % of font size, or sits to the
-      *left* of the current char.  Without this, end-of-line + start-of-
-      next-line concatenates ("``we``" + "``identified``" → "``weidentified``")
-      because PDFium's coordinate stream emits no whitespace at line
-      breaks, and the alignment string drifts out of sync with the
-      Markdown.
-
-    End-of-line soft hyphens are reconnected: when the line-break-trailing
-    char is ``-`` between two alphabetic glyphs, both the hyphen and the
-    inserted space are dropped, so the typeset ``induc-`` + ``tion``
-    reconnects to ``induction`` (matching the Markdown's un-hyphenated
-    form).  Numeric ranges like ``2009-`` + ``2010`` keep the hyphen
-    because the surrounding glyphs aren't alphabetic.  Dash variants
-    (en-dash, em-dash, hyphen-minus) have already been normalised to
-    ``-`` during char extraction, so a single literal check suffices.
-    """
-    parts: list[str] = []
-    flat_to_char: list[int] = []
-
-    for i, ch in enumerate(chars):
-        for c in ch.text:
-            parts.append(c)
-            flat_to_char.append(i)
-        if i + 1 < len(chars):
-            nxt = chars[i + 1]
-            x_gap = nxt.x0 - ch.x1
-            y_drop = abs(nxt.y0 - ch.y0)
-            line_break = nxt.x0 < ch.x0 or y_drop > ch.font_size * 0.5
-            if (
-                line_break
-                and len(parts) >= 2  # noqa: PLR2004
-                and parts[-1] == "-"
-                and parts[-2].isalpha()
-                and nxt.text
-                and nxt.text[0].isalpha()
-            ):
-                # Soft hyphen between two letters at a line break: drop
-                # the hyphen and insert no space.  The next iteration
-                # appends the next char's letters directly.
-                parts.pop()
-                flat_to_char.pop()
-                continue
-            if x_gap > ch.font_size * 0.2 or line_break:
-                parts.append(" ")
-                flat_to_char.append(i)
-
-    return _CharIndex("".join(parts), flat_to_char)
-
 
 # ---------------------------------------------------------------------------
 # Alignment configuration
@@ -226,10 +55,6 @@ _MIN_SCORE = 10
 
 _NormFn = Callable[..., tuple[bytes, tuple[int, ...]]]
 
-# UTF-16 surrogate ranges for non-BMP code points returned by PDFium.
-_HIGH_SURROGATE_LO, _HIGH_SURROGATE_HI = 0xD800, 0xDBFF
-_LOW_SURROGATE_LO, _LOW_SURROGATE_HI = 0xDC00, 0xDFFF
-_NON_BMP_BASE = 0x10000
 # Phase 1 (conservative HSP-based): pages to search around the page marker.
 _PHASE1_PAGE_SLACK = 10
 # Phase 1: best score must be >= this multiple of the second-best (cross-page AND within-page).
@@ -241,67 +66,8 @@ _PHASE1_MIN_LEN = 10
 
 
 # ---------------------------------------------------------------------------
-# Association: markdown segment → PDF bbox
+# Range / residual helpers
 # ---------------------------------------------------------------------------
-
-
-def _bbox_from_chars(
-    chars: list[_Char],
-    page_width: float,
-    page_height: float,
-    origin_x: float = 0.0,
-    origin_y: float = 0.0,
-) -> BBox:
-    # Subtract the page's mediabox origin so coordinates are page-relative.
-    # PDFs whose mediabox is offset from (0, 0) would otherwise produce
-    # bboxes shifted by that offset.
-    x0 = min(c.x0 for c in chars) - origin_x
-    y0 = min(c.y0 for c in chars) - origin_y
-    x1 = max(c.x1 for c in chars) - origin_x
-    y1 = max(c.y1 for c in chars) - origin_y
-    top = round((1.0 - y1 / page_height) * 1000)
-    left = round(x0 / page_width * 1000)
-    bottom = round((1.0 - y0 / page_height) * 1000)
-    right = round(x1 / page_width * 1000)
-    return BBox(top=top, left=left, bottom=bottom, right=right)
-
-
-def _line_bboxes(
-    chars: list[_Char],
-    page_width: float,
-    page_height: float,
-    origin_x: float = 0.0,
-    origin_y: float = 0.0,
-) -> list[BBox]:
-    """Return one BBox per line of matched chars.
-
-    Chars are sorted top-to-bottom by y-midpoint and grouped into lines by
-    y-overlap: a char joins the current line when its y-range overlaps the
-    accumulated line band; otherwise it starts a new line.  This gives one
-    tight box per text line regardless of how many columns the anchor spans.
-    """
-    if not chars:
-        return []
-
-    # Sort top-to-bottom (descending y in PDF coords where y increases upward).
-    by_y = sorted(chars, key=lambda c: -(c.y0 + c.y1) / 2)
-
-    clusters: list[list[_Char]] = [[by_y[0]]]
-    band_y0 = by_y[0].y0
-    band_y1 = by_y[0].y1
-
-    for ch in by_y[1:]:
-        overlap = min(ch.y1, band_y1) - max(ch.y0, band_y0)
-        if overlap > 0:
-            clusters[-1].append(ch)
-            band_y0 = min(band_y0, ch.y0)
-            band_y1 = max(band_y1, ch.y1)
-        else:
-            clusters.append([ch])
-            band_y0 = ch.y0
-            band_y1 = ch.y1
-
-    return [_bbox_from_chars(cluster, page_width, page_height, origin_x, origin_y) for cluster in clusters]
 
 
 def _merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
@@ -407,62 +173,13 @@ def _align_against(
     return best_score, _aln_to_flat_ranges(current_aln, ref_to_flat)
 
 
-@dataclasses.dataclass
-class _PageData:
-    """Per-page PDF data needed for alignment and bbox derivation.
-
-    Single source of truth for "PDF page → cached char data" across
-    ``associate()`` and ``pdf_index.PdfIndex``.  Both call
-    ``_extract_page_data`` to populate; alignment never re-reads the PDF.
-    """
-
-    chars: list[_Char]
-    """Per-character extraction output for this page."""
-    char_index: _CharIndex
-    """Flat string + per-position char index for this page."""
-    width: float
-    """Page width in PDF points."""
-    height: float
-    """Page height in PDF points."""
-    origin_x: float
-    """Mediabox left origin in PDF points."""
-    origin_y: float
-    """Mediabox bottom origin in PDF points."""
-
-
-def _extract_page_data(pdf: pdfium.PdfDocument) -> list[_PageData]:
-    """Extract per-page chars, dimensions, and origin from an open PDF document.
-
-    Eager: every page is read up front.  Both ``associate()`` and
-    ``pdf_index.PdfIndex`` need most or all pages anyway, and a single read
-    pass keeps both consumers off divergent PDFium code paths.
-    """
-    page_data: list[_PageData] = []
-    for page_idx in range(len(pdf)):
-        page = pdf[page_idx]
-        chars = _extract_page_chars(page)
-        ci = _build_char_index(chars)
-        mb = page.get_mediabox()
-        page_data.append(
-            _PageData(
-                chars=chars,
-                char_index=ci,
-                width=page.get_width(),
-                height=page.get_height(),
-                origin_x=mb[0],
-                origin_y=mb[1],
-            ),
-        )
-    return page_data
-
-
 @dataclasses.dataclass(frozen=True)
 class _AlignmentOutcome:
     """Per-segment alignment result, parallel to ``parse_markdown_segments(md)``.
 
     ``anchors`` and ``passes`` carry the public ``associate()`` outputs;
-    ``matched_chars_per_segment`` is the extra detail ``pdf_index.PdfIndex``
-    needs to rebuild its flat string in markdown order using only the chars
+    ``matched_atoms_per_segment`` is the extra detail ``pdf_index.PdfIndex``
+    needs to rebuild its flat string in markdown order using only the atoms
     each segment actually claimed.
     """
 
@@ -470,16 +187,16 @@ class _AlignmentOutcome:
     """Matched anchors in markdown order (unmatched segments omitted)."""
     passes: list[int]
     """Parallel to ``anchors``: 1 = phase 1, 2 = phase 2."""
-    matched_chars_per_segment: list[tuple[int, list[int]] | None]
+    matched_atoms_per_segment: list[tuple[int, list[int]] | None]
     """Per *parsed* segment in markdown order (length =
-    ``len(parse_markdown_segments(markdown))``): ``(page_idx, sorted_char_indices)``
-    when matched, or ``None``.  ``char_indices`` are sorted indices into
-    ``page_data[page_idx].chars``.
+    ``len(parse_markdown_segments(markdown))``): ``(page_idx, sorted_atom_indices)``
+    when matched, or ``None``.  ``atom_indices`` are sorted indices into
+    ``page_data[page_idx].atoms``.
     """
 
 
 def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
-    page_data: list[_PageData],
+    page_data: list[PageData],
     markdown: str,
     min_score: int = _MIN_SCORE,
 ) -> _AlignmentOutcome:
@@ -492,7 +209,7 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
     """
     segments = parse_markdown_segments(markdown)
     if not segments:
-        return _AlignmentOutcome(anchors=[], passes=[], matched_chars_per_segment=[])
+        return _AlignmentOutcome(anchors=[], passes=[], matched_atoms_per_segment=[])
 
     num_pages = len(page_data)
 
@@ -502,17 +219,17 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
     confidence: list[int] = [0] * len(segments)
     # Consumed flat-string ranges per page (raw; merged on demand).
     page_matched_ranges: dict[int, list[tuple[int, int]]] = {}
-    # Per-segment matched (page_idx, sorted_char_indices) for downstream
+    # Per-segment matched (page_idx, sorted_atom_indices) for downstream
     # consumers (PdfIndex cleanup); None for unmatched segments.
-    matched_chars_per_segment: list[tuple[int, list[int]] | None] = [None] * len(segments)
+    matched_atoms_per_segment: list[tuple[int, list[int]] | None] = [None] * len(segments)
 
-    def _chars_from_flat_ranges(
-        flat_to_char: list[int],
+    def _atoms_from_flat_ranges(
+        flat_to_atom: list[int],
         flat_ranges: list[tuple[int, int]],
     ) -> list[int]:
         indices: set[int] = set()
         for fs, fe in flat_ranges:
-            indices.update(flat_to_char[j] for j in range(fs, min(fe, len(flat_to_char))))
+            indices.update(flat_to_atom[j] for j in range(fs, min(fe, len(flat_to_atom))))
         return sorted(indices)
 
     def _try_page_residual(  # noqa: C901
@@ -527,11 +244,11 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
         if page_idx < 0 or page_idx >= num_pages:
             return None
         pd = page_data[page_idx]
-        if not pd.chars:
+        if not pd.atoms:
             return None
 
         covered = _merge_ranges(page_matched_ranges.get(page_idx, []))
-        residual, pos_map = _residual_string(pd.char_index.flat_str, covered)
+        residual, pos_map = _residual_string(pd.atom_index.flat_str, covered)
         if not residual:
             return None
 
@@ -584,13 +301,13 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
         conf: int,
     ) -> None:
         pd = page_data[matched_page]
-        char_indices = _chars_from_flat_ranges(pd.char_index.flat_to_char, flat_ranges)
-        if not char_indices:
+        atom_indices = _atoms_from_flat_ranges(pd.atom_index.flat_to_atom, flat_ranges)
+        if not atom_indices:
             return
-        matched_chars = [pd.chars[j] for j in char_indices]
+        matched_atoms = [pd.atoms[j] for j in atom_indices]
         boxes = tuple(
-            _line_bboxes(
-                matched_chars,
+            line_bboxes(
+                matched_atoms,
                 pd.width,
                 pd.height,
                 pd.origin_x,
@@ -600,7 +317,7 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
         if boxes:
             results[i] = Anchor(text=seg.text, page=matched_page, boxes=boxes)
             confidence[i] = conf
-            matched_chars_per_segment[i] = (matched_page, char_indices)
+            matched_atoms_per_segment[i] = (matched_page, atom_indices)
             page_matched_ranges.setdefault(matched_page, []).extend(flat_ranges)
 
     # ── Phase 1: conservative HSP-based page assignment ──────────────────────
@@ -617,7 +334,7 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
 
     def _get_alphanum_page(page_idx: int) -> bytes:
         if page_idx not in page_alphanum_bytes:
-            ci = page_data[page_idx].char_index
+            ci = page_data[page_idx].atom_index
             norm_bytes, _ = normalize_loose(ci.flat_str)  # PDF: don't strip HTML
             page_alphanum_bytes[page_idx] = norm_bytes
         return page_alphanum_bytes[page_idx]
@@ -743,7 +460,7 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
     return _AlignmentOutcome(
         anchors=anchors,
         passes=passes,
-        matched_chars_per_segment=matched_chars_per_segment,
+        matched_atoms_per_segment=matched_atoms_per_segment,
     )
 
 
@@ -808,7 +525,7 @@ def associate(
         When *return_pass_info* is True, returns ``(anchors, passes)``.
     """
     doc = pdfium.PdfDocument(pdf_path)
-    page_data = _extract_page_data(doc)
+    page_data = extract_page_data(doc)
     outcome = _align_markdown_to_pages(page_data, markdown, min_score)
     if return_pass_info:
         return outcome.anchors, outcome.passes
