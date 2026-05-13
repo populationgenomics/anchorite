@@ -11,12 +11,15 @@ def annotate(
     markdown: str,
     alignment: Mapping[Anchor, tuple[int, int]],
 ) -> str:
-    """Inject coordinate ``<span>`` tags into Markdown at aligned positions.
+    """Inject coordinate ``<anchorite-span>`` tags into Markdown at aligned positions.
 
-    Produces ``<span data-bbox="t,l,b,r" data-page="N">text</span>`` for each
-    anchor in ``alignment``. Span boundaries are snapped outward to the edges of
-    any enclosing math block (``$...$`` or ``$$...$$``) to avoid splitting LaTeX.
-    Overlapping and nested spans are handled by inserting tags in sorted order.
+    Produces ``<anchorite-span data-bbox="t,l,b,r" data-page="N">text</anchorite-span>``
+    for each anchor in ``alignment``. The custom element name distinguishes
+    anchorite-inserted tags from any user-authored ``<span>`` HTML in the
+    Markdown, so ``strip`` can round-trip without colliding with other inline
+    HTML. Span boundaries are snapped outward to the edges of any enclosing
+    math block (``$...$`` or ``$$...$$``) to avoid splitting LaTeX. Overlapping
+    and nested spans are handled by inserting tags in sorted order.
 
     Args:
         markdown: The plain Markdown string to annotate.
@@ -24,7 +27,7 @@ def annotate(
             as returned by ``align``.
 
     Returns:
-        Annotated Markdown string with embedded ``<span>`` tags.
+        Annotated Markdown string with embedded ``<anchorite-span>`` tags.
     """
     math_ranges = []
     # Pattern matches $$...$$ (DOTALL) or $...$ (inline, allowing newlines for wrapped text)
@@ -47,8 +50,8 @@ def annotate(
 
         length = end - start
         box_str = ";".join(f"{b.top},{b.left},{b.bottom},{b.right}" for b in anchor.boxes)
-        start_tag = f'<span data-bbox="{box_str}" data-page="{anchor.page}">'
-        end_tag = "</span>"
+        start_tag = f'<anchorite-span data-bbox="{box_str}" data-page="{anchor.page}">'
+        end_tag = "</anchorite-span>"
 
         insertions.append((start, False, length, i, start_tag))
         insertions.append((end, True, length, i, end_tag))
@@ -93,7 +96,7 @@ class StrippedMarkdown:
 
 
 def strip(annotated_md: str) -> StrippedMarkdown:
-    """Remove ``<span>`` annotation tags and build a validation map.
+    """Remove ``<anchorite-span>`` annotation tags and build a validation map.
 
     Returns a ``StrippedMarkdown`` with two fields:
 
@@ -101,13 +104,17 @@ def strip(annotated_md: str) -> StrippedMarkdown:
     - ``validation_map``: sorted list of ``(start, end, Anchor)`` tuples giving
       each anchor's character range in ``plain_text``.
 
+    Only ``<anchorite-span>`` tags produced by ``annotate`` are removed; any
+    other inline HTML (including user-authored ``<span>`` tags) passes through
+    into ``plain_text`` unchanged.
+
     The validation map can be used to verify that a generated quote is grounded
     in the source document — see ``resolve`` for the higher-level interface.
     """
-    # Regex to find <span data-bbox="..." data-page="...">...</span>
+    # Regex to find <anchorite-span data-bbox="..." data-page="...">...</anchorite-span>
     token_pattern = re.compile(
-        r'(?P<start><span data-bbox="(?P<bbox>-?\d+,-?\d+,-?\d+,-?\d+(?:;-?\d+,-?\d+,-?\d+,-?\d+)*)"'
-        r' data-page="(?P<page>\d+)">)|(?P<end></span>)',
+        r'(?P<start><anchorite-span data-bbox="(?P<bbox>-?\d+,-?\d+,-?\d+,-?\d+(?:;-?\d+,-?\d+,-?\d+,-?\d+)*)"'
+        r' data-page="(?P<page>\d+)">)|(?P<end></anchorite-span>)',
     )
 
     plain_chars = []

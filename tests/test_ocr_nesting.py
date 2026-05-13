@@ -9,8 +9,8 @@ def test_nested_zero_length_at_start() -> None:
 
     annotated = anchorite.annotate(content, {bbox_a: (0, 5), bbox_b: (0, 0)})
 
-    tag_a = '<span data-bbox="0,0,5,1" data-page="1">'
-    assert f"{tag_a}Hello</span>" == annotated
+    tag_a = '<anchorite-span data-bbox="0,0,5,1" data-page="1">'
+    assert f"{tag_a}Hello</anchorite-span>" == annotated
 
 
 def test_nested_zero_length_at_end() -> None:
@@ -21,8 +21,8 @@ def test_nested_zero_length_at_end() -> None:
 
     annotated = anchorite.annotate(content, {bbox_a: (0, 5), bbox_c: (5, 5)})
 
-    tag_a = '<span data-bbox="0,0,5,1" data-page="1">'
-    assert f"{tag_a}Hello</span>" == annotated
+    tag_a = '<anchorite-span data-bbox="0,0,5,1" data-page="1">'
+    assert f"{tag_a}Hello</anchorite-span>" == annotated
 
 
 def test_identical_range_spans_are_properly_nested() -> None:
@@ -34,9 +34,9 @@ def test_identical_range_spans_are_properly_nested() -> None:
 
     annotated = anchorite.annotate(content, {bbox_a: (0, 5), bbox_b: (0, 5)})
 
-    tag_a = '<span data-bbox="0,0,5,1" data-page="1">'
-    tag_b = '<span data-bbox="0,0,5,2" data-page="1">'
-    end = "</span>"
+    tag_a = '<anchorite-span data-bbox="0,0,5,1" data-page="1">'
+    tag_b = '<anchorite-span data-bbox="0,0,5,2" data-page="1">'
+    end = "</anchorite-span>"
 
     assert annotated == f"{tag_a}{tag_b}Hello{end}{end}"
 
@@ -51,9 +51,9 @@ def test_co_terminal_closing_spans() -> None:
     # outer = [0,5), inner = [2,5): both end at 5
     annotated = anchorite.annotate(content, {bbox_outer: (0, 5), bbox_inner: (2, 5)})
 
-    tag_outer = '<span data-bbox="0,0,1,1" data-page="1">'
-    tag_inner = '<span data-bbox="0,0,2,2" data-page="1">'
-    end = "</span>"
+    tag_outer = '<anchorite-span data-bbox="0,0,1,1" data-page="1">'
+    tag_inner = '<anchorite-span data-bbox="0,0,2,2" data-page="1">'
+    end = "</anchorite-span>"
 
     assert annotated == f"{tag_outer}ab{tag_inner}cde{end}{end}"
 
@@ -68,8 +68,8 @@ def test_zero_length_span_at_abutting_boundary() -> None:
 
     annotated = anchorite.annotate(content, {bbox_a: (0, 5), bbox_zero: (5, 5), bbox_b: (5, 14)})
 
-    tag_a = '<span data-bbox="0,0,10,100" data-page="0">'
-    tag_b = '<span data-bbox="10,0,20,100" data-page="0">'
-    end = "</span>"
+    tag_a = '<anchorite-span data-bbox="0,0,10,100" data-page="0">'
+    tag_b = '<anchorite-span data-bbox="10,0,20,100" data-page="0">'
+    end = "</anchorite-span>"
 
     assert annotated == f"{tag_a}under{end}{tag_b}diagnosed{end}"

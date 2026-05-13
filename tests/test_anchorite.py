@@ -12,8 +12,8 @@ def test_anchorite_align_and_annotate() -> None:
     assert len(alignment) == 2
 
     annotated = anchorite.annotate(markdown, alignment)
-    assert '<span data-bbox="10,10,20,100" data-page="0">quick brown fox</span>' in annotated
-    assert '<span data-bbox="50,50,60,150" data-page="0">lazy dog</span>' in annotated
+    assert '<anchorite-span data-bbox="10,10,20,100" data-page="0">quick brown fox</anchorite-span>' in annotated
+    assert '<anchorite-span data-bbox="50,50,60,150" data-page="0">lazy dog</anchorite-span>' in annotated
 
 
 def test_anchorite_math_snapping() -> None:
@@ -27,13 +27,13 @@ def test_anchorite_math_snapping() -> None:
     annotated = anchorite.annotate(markdown, alignment)
 
     # Should snap to the $...$ boundaries
-    assert 'is <span data-bbox="100,100,110,200" data-page="0">$E=mc^2$</span> and' in annotated
+    assert 'is <anchorite-span data-bbox="100,100,110,200" data-page="0">$E=mc^2$</anchorite-span> and' in annotated
 
 
 def test_anchorite_resolve() -> None:
     annotated = (
-        'The <span data-bbox="10,10,20,20" data-page="0">quick brown fox jumps over</span> the '
-        '<span data-bbox="30,30,40,40" data-page="1">lazy dog that slept all day</span>.'
+        'The <anchorite-span data-bbox="10,10,20,20" data-page="0">quick brown fox jumps over</anchorite-span> the '
+        '<anchorite-span data-bbox="30,30,40,40" data-page="1">lazy dog that slept all day</anchorite-span>.'
     )
     quotes = ["quick brown fox jumps over", "lazy dog that slept all day"]
 
@@ -46,8 +46,8 @@ def test_anchorite_resolve() -> None:
 def test_anchorite_strip_and_nested_resolve() -> None:
     # Nested spans: inner is inside outer
     annotated = (
-        '<span data-bbox="0,0,100,100" data-page="0">The quick brown fox '
-        '<span data-bbox="10,10,20,20" data-page="0">jumps over the lazy</span> dog</span>'
+        '<anchorite-span data-bbox="0,0,100,100" data-page="0">The quick brown fox '
+        '<anchorite-span data-bbox="10,10,20,20" data-page="0">jumps over the lazy</anchorite-span> dog</anchorite-span>'
     )
 
     stripped = anchorite.strip(annotated)
@@ -60,11 +60,28 @@ def test_anchorite_strip_and_nested_resolve() -> None:
     assert (0, anchorite.BBox(10, 10, 20, 20)) in results["jumps over the lazy"]
 
 
+def test_strip_preserves_user_span_html() -> None:
+    # User-authored <span>...</span> HTML in the Markdown must pass through
+    # strip() untouched — only <anchorite-span> tags are removable.
+    annotated = (
+        '<anchorite-span data-bbox="0,0,10,10" data-page="0">'
+        'Hello <span class="kbd">world</span>!'
+        "</anchorite-span>"
+    )
+    stripped = anchorite.strip(annotated)
+    assert stripped.plain_text == 'Hello <span class="kbd">world</span>!'
+    assert len(stripped.validation_map) == 1
+    start, end, anchor = stripped.validation_map[0]
+    assert stripped.plain_text[start:end] == 'Hello <span class="kbd">world</span>!'
+    assert anchor.page == 0
+    assert anchor.boxes == (anchorite.BBox(0, 0, 10, 10),)
+
+
 def test_anchorite_resolve_partial_quote() -> None:
     # A quote that spans across anchors
     annotated = (
-        '<span data-bbox="1,1,1,1" data-page="0">The quick brown fox jumps</span> '
-        'over the <span data-bbox="2,2,2,2" data-page="0">lazy dog that slept</span>'
+        '<anchorite-span data-bbox="1,1,1,1" data-page="0">The quick brown fox jumps</anchorite-span> '
+        'over the <anchorite-span data-bbox="2,2,2,2" data-page="0">lazy dog that slept</anchorite-span>'
     )
     # plain text is "The quick brown fox jumps over the lazy dog that slept"
 

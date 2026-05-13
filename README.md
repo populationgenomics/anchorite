@@ -64,11 +64,11 @@ markdown = "# Observations of a Nebula\n\n*Edwin Hubble*, 1929"
 
 alignment = anchorite.align(anchors, markdown)
 annotated = anchorite.annotate(markdown, alignment)
-# <span data-bbox="52,120,68,880" data-page="0">Observations of a Nebula</span>
-# <span data-bbox="80,340,92,660" data-page="0">Edwin Hubble</span>
+# <anchorite-span data-bbox="52,120,68,880" data-page="0">Observations of a Nebula</anchorite-span>
+# <anchorite-span data-bbox="80,340,92,660" data-page="0">Edwin Hubble</anchorite-span>
 ```
 
-The annotated Markdown is otherwise valid Markdown and can be rendered normally; the `<span>` tags carry coordinate metadata as HTML attributes.
+The annotated Markdown is otherwise valid Markdown and can be rendered normally; the `<anchorite-span>` tags are custom elements (HTML5 allows any hyphenated tag name) carrying coordinate metadata as HTML attributes. A custom element name keeps anchorite's tags distinguishable from any user-authored `<span>` HTML in the source Markdown.
 
 ### 2. Derive anchors from a PDF + Markdown directly
 
@@ -102,7 +102,7 @@ located = anchorite.resolve_quote(markdown, spans, "quick brown fox jumps")
 # [(0, BBox(10, 10, 20, 20))]
 ```
 
-**`resolve`** — when you've stored *annotated* Markdown (with `<span data-bbox=…>` tags inline, as produced by `annotate`):
+**`resolve`** — when you've stored *annotated* Markdown (with `<anchorite-span data-bbox=…>` tags inline, as produced by `annotate`):
 
 ```python
 locations = anchorite.resolve(annotated, quotes=["Observations of a Nebula"])
@@ -137,7 +137,7 @@ index = anchorite.PdfIndex(pdf_bytes, markdown=llm_emitted_markdown)
 
 ### 4. Strip annotations for downstream validation
 
-`strip` is the inverse of `annotate`. It removes the `<span>` tags and returns a plain-text string alongside a validation map you can use to check whether a generated quote is grounded in the source document.
+`strip` is the inverse of `annotate`. It removes the `<anchorite-span>` tags and returns a plain-text string alongside a validation map you can use to check whether a generated quote is grounded in the source document. Other inline HTML in the Markdown (including user-authored `<span>` tags) is left untouched.
 
 ```python
 stripped = anchorite.strip(annotated)
@@ -225,11 +225,11 @@ Aligns a sequence of `Anchor` objects to a Markdown string. Returns `dict[Anchor
 
 ### `anchorite.annotate(markdown, alignment)`
 
-Injects `<span data-bbox="t,l,b,r" data-page="N">` tags into Markdown at the positions given by `alignment`. Handles overlapping and nested spans. Math blocks (`$...$`, `$$...$$`) are detected and span boundaries are snapped to their edges so LaTeX is not broken.
+Injects `<anchorite-span data-bbox="t,l,b,r" data-page="N">` tags into Markdown at the positions given by `alignment`. Handles overlapping and nested spans. Math blocks (`$...$`, `$$...$$`) are detected and span boundaries are snapped to their edges so LaTeX is not broken.
 
 ### `anchorite.strip(annotated_md)`
 
-Removes `<span>` tags and returns a `StrippedMarkdown` with fields:
+Removes `<anchorite-span>` tags and returns a `StrippedMarkdown` with fields:
 
 - `plain_text`: the Markdown with all tags removed
 - `validation_map`: sorted list of `(start, end, Anchor)` tuples in `plain_text` coordinates
@@ -240,7 +240,7 @@ Resolves a list of verbatim quote strings to their bounding boxes using fuzzy it
 
 ### `anchorite.resolve_quote(markdown, spans, quote, *, min_score, warn_coverage, fail_coverage)`
 
-The bbox-records variant of `resolve`. Locates `quote` in `markdown` via the same iterative SW pipeline, then returns every `SpanAnchor` whose `span` overlaps the matched region as a sorted, de-duplicated `[(page, BBox), …]` list. Suitable for callers that store Markdown and bbox records separately rather than as inline `<span>` tags.
+The bbox-records variant of `resolve`. Locates `quote` in `markdown` via the same iterative SW pipeline, then returns every `SpanAnchor` whose `span` overlaps the matched region as a sorted, de-duplicated `[(page, BBox), …]` list. Suitable for callers that store Markdown and bbox records separately rather than as inline `<anchorite-span>` tags.
 
 | Parameter | Default | Description |
 |---|---|---|
