@@ -4,7 +4,7 @@ requires-python = ">=3.11"
 
 [[package]]
 name = "anchorite"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "fsspec" },
@@ -25,7 +25,7 @@ dev = [
 requires-dist = [
     { name = "fsspec" },
     { name = "pypdfium2" },
-    { name = "seq-smith", specifier = ">=0.5.1" },
+    { name = "seq-smith", specifier = ">=0.6.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -480,28 +480,28 @@ wheels = [
 
 [[package]]
 name = "seq-smith"
-version = "0.5.1"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2b/40/61ee3442395d352e04654989581055ca6cc2a3d0b623e8a26fdf7ebff826/seq_smith-0.5.1.tar.gz", hash = "sha256:a9fad55f1b9c297f89ca5e73869c671f4566ad2391d8341eb200d4ba08437d04", size = 136405, upload-time = "2025-12-28T04:58:39.675Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1b/01/5226b44550490e8fd77f60ac72df3ad32cead1757dece33e9b5b0619a0ab/seq_smith-0.6.0.tar.gz", hash = "sha256:820d941cb81c324d7ca8408aacebbc5f832023617954b25110853a82271f7563", size = 141595, upload-time = "2026-05-12T22:56:36.841Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d7/41/f014127c12ee891973ad6a2a680e2143c9ab779a42f882fa4e45bc1b2d29/seq_smith-0.5.1-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:8ae9c8aaae5faf4218bb64f620d27ca4f5b37e58ade934d2da8f351a0b1402f4", size = 410221, upload-time = "2025-12-28T04:58:16.309Z" },
-    { url = "https://files.pythonhosted.org/packages/e3/45/46d43bf55f1308753d156c4f2300d41399133a3269482f76fd38d1e0f561/seq_smith-0.5.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:3a0a558be6d4020a9ec718d2ae4011d045c80a01f1842ed72a01cba5b4f606e3", size = 398377, upload-time = "2025-12-28T04:58:17.966Z" },
-    { url = "https://files.pythonhosted.org/packages/9d/a1/9531b5faa6b41939c5da4878c48682c7a7d1d2b725b52f0ae88a582f8448/seq_smith-0.5.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fafc5ef1b40ec67cdb4764c652c7f3ef92d92a5ffb118c8cc7832ab9a9a7d799", size = 439101, upload-time = "2025-12-28T04:58:19.28Z" },
-    { url = "https://files.pythonhosted.org/packages/59/e4/2c56b60defd941df0fdf399aecd50a8663dea53812e63a7d49033a7e7cd8/seq_smith-0.5.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0e5f231b1c9bca1ea1d274f5e69467aed677ab22d27d6dfe69ad914cb221ca31", size = 459314, upload-time = "2025-12-28T04:58:20.984Z" },
-    { url = "https://files.pythonhosted.org/packages/a6/d3/ebc5ee3df2c123ac30d69c513ffd2c117f1d8207ea48b2c50acdce492e99/seq_smith-0.5.1-cp311-cp311-win_amd64.whl", hash = "sha256:3ade1b0336c9a236754ee59b0dde0517c4d8569757b6a6a05a4ca0d6294afe94", size = 263894, upload-time = "2025-12-28T04:58:22.761Z" },
-    { url = "https://files.pythonhosted.org/packages/e4/30/0281495548ba146793fdb7f3fc316927a4008f58b2460ba2b6d0044af4bc/seq_smith-0.5.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:23d380fb40ad1b5842def8efcada41b029098bc87c7e12f6e3c7e2717cb4b9c9", size = 406904, upload-time = "2025-12-28T04:58:24.142Z" },
-    { url = "https://files.pythonhosted.org/packages/a1/23/e8f6fc0c4ae9aea59c2dbd616df05ac0a4bfb4c4a3e24fef3536960217f8/seq_smith-0.5.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:aaa81740368273ecebf0aaeae778a58032f845b7887cddc6dcc1168b01103bb7", size = 394850, upload-time = "2025-12-28T04:58:25.918Z" },
-    { url = "https://files.pythonhosted.org/packages/5c/14/6073a3718e4aa53b7075513efb0325dc8a1b5930054e64b447246f2b12cf/seq_smith-0.5.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5d03ff0d52be2c901c07048c7b182670e9897f2c4e8eeab73c974b788623c1aa", size = 435737, upload-time = "2025-12-28T04:58:27.704Z" },
-    { url = "https://files.pythonhosted.org/packages/5b/36/cf0643391bfd893e10d781401fd9c0223dd7784a5b90a4d8451ba8506f5a/seq_smith-0.5.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1821619080fde171d6cd9520e95b1b64507adce53316f0eaba501f6955b66671", size = 454970, upload-time = "2025-12-28T04:58:29.518Z" },
-    { url = "https://files.pythonhosted.org/packages/f2/d2/ad0dd5985273c70f8f99af2e6f7a5ce909528b05cf802195540eeab497ce/seq_smith-0.5.1-cp312-cp312-win_amd64.whl", hash = "sha256:248f598b85e49847a9931a564344b47c26c8a7e9fc57a841b4423c29471f1407", size = 263356, upload-time = "2025-12-28T04:58:30.866Z" },
-    { url = "https://files.pythonhosted.org/packages/69/cf/d951752327be2e0b2dd297c9fd27c81fd70adb126e4e1121f4582aa759da/seq_smith-0.5.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:aee1efa547fa07673e816134995b9b51822260400d733ed038dc4a74a5101a99", size = 407029, upload-time = "2025-12-28T04:58:32.177Z" },
-    { url = "https://files.pythonhosted.org/packages/3d/86/e62d028eae514497ae451eb9df567f4f0e7df394a46c6a07ad6641a3602e/seq_smith-0.5.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:77b86eb5170db6b2ae62884da15c053f898032fbf51aa01f83199db3865b3c50", size = 394427, upload-time = "2025-12-28T04:58:33.493Z" },
-    { url = "https://files.pythonhosted.org/packages/3c/eb/17410a2eada7ba96792fe2684caee4efc17e090f29e7f81da7ef80940d34/seq_smith-0.5.1-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:65207a3398a2d6a4764298328e00ae3adf3a9996ba7fe95bf5a68a499fcb0a99", size = 435121, upload-time = "2025-12-28T04:58:35.256Z" },
-    { url = "https://files.pythonhosted.org/packages/03/21/f2a46ba44264864919db144568683c589fa533b98adb470719c74b93bd56/seq_smith-0.5.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1fa55b91c146e3908280aa063c4c32d8074f59c0a0b927ee5939788907f9250b", size = 454822, upload-time = "2025-12-28T04:58:36.617Z" },
-    { url = "https://files.pythonhosted.org/packages/5a/be/54aac5e794a5389a26e79e4231f7b10bfe3c4ff6470eecf05dff59ce7d96/seq_smith-0.5.1-cp313-cp313-win_amd64.whl", hash = "sha256:f22243a3d03e06a761d452716ab9810b058703538250b5626219f3f77952aded", size = 262778, upload-time = "2025-12-28T04:58:38.407Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/f0/743893a2bb9c9e579efdddfe7565ae3ca457c3d9967241946b724e8610c6/seq_smith-0.6.0-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:f067589fbb7e6ee7ac4955bf43f8c495731b250fef352b1a45d8611a8b987d8d", size = 425585, upload-time = "2026-05-12T22:56:14.321Z" },
+    { url = "https://files.pythonhosted.org/packages/93/dc/668b2f8914a69bc87b04728993f0a5d9278260c72600948271b8710ad9ca/seq_smith-0.6.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:ff22df7a49d713150c0cdd4c1c686f37be945803f22e148d9d3598e47481ebf2", size = 415800, upload-time = "2026-05-12T22:56:16.041Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/06/c524bf1f1c39a815adfbc6311659af4f3546641f4077e95b702da4dd2e7a/seq_smith-0.6.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d6fd840546c1fcd3d99fe73003c6771a263374bcf4b2ecfae59786ccd40825e4", size = 461153, upload-time = "2026-05-12T22:56:17.532Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/49/0f66448b2a41ded740fc6c2be46898461d09ac2fd0ad23a52dcc1bf5cc44/seq_smith-0.6.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c9e5185a5551da75cc4b7bca63652c982bc7a7419ddb2f60b95db8b4ddcacdb9", size = 478113, upload-time = "2026-05-12T22:56:18.856Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/fb/010dcaa398fc46a6c3f50ae8eba566dc640cfe8e32e293ead600808c2352/seq_smith-0.6.0-cp311-cp311-win_amd64.whl", hash = "sha256:b408ae89df8b2a354762c0e9e891c38c9d2ff8406a6ae99bdac0c65090991ba1", size = 289459, upload-time = "2026-05-12T22:56:20.235Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/57/54d979a8acff9a7bee37d64827493cc222567e32c52048a2e012fa49f305/seq_smith-0.6.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:86d68adbdd8cd835702fbfc2f913affa1a98d69ac35ab1b603d86a936fe9de0b", size = 422636, upload-time = "2026-05-12T22:56:21.388Z" },
+    { url = "https://files.pythonhosted.org/packages/28/46/bf1ebbc90bf71cfa622f0bc1872c1a055e1b1bc2905c31b163e20571672f/seq_smith-0.6.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:a2c89a7154f75d22669a41a27fde1265f748cc419d9931312c5a8760d85fe7ed", size = 411774, upload-time = "2026-05-12T22:56:23.114Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/d0/dfce641915279279fe42074134af0b44724c426b085a473b8e7a80324702/seq_smith-0.6.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:423962ad166fef5ba456ee7a93067981f59398ac444f373c928722547a78ba81", size = 458689, upload-time = "2026-05-12T22:56:24.628Z" },
+    { url = "https://files.pythonhosted.org/packages/13/96/8fe1b8b258cacad095a45042e1419bf776669de6adc2011ce3a96f11a2d3/seq_smith-0.6.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e692e501a87e77435ac01a81cbc657f32785e64263acd5adbafa32adbf73e7bf", size = 474351, upload-time = "2026-05-12T22:56:26.256Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/e4/3e7232da60ae62ffc6b8c1af197409adfd64ac4b9c06c61c5b2ca440da70/seq_smith-0.6.0-cp312-cp312-win_amd64.whl", hash = "sha256:2c80d0f662fe1f1d38876271a2a4bb088a8883e1339f43443908fff987971726", size = 287968, upload-time = "2026-05-12T22:56:27.877Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/b9/d212c97d24e0e11e176fd4303b2a64d1ede0b56c2aa75e159a04eeaf75b1/seq_smith-0.6.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:9bc96dfc6706ec0935e6b757addc460a0ebd5dab963ca9c00de712e31985437e", size = 422016, upload-time = "2026-05-12T22:56:29.201Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/74/e928c2a239b9f63efed92f00d1cec1677f48b40f1f0e419095121750c7a7/seq_smith-0.6.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:4359a457898f8f95adc017ec00fa6a188711514b68aaba99f3246acb36ed39d8", size = 411437, upload-time = "2026-05-12T22:56:30.839Z" },
+    { url = "https://files.pythonhosted.org/packages/99/8a/28d0afca9b9691b08c377b3a826f85eac340b5483f547eb0594dcb35f521/seq_smith-0.6.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:01c1f99fe164c856451633456337c0747ee358945b400babb0588d55b991bb4c", size = 458608, upload-time = "2026-05-12T22:56:32.191Z" },
+    { url = "https://files.pythonhosted.org/packages/33/5d/200f071fc5eb40f9d33fd38124417601043051af4f4cc0f642881d185448/seq_smith-0.6.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:69a6a578a044b187de02e31f90d91c90a29eed9b421ac56f0c6d01fe88a73007", size = 473464, upload-time = "2026-05-12T22:56:34.071Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/74/05ef8f2fe2e1551575b844534b3dca53a9f4f00a9154bb727033cd3c68c9/seq_smith-0.6.0-cp313-cp313-win_amd64.whl", hash = "sha256:66b0a65c73217d374bf5b339b5cc5cfc146edac1c287deec4300be0575bb5b06", size = 287407, upload-time = "2026-05-12T22:56:35.632Z" },
 ]
 
 [[package]]

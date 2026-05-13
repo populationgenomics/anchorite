@@ -31,9 +31,12 @@ matrix, so callers other than ``PdfIndex`` (e.g. a future redesign of
 Cost model
 ----------
 
-Let ``|A| = n``, ``|B| = m``.  ``seq_smith.top_k_ungapped_local_align``
-is O(n·m) in the worst case (diagonal scan), but with a small constant
-because it does no DP traceback.  Chaining via O(k²) weighted LIS over
+Let ``|A| = n``, ``|B| = m``.  Seeding via
+``seq_smith.top_k_ungapped_local_align_kmer`` indexes *A*'s k-mers in
+O(n) and scans only the diagonals that share at least one k-mer between
+*A* and *B*, with ``max_hits_per_kmer`` capping the work on
+low-complexity stretches; in practice this is near-linear in
+``n + m + total HSP length``.  Chaining via O(k²) weighted LIS over
 ``k`` seeds is trivial for typical ``k ≤ 500``.  Gap-fill local SW is
 O(gap_a · gap_b) per gap; the recursion keeps gap sizes small.  In
 practice the runtime is dominated by the top-level seed scan.
@@ -76,6 +79,26 @@ _DEFAULT_SEED_MIN_SCORE = 8
 # Score floor for a gap-fill local alignment.  Below this the fill is
 # likely noise (short coincidental matches) — drop it.
 _DEFAULT_FILL_MIN_SCORE = 4
+
+# Seed length for ``seq_smith.top_k_ungapped_local_align_kmer``.  The seeder
+# only inspects diagonals that have at least one ``kmer_size``-byte exact
+# match between *A* and *B*, which dramatically reduces the cells scanned.
+# 5 strikes a balance for text-like alphabets (~37 symbols): an HSP scoring
+# >= 8 over +1/-1 almost always contains a 5-byte run of consecutive
+# matches, and any rare HSP that doesn't is picked up by the recursive
+# gap-fill (which uses a smaller seed floor and ultimately a full SW).
+_DEFAULT_KMER_SIZE = 5
+
+# Skip k-mers occurring more than this many times in *A* during seeding —
+# a guard against quadratic blowup on low-complexity stretches (long runs
+# of common short fragments).  Matches the value used throughout
+# ``seq_smith``'s own test suite for ``top_k_ungapped_local_align_kmer``.
+# Over text alphabets at ``kmer_size = 5`` the cap rarely fires (most
+# 5-mers are unique or near-unique in *A*), and the kmer-seeding stage
+# is already a tiny fraction of the total cost on real PDF/markdown
+# inputs, so a permissive cap costs nothing measurable and keeps
+# legitimate seeds in repetitive sections (e.g. tables of short tokens).
+_DEFAULT_MAX_HITS_PER_KMER = 100
 
 # Max recursion depth.  Each level lowers the seed-score floor; once the
 # floor reaches its minimum or no seed survives, gap-fill falls through
@@ -126,6 +149,8 @@ def chained_alignment(
     max_seeds: int = _DEFAULT_MAX_SEEDS,
     seed_min_score: int = _DEFAULT_SEED_MIN_SCORE,
     fill_min_score: int = _DEFAULT_FILL_MIN_SCORE,
+    kmer_size: int = _DEFAULT_KMER_SIZE,
+    max_hits_per_kmer: int = _DEFAULT_MAX_HITS_PER_KMER,
 ) -> list[tuple[int, int]]:
     """Return the set of matched ``(a_idx, b_idx)`` pairs across the trace.
 
@@ -152,6 +177,14 @@ def chained_alignment(
         fill_min_score: Minimum score for a gap-fill local SW alignment
             to be accepted.  Below this the gap's best alignment is
             treated as noise.
+        kmer_size: Seed length passed to
+            ``seq_smith.top_k_ungapped_local_align_kmer``; must be in
+            ``[1, 8]``.  Larger values are more selective (fewer
+            diagonals to scan, faster) but miss HSPs whose match runs
+            are all shorter than ``kmer_size``.
+        max_hits_per_kmer: K-mers that appear more than this many times
+            in *A* are skipped during seeding to bound the cost on
+            low-complexity stretches.
 
     Returns:
         Sorted list of ``(a_idx, b_idx)`` pairs.  Each pair is one byte
@@ -175,6 +208,8 @@ def chained_alignment(
         max_seeds=max_seeds,
         seed_min_score=seed_min_score,
         fill_min_score=fill_min_score,
+        kmer_size=kmer_size,
+        max_hits_per_kmer=max_hits_per_kmer,
         depth=0,
     )
     pairs.sort()
@@ -208,6 +243,8 @@ def _align(
     max_seeds: int,
     seed_min_score: int,
     fill_min_score: int,
+    kmer_size: int,
+    max_hits_per_kmer: int,
     depth: int,
 ) -> list[tuple[int, int]]:
     """Inner recursive worker for ``chained_alignment``.
@@ -243,6 +280,8 @@ def _align(
         score_matrix,
         max_seeds=max_seeds,
         min_score=_seed_min_score_at_depth(seed_min_score, depth),
+        kmer_size=kmer_size,
+        max_hits_per_kmer=max_hits_per_kmer,
     )
 
     if not seeds:
@@ -276,6 +315,8 @@ def _align(
                 max_seeds=max_seeds,
                 seed_min_score=seed_min_score,
                 fill_min_score=fill_min_score,
+                kmer_size=kmer_size,
+                max_hits_per_kmer=max_hits_per_kmer,
                 depth=depth + 1,
             )
             for a, b in sub:
@@ -295,6 +336,8 @@ def _align(
             max_seeds=max_seeds,
             seed_min_score=seed_min_score,
             fill_min_score=fill_min_score,
+            kmer_size=kmer_size,
+            max_hits_per_kmer=max_hits_per_kmer,
             depth=depth + 1,
         )
         for a, b in sub:
@@ -315,13 +358,15 @@ def _find_seeds(
     *,
     max_seeds: int,
     min_score: int,
+    kmer_size: int,
+    max_hits_per_kmer: int,
 ) -> list[_Seed]:
     """Top-K HSPs above the minimum score threshold, disjoint on the *A* axis.
 
-    Uses ``seq_smith.top_k_ungapped_local_align`` with overlap filtering
-    on the *A* axis only.  Disjoint-on-A means each *A* byte is claimed
-    by at most one seed — the property the chain step needs to avoid
-    double-counting matches.
+    Uses ``seq_smith.top_k_ungapped_local_align_kmer`` (k-mer seeded HSP
+    finder).  Overlap filtering is on the *A* axis only: disjoint-on-A
+    means each *A* byte is claimed by at most one seed — the property
+    the chain step needs to avoid double-counting matches.
 
     Filtering on the *B* axis is *off* deliberately: real near-copy
     inputs have repeated short fragments on *B* (e.g. a paragraph break
@@ -331,14 +376,24 @@ def _find_seeds(
     legitimately claim the same *B* position from different *A*
     positions; the chain step orders them by *B*-start and the per-pair
     output keeps each ``(a_idx, b_idx)`` distinct.
+
+    Seed-recall caveat: the k-mer seeder only inspects diagonals that
+    have a length-``kmer_size`` exact match between *A* and *B*, so an
+    HSP whose match runs are all strictly shorter than ``kmer_size`` is
+    missed at this level.  At ``kmer_size=5`` over text alphabets this
+    only happens at very small HSP scores; the gap-fill recursion (with
+    a smaller seed floor, and ultimately a full SW) picks up anything
+    the top-level seeder skips.
     """
     if len(seq_a) == 0 or len(seq_b) == 0:
         return []
-    hsps = seq_smith.top_k_ungapped_local_align(
+    hsps = seq_smith.top_k_ungapped_local_align_kmer(
         seq_a,
         seq_b,
         score_matrix,
         k=max_seeds,
+        kmer_size=kmer_size,
+        max_hits_per_kmer=max_hits_per_kmer,
         filter_overlap_a=True,
         filter_overlap_b=False,
     )
