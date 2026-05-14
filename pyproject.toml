@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "anchorite"
-version = "0.3.0"
+version = "0.4.0"
 authors = [
     { name = "Tobias Sargeant", email = "tobias.sargeant@gmail.com" },
 ]
@@ -21,7 +21,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "seq-smith>=0.5.1",
+    "seq-smith>=0.6.0",
     "pypdfium2",
     "fsspec",
 ]

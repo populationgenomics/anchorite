@@ -129,7 +129,7 @@ located = index.resolve(["Observations of a Nebula", "first 19 nebulae"])
 
 Construction extracts per-character bounding boxes from every page (the expensive step); `.resolve` is then cheap and batches all quotes through a single `seq_smith.local_global_align_many` pass. Pages are 0-indexed.
 
-You can optionally pass a Markdown transcription at construction time. The Markdown is aligned against the extracted PDF chars and used to clean up the cached flat string — chars the LLM didn't transcribe (running heads, page numbers, footnote markers) get dropped. The Markdown is then discarded; the index stays Markdown-free, but the cache is higher quality:
+You can optionally pass a Markdown transcription at construction time. The Markdown is aligned against the extracted PDF chars via `chained_alignment` (seed-and-extend with chained HSPs) and used to clean up the cached flat string — chars the LLM didn't transcribe (running heads, page numbers, footnote markers) get dropped. Character-level alignment means short fragments such as table cells inherit position from their neighbouring context rather than needing to be individually anchorable. The Markdown is then discarded; the index stays Markdown-free, but the cache is higher quality:
 
 ```python
 index = anchorite.PdfIndex(pdf_bytes, markdown=llm_emitted_markdown)

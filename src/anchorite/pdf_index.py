@@ -6,12 +6,15 @@ Smith-Waterman alignment.  Quote resolution is then a cheap dictionary
 lookup against the cached state.
 
 Optionally accepts a Markdown transcription of the document at
-construction time: the markdown is aligned against the extracted PDF
-atoms (sharing ``md_association``'s alignment surface), and the matched
-atoms rebuild the cached flat string in markdown order with atoms the
+construction time.  The markdown is aligned to the extracted PDF atoms
+via ``chained_alignment`` — seed-and-extend with chained HSPs — and the
+union of matched atoms rebuilds the cached flat string with atoms the
 LLM didn't transcribe (running heads, page numbers, footnote markers)
-removed.  The markdown is then discarded — the resolver only ever sees
-PDF atoms.
+dropped.  Character-level alignment means short fragments (e.g. table
+cells of one or two digits) inherit position from their neighbouring
+context and survive the cleanup even though they couldn't anchor
+themselves.  The markdown is then discarded — the resolver only ever
+sees PDF atoms.
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ from typing import TYPE_CHECKING
 import pypdfium2 as pdfium
 import seq_smith
 
-from . import md_association
+from .chained_alignment import chained_alignment
 from .normalize import SCORE_MATRIX_STRICT, normalize_strict
 from .pdf_atoms import Atom, PageData, build_atom_index, extract_page_data, line_bboxes
 
@@ -97,47 +100,105 @@ def _build_index_from_atoms(
     return "".join(flat_parts), flat_to_page, flat_to_page_atom
 
 
+def _claimed_atoms_per_page(
+    full_flat: str,
+    full_to_page: list[int],
+    full_to_page_atom: list[int],
+    markdown: str,
+) -> dict[int, list[int]]:
+    """Return ``{page_idx: sorted atom indices claimed by the markdown}``.
+
+    Normalises both the full PDF flat string and the markdown, runs the
+    seed-and-extend chained alignment between them, and projects matched
+    ``pdf_norm`` positions back to per-page atom indices via the
+    ``full_to_page`` / ``full_to_page_atom`` maps inherited from
+    ``_build_index_from_atoms``.
+
+    Inter-page separator positions (``full_to_page_atom < 0``) and
+    ``build_atom_index``-inserted spaces (``full_to_page_atom`` points
+    at the *preceding* atom) are handled by the mapping itself: any
+    atom referenced via a matched position is added to the claim set,
+    so a match landing on an inserted space resolves to the atom before
+    the gap rather than vanishing.
+    """
+    md_norm, _ = normalize_strict(markdown, strip_html=True)
+    pdf_norm, pdf_norm_to_flat = normalize_strict(full_flat)
+    if not md_norm or not pdf_norm:
+        return {}
+
+    pairs = chained_alignment(
+        pdf_norm,
+        md_norm,
+        SCORE_MATRIX_STRICT,
+        gap_open=_GAP_OPEN,
+        gap_extend=_GAP_EXTEND,
+    )
+
+    claimed: dict[int, set[int]] = {}
+    for pdf_idx, _md_idx in pairs:
+        flat_idx = pdf_norm_to_flat[pdf_idx]
+        if flat_idx >= len(full_to_page_atom):
+            continue  # sentinel position
+        atom_idx = full_to_page_atom[flat_idx]
+        if atom_idx < 0:
+            continue  # inter-page separator — no atom to keep
+        page = full_to_page[flat_idx]
+        claimed.setdefault(page, set()).add(atom_idx)
+
+    return {page: sorted(indices) for page, indices in claimed.items()}
+
+
 def _build_index_from_alignment(
     page_data: list[PageData],
-    outcome: md_association._AlignmentOutcome,
+    markdown: str,
 ) -> tuple[str, list[int], list[int]]:
-    """Build the cleaned flat string from atoms matched by markdown alignment.
+    """Build the cleaned flat string from atoms claimed by chained alignment.
 
-    Walks segments in markdown order; for each matched segment, includes
-    only the atoms the alignment actually claimed, runs them back through
-    ``build_atom_index`` for space-at-gap / soft-hyphen handling, and
-    appends the result.  Unmatched segments and unmatched-on-a-page atoms
-    are dropped — that's the "denoise" effect: running heads, page numbers,
-    footnote markers the LLM didn't transcribe never enter the cache.
+    1. Build the full PDF flat string from every atom (the markdown-free
+       index shape) so we have a single coordinate system to align in.
+    2. Run ``chained_alignment`` between the normalised markdown and the
+       normalised full flat string; this gives the matched ``(pdf, md)``
+       byte pairs.
+    3. Project matched PDF byte positions back to per-page atom indices.
+    4. For each page in document order, rebuild the page's flat string
+       from *only* the claimed atoms (via ``build_atom_index``, which
+       re-inserts spaces at coordinate gaps so visually disjoint claimed
+       atoms stay separated).
+    5. Concatenate per-page flat strings with a single inter-page
+       separator space (``flat_to_page_atom = -1``).
 
-    Segment separators: a single space between segments, with
-    ``flat_to_page_atom = -1``.
+    Atoms not claimed by any matched byte are dropped — that's the
+    denoise effect.  Because the alignment operates at the byte level,
+    short fragments (e.g. table cells of one or two digits) survive
+    based on sequence-level coherence with their neighbours, rather
+    than needing to anchor themselves.
 
     Returns ``(flat_str, flat_to_page, flat_to_page_atom)``.
     """
+    full_flat, full_to_page, full_to_page_atom = _build_index_from_atoms(page_data)
+    claimed = _claimed_atoms_per_page(full_flat, full_to_page, full_to_page_atom, markdown)
+
     flat_parts: list[str] = []
     flat_to_page: list[int] = []
     flat_to_page_atom: list[int] = []
 
-    for entry in outcome.matched_atoms_per_segment:
-        if entry is None:
-            continue
-        page, atom_indices = entry
+    for page_idx in range(len(page_data)):
+        atom_indices = claimed.get(page_idx)
         if not atom_indices:
             continue
 
         if flat_parts:
             flat_parts.append(" ")
-            flat_to_page.append(page)
+            flat_to_page.append(page_idx)
             flat_to_page_atom.append(-1)
 
-        atoms_subset = [page_data[page].atoms[j] for j in atom_indices]
+        atoms_subset = [page_data[page_idx].atoms[j] for j in atom_indices]
         sub_ai = build_atom_index(atoms_subset)
         for i, c in enumerate(sub_ai.flat_str):
             flat_parts.append(c)
-            flat_to_page.append(page)
+            flat_to_page.append(page_idx)
             # ``sub_ai.flat_to_atom`` indexes into ``atoms_subset``; map back
-            # to the absolute atom index on ``page_data[page].atoms`` via
+            # to the absolute atom index on ``page_data[page_idx].atoms`` via
             # ``atom_indices``.  Inserted-space positions inherit the
             # preceding atom's absolute index (matches ``build_atom_index``
             # behaviour for in-page atoms), so a match fragment that lands
@@ -156,11 +217,12 @@ class PdfIndex:
     built, ``resolve`` is cheap and may be called repeatedly.
 
     When ``markdown`` is supplied, it is aligned to the extracted PDF atoms
-    via ``md_association`` and used to clean up the cached flat string —
-    matched-only atoms in markdown order, with running heads / page numbers /
-    footnote markers the LLM didn't transcribe dropped.  The markdown is
-    not stored; after construction the index is markdown-free, and
-    ``resolve`` matches LLM-emitted quotes against the cleaned PDF text.
+    via ``chained_alignment`` (seed-and-extend with chained HSPs) and used
+    to clean up the cached flat string — matched-only atoms in document
+    order, with running heads / page numbers / footnote markers the LLM
+    didn't transcribe dropped.  The markdown is not stored; after
+    construction the index is markdown-free, and ``resolve`` matches
+    LLM-emitted quotes against the cleaned PDF text.
 
     Pages in the returned ``(page, BBox)`` tuples are **0-indexed**, matching
     ``anchorite.Anchor.page``.
@@ -176,8 +238,7 @@ class PdfIndex:
         page_data = extract_page_data(doc)
 
         if markdown is not None:
-            outcome = md_association._align_markdown_to_pages(page_data, markdown)  # noqa: SLF001
-            flat_str, flat_to_page, flat_to_page_atom = _build_index_from_alignment(page_data, outcome)
+            flat_str, flat_to_page, flat_to_page_atom = _build_index_from_alignment(page_data, markdown)
         else:
             flat_str, flat_to_page, flat_to_page_atom = _build_index_from_atoms(page_data)
 
