@@ -339,6 +339,84 @@ def test_jats_style_markdown_without_page_markers_still_denoises() -> None:
     assert index.resolve(["completely different content"])["completely different content"]
 
 
+# ---------------------------------------------------------------------------
+# Rotation: end-to-end resolver against a /Rotate=90 page
+# ---------------------------------------------------------------------------
+
+
+_ROTATED_ROW_TEXT = "the quick brown fox"
+
+
+def _make_rotated_row_pdf() -> bytes:
+    """Build a /Rotate=90 PDF carrying one sideways text run.
+
+    The run is drawn with a 90°-CCW text matrix so glyphs advance in PDF
+    ``+y`` rather than ``+x``.  After the page's ``/Rotate=90 CW``, PDF
+    ``+y`` becomes screen ``+x`` and the glyphs read normally left-to-right
+    along one screen-row — the same geometric arrangement real sideways-
+    printed tables use (and what Zhu2022's patient rows look like in #20).
+    """
+    doc = pdfium.PdfDocument.new()
+    page = doc.new_page(612, 792)
+    text_obj = pdfium_c.FPDFPageObj_NewTextObj(doc.raw, b"Helvetica", 12.0)
+    buf = (ctypes.c_ushort * (len(_ROTATED_ROW_TEXT) + 1))()
+    for i, ch in enumerate(_ROTATED_ROW_TEXT):
+        buf[i] = ord(ch)
+    buf[len(_ROTATED_ROW_TEXT)] = 0
+    pdfium_c.FPDFText_SetText(text_obj, buf)
+    # Text matrix (0, 1, -1, 0, tx, ty): 90° CCW rotation of text axes —
+    # glyph advance points in PDF +y.
+    matrix = pdfium_c.FS_MATRIX(0.0, 1.0, -1.0, 0.0, 300.0, 100.0)
+    pdfium_c.FPDFPageObj_SetMatrix(text_obj, ctypes.byref(matrix))
+    pdfium_c.FPDFPage_InsertObject(page, text_obj)
+    pdfium_c.FPDFPage_GenerateContent(page)
+    pdfium_c.FPDFPage_SetRotation(page, 1)  # 90 CW
+    out = io.BytesIO()
+    doc.save(out)
+    return out.getvalue()
+
+
+def test_rotated_page_clusters_screen_row_into_single_bbox() -> None:
+    """Pre-fix: line_bboxes would y-cluster the screen-row's atoms by their
+    varying PDF-y and shatter them into one bbox per glyph.  Post-fix: atoms
+    are already in the rotated frame, so y-clustering correctly groups the
+    whole screen-row into a single bbox.
+    """
+    pdf = _make_rotated_row_pdf()
+    index = PdfIndex(pdf)
+    boxes = index.resolve([_ROTATED_ROW_TEXT])[_ROTATED_ROW_TEXT]
+
+    assert boxes, "expected the row to resolve"
+    assert len(boxes) == 1, (
+        f"expected one bbox covering the full screen-row, got {len(boxes)}; this is the #20 line-clustering symptom"
+    )
+    page, bbox = boxes[0]
+    assert page == 0
+    # The row sits inside the 0-1000 normalised range — pre-fix bboxes for
+    # /Rotate=90 went negative.
+    assert 0 <= bbox.top < bbox.bottom <= 1000
+    assert 0 <= bbox.left < bbox.right <= 1000
+    # The strip is wide horizontally (one screen-row) and short vertically.
+    assert (bbox.right - bbox.left) > (bbox.bottom - bbox.top)
+
+
+def test_rotated_page_bbox_coords_stay_in_range() -> None:
+    """Independent of clustering: every BBox field for a /Rotate=90 page
+    must sit in [0, 1000].  Pre-fix, ``bbox_from_atoms`` produced negative
+    ``top`` values because it divided unrotated atom coords by rotated page
+    dims; this test pins the regression.
+    """
+    pdf = _make_rotated_row_pdf()
+    index = PdfIndex(pdf)
+    boxes = index.resolve([_ROTATED_ROW_TEXT])[_ROTATED_ROW_TEXT]
+
+    for _, bbox in boxes:
+        assert 0 <= bbox.top <= 1000
+        assert 0 <= bbox.left <= 1000
+        assert 0 <= bbox.bottom <= 1000
+        assert 0 <= bbox.right <= 1000
+
+
 def test_hallucinated_markdown_does_not_break_real_content() -> None:
     """Markdown contains a sentence with no PDF counterpart (hallucination).
 
