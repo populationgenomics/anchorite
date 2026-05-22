@@ -137,9 +137,9 @@ class PageData:
     height: float
     """Page height in PDF points (displayed dimension)."""
     rotation: int
-    """Clockwise page rotation in degrees (0, 90, 180, or 270) as read from
-    ``/Rotate``.  Recorded for debugging; not load-bearing downstream because
-    atom coords are already in the displayed frame."""
+    """PDF ``/Rotate`` value (clockwise per PDF 1.7 §14.4): 0, 90, 180, or
+    270 degrees.  Recorded for debugging; not load-bearing downstream
+    because atom coords are already in the displayed frame."""
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +147,7 @@ class PageData:
 # ---------------------------------------------------------------------------
 
 
-def _rotate_charbox(
+def _to_displayed_bbox(
     left: float,
     bottom: float,
     right: float,
@@ -155,15 +155,15 @@ def _rotate_charbox(
     rotation: int,
     bbox: tuple[float, float, float, float],
 ) -> tuple[float, float, float, float]:
-    """Map a PDFium charbox into the page's **displayed** frame.
+    """Map a PDF-user-space bbox into the page's **displayed** frame.
 
-    PDFium's ``get_charbox`` returns coords in raw PDF user space regardless
-    of ``/Rotate``.  This applies the same transform PDFium uses internally
-    (``CPDF_Page::UpdateDimensions``'s ``page_matrix_``): translate so the
-    page bbox's bottom-left sits at ``(0, 0)``, then rotate clockwise by the
-    page's ``/Rotate``.  Result is in
+    Applied to every glyph's charbox at extraction so downstream code can
+    stay rotation-blind.  Reproduces PDFium's internal ``page_matrix_`` (see
+    ``CPDF_Page::UpdateDimensions``): translate so the page ``bbox``'s
+    bottom-left sits at ``(0, 0)``, then rotate clockwise by ``rotation``
+    (the page's ``/Rotate``).  Result is in
     ``[0, page.get_width()] × [0, page.get_height()]`` (displayed dims),
-    with y increasing upward — the bottom-left-origin convention every
+    origin bottom-left, y increasing upward — the convention every
     downstream consumer already assumes.
     """
     bl, bb, br, bt = bbox
@@ -181,7 +181,7 @@ def extract_page_atoms(page: pdfium.PdfPage) -> list[Atom]:  # noqa: C901, PLR09
 
     Atom coords come out in the page's **displayed** frame (origin at the
     page bbox's bottom-left).  The transform applied to every charbox is
-    documented on ``_rotate_charbox``.
+    documented on ``_to_displayed_bbox``.
     """
     rotation = page.get_rotation()
     page_bbox = page.get_bbox()
@@ -244,7 +244,7 @@ def extract_page_atoms(page: pdfium.PdfPage) -> list[Atom]:  # noqa: C901, PLR09
                 if normalized:
                     left, bottom, right, top = textpage.get_charbox(ci_for_box, loose=False)
                     if right > left and top > bottom:
-                        rl, rb, rr, rt = _rotate_charbox(
+                        dl, db, dr, dt = _to_displayed_bbox(
                             left,
                             bottom,
                             right,
@@ -252,7 +252,7 @@ def extract_page_atoms(page: pdfium.PdfPage) -> list[Atom]:  # noqa: C901, PLR09
                             rotation,
                             page_bbox,
                         )
-                        atoms.append(Atom(normalized, rl, rb, rr, rt, font_size))
+                        atoms.append(Atom(normalized, dl, db, dr, dt, font_size))
 
     return atoms
 
