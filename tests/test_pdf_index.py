@@ -378,9 +378,9 @@ def _make_rotated_row_pdf() -> bytes:
 
 def test_rotated_page_clusters_screen_row_into_single_bbox() -> None:
     """Pre-fix: line_bboxes would y-cluster the screen-row's atoms by their
-    varying PDF-y and shatter them into one bbox per glyph.  Post-fix: atoms
-    are already in the rotated frame, so y-clustering correctly groups the
-    whole screen-row into a single bbox.
+    varying raw-PDF-y and shatter them into one bbox per glyph.  Post-fix:
+    atoms are already in the displayed frame, so y-clustering correctly
+    groups the whole screen-row into a single bbox.
     """
     pdf = _make_rotated_row_pdf()
     index = PdfIndex(pdf)

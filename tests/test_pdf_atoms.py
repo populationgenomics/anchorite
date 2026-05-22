@@ -161,9 +161,9 @@ def _make_single_glyph_pdf(rotation: int) -> bytes:
     """Build a Letter-portrait PDF containing one glyph 'X' at PDF (50, 740).
 
     ``rotation`` is the /Rotate value to set (0, 90, 180, 270).  The glyph
-    sits near the visual top-left of the *unrotated* page; the test asserts
+    sits near the visual top-left of the unrotated page; the test asserts
     that after extraction the atom lands in the expected quadrant of the
-    rotated/displayed frame for each rotation.
+    displayed frame for each rotation.
     """
     doc = pdfium.PdfDocument.new()
     page = doc.new_page(_TEST_PAGE_W, _TEST_PAGE_H)
@@ -195,23 +195,23 @@ class TestExtractRotation:
         assert abs(atom.x0 - _GLYPH_X) < 1.0
         assert abs(atom.y0 - _GLYPH_Y) < 1.0
 
-    def test_rotate_90_maps_top_left_unrotated_to_top_right_rotated(self) -> None:
+    def test_rotate_90_maps_top_left_to_top_right_displayed(self) -> None:
         doc = pdfium.PdfDocument(_make_single_glyph_pdf(rotation=90))
         pd = extract_page_data(doc)[0]
         assert pd.rotation == 90
-        # /Rotate=90 swaps dims: rotated W = unrotated H, rotated H = unrotated W.
+        # /Rotate=90 swaps dims: displayed W = unrotated H, displayed H = unrotated W.
         assert pd.width == _TEST_PAGE_H  # 792
         assert pd.height == _TEST_PAGE_W  # 612
         atom = pd.atoms[0]
-        # Visual top-left of the unrotated page → top-right of the rotated frame.
-        # Rotated x ≈ unrotated y (≈ 740 → near pd.width=792).
+        # Visual top-left of the unrotated page → top-right of the displayed frame.
+        # Displayed x ≈ unrotated y (≈ 740 → near pd.width=792).
         assert atom.x0 > pd.width * 0.9
         assert atom.x1 <= pd.width
-        # Rotated y ≈ unrotated (W − x) (≈ 612 − 50 = 562 → near pd.height=612).
+        # Displayed y ≈ unrotated (W − x) (≈ 612 − 50 = 562 → near pd.height=612).
         assert atom.y0 > pd.height * 0.9
         assert atom.y1 <= pd.height
 
-    def test_rotate_180_maps_top_left_unrotated_to_bottom_right_rotated(self) -> None:
+    def test_rotate_180_maps_top_left_to_bottom_right_displayed(self) -> None:
         doc = pdfium.PdfDocument(_make_single_glyph_pdf(rotation=180))
         pd = extract_page_data(doc)[0]
         assert pd.rotation == 180
@@ -219,18 +219,18 @@ class TestExtractRotation:
         assert pd.width == _TEST_PAGE_W
         assert pd.height == _TEST_PAGE_H
         atom = pd.atoms[0]
-        # 180° flip: top-left unrotated → bottom-right rotated.
+        # 180° flip: top-left unrotated → bottom-right displayed.
         assert atom.x0 > pd.width * 0.9
         assert atom.y0 < pd.height * 0.1
 
-    def test_rotate_270_maps_top_left_unrotated_to_bottom_left_rotated(self) -> None:
+    def test_rotate_270_maps_top_left_to_bottom_left_displayed(self) -> None:
         doc = pdfium.PdfDocument(_make_single_glyph_pdf(rotation=270))
         pd = extract_page_data(doc)[0]
         assert pd.rotation == 270
         assert pd.width == _TEST_PAGE_H  # 792
         assert pd.height == _TEST_PAGE_W  # 612
         atom = pd.atoms[0]
-        # 270° CW: top-left unrotated → bottom-left rotated.
+        # 270° CW: top-left unrotated → bottom-left displayed.
         assert atom.x0 < pd.width * 0.1
         assert atom.y0 < pd.height * 0.1
 

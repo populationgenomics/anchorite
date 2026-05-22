@@ -83,20 +83,23 @@ class Atom:
     is the glyph's normalised form, which may be multi-character: ``ﬃ`` →
     ``"ffi"`` after NFKC decomposition.
 
-    Coordinates are in PDF points in the **rotated/displayed** page frame:
-    origin at the rotated page bbox's bottom-left, y increases upward, x to
-    the right.  ``extract_page_atoms`` applies the page's ``/Rotate``
-    transform (mirroring PDFium's internal ``page_matrix_``) so that for any
-    rotation, ``x`` is screen-horizontal and ``y`` is screen-vertical.
-    Downstream consumers (``bbox_from_atoms``, ``line_bboxes``,
-    ``build_atom_index``) need no rotation awareness.
+    Coordinates are in PDF points expressed in the page's **displayed**
+    frame: origin at the page bbox's bottom-left, x increases to the right,
+    y increases upward.  ``extract_page_atoms`` applies the page's
+    ``/Rotate`` value (mirroring PDFium's internal ``page_matrix_``) so
+    ``x`` is always screen-horizontal and ``y`` is always screen-vertical
+    regardless of how the source PDF was authored.  Bboxes remain
+    ``(bottom-left, top-right)`` pairs.  On a ``/Rotate=90 CCW`` page that
+    means glyphs along one visible line have ascending ``y``.  Downstream
+    consumers (``bbox_from_atoms``, ``line_bboxes``, ``build_atom_index``)
+    need no ``/Rotate`` awareness.
     """
 
     text: str
     x0: float
-    y0: float  # bottom in rotated PDF coords (pts, origin = rotated bbox bottom-left)
+    y0: float  # bottom in displayed PDF coords (pts, origin = page bbox bottom-left)
     x1: float
-    y1: float  # top in rotated PDF coords
+    y1: float  # top in displayed PDF coords
     font_size: float
 
 
@@ -126,17 +129,17 @@ class PageData:
     """
 
     atoms: list[Atom]
-    """Per-glyph extraction output for this page (rotated/displayed frame)."""
+    """Per-glyph extraction output for this page (displayed frame)."""
     atom_index: AtomIndex
     """Flat string + per-position atom index for this page."""
     width: float
-    """Page width in PDF points (rotated/displayed dimension)."""
+    """Page width in PDF points (displayed dimension)."""
     height: float
-    """Page height in PDF points (rotated/displayed dimension)."""
+    """Page height in PDF points (displayed dimension)."""
     rotation: int
     """Clockwise page rotation in degrees (0, 90, 180, or 270) as read from
     ``/Rotate``.  Recorded for debugging; not load-bearing downstream because
-    atom coords are already in the rotated frame."""
+    atom coords are already in the displayed frame."""
 
 
 # ---------------------------------------------------------------------------
@@ -152,15 +155,15 @@ def _rotate_charbox(
     rotation: int,
     bbox: tuple[float, float, float, float],
 ) -> tuple[float, float, float, float]:
-    """Map a PDFium charbox into the page's rotated/displayed frame.
+    """Map a PDFium charbox into the page's **displayed** frame.
 
-    PDFium's ``get_charbox`` returns coords in unrotated PDF user space
-    regardless of ``/Rotate``.  This applies the same transform PDFium uses
-    internally (``CPDF_Page::UpdateDimensions``'s ``page_matrix_``): translate
-    so the page's bbox bottom-left sits at ``(0, 0)``, then rotate clockwise
-    by the given amount.  Result is in ``[0, page.get_width()] ×
-    [0, page.get_height()]`` (display-orientation dims), with y still
-    increasing upward — i.e. the bottom-left-origin convention every
+    PDFium's ``get_charbox`` returns coords in raw PDF user space regardless
+    of ``/Rotate``.  This applies the same transform PDFium uses internally
+    (``CPDF_Page::UpdateDimensions``'s ``page_matrix_``): translate so the
+    page bbox's bottom-left sits at ``(0, 0)``, then rotate clockwise by the
+    page's ``/Rotate``.  Result is in
+    ``[0, page.get_width()] × [0, page.get_height()]`` (displayed dims),
+    with y increasing upward — the bottom-left-origin convention every
     downstream consumer already assumes.
     """
     bl, bb, br, bt = bbox
@@ -176,9 +179,9 @@ def _rotate_charbox(
 def extract_page_atoms(page: pdfium.PdfPage) -> list[Atom]:  # noqa: C901, PLR0912, PLR0915
     """Extract non-whitespace glyphs with bboxes from a single PDF page.
 
-    Atom coords come out in the **rotated/displayed** PDF frame (origin at
-    the rotated page bbox's bottom-left).  The transform applied to every
-    charbox is documented on ``_rotate_charbox``.
+    Atom coords come out in the page's **displayed** frame (origin at the
+    page bbox's bottom-left).  The transform applied to every charbox is
+    documented on ``_rotate_charbox``.
     """
     rotation = page.get_rotation()
     page_bbox = page.get_bbox()
@@ -328,9 +331,9 @@ def extract_page_data(pdf: pdfium.PdfDocument) -> list[PageData]:
     and ``pdf_index.PdfIndex`` need most or all pages anyway, and a single
     read pass keeps both consumers off divergent PDFium code paths.
 
-    ``width``/``height`` are pypdfium2's rotated/displayed dimensions
-    (``page.get_width()``/``get_height()``), so they pair correctly with
-    ``extract_page_atoms``'s already-rotated atom coords.
+    ``width``/``height`` are pypdfium2's displayed dimensions
+    (``page.get_width()``/``get_height()``), pairing correctly with
+    ``extract_page_atoms``'s already-displayed-frame atom coords.
     """
     page_data: list[PageData] = []
     for page_idx in range(len(pdf)):
