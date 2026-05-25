@@ -60,8 +60,6 @@ class _PageBBoxData:
     atoms: list[Atom]
     width: float
     height: float
-    origin_x: float
-    origin_y: float
 
     @classmethod
     def from_page_data(cls, pd: PageData) -> _PageBBoxData:
@@ -69,8 +67,6 @@ class _PageBBoxData:
             atoms=pd.atoms,
             width=pd.width,
             height=pd.height,
-            origin_x=pd.origin_x,
-            origin_y=pd.origin_y,
         )
 
 
@@ -359,12 +355,6 @@ class PdfIndex:
         for page in sorted(per_page_atoms):
             pd = self._page_data[page]
             atoms = [pd.atoms[i] for i in sorted(per_page_atoms[page])]
-            boxes = line_bboxes(
-                atoms,
-                pd.width,
-                pd.height,
-                pd.origin_x,
-                pd.origin_y,
-            )
+            boxes = line_bboxes(atoms, pd.width, pd.height)
             results.extend((page, b) for b in boxes)
         return results

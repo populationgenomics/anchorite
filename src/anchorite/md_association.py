@@ -293,15 +293,7 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
         if not atom_indices:
             return
         matched_atoms = [pd.atoms[j] for j in atom_indices]
-        boxes = tuple(
-            line_bboxes(
-                matched_atoms,
-                pd.width,
-                pd.height,
-                pd.origin_x,
-                pd.origin_y,
-            ),
-        )
+        boxes = tuple(line_bboxes(matched_atoms, pd.width, pd.height))
         if boxes:
             results[i] = Anchor(text=seg.text, page=matched_page, boxes=boxes)
             confidence[i] = conf

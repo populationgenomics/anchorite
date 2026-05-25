@@ -1,14 +1,23 @@
 """Tests for the per-atom PDF extractor.
 
 Covers the flat-string assembly rules (intra-line gap, line-break space
-insertion, soft-hyphen reconnection) and bbox helpers that convert atom
-spans to normalised page coordinates.  Live PDF extraction (``extract_page_atoms``,
-``extract_page_data``) is exercised end-to-end via ``test_md_association``
-and ``test_pdf_index``.
+insertion, soft-hyphen reconnection), bbox helpers that convert atom spans
+to normalised page coordinates, and the page-rotation transform applied at
+extraction time.  Live PDF extraction (``extract_page_atoms``,
+``extract_page_data``) is also exercised end-to-end via
+``test_md_association`` and ``test_pdf_index``.
 """
 
+from __future__ import annotations
+
+import ctypes
+import io
+
+import pypdfium2 as pdfium
+import pypdfium2.raw as pdfium_c
+
 from anchorite import pdf_atoms
-from anchorite.pdf_atoms import Atom, bbox_from_atoms, build_atom_index, line_bboxes
+from anchorite.pdf_atoms import Atom, bbox_from_atoms, build_atom_index, extract_page_data, line_bboxes
 
 
 def _line(text: str, *, baseline: float, x0: float = 0.0, font_size: float = 10.0) -> list[Atom]:
@@ -137,3 +146,102 @@ def test_module_exports_public_surface() -> None:
     assert hasattr(pdf_atoms, "build_atom_index")
     assert hasattr(pdf_atoms, "bbox_from_atoms")
     assert hasattr(pdf_atoms, "line_bboxes")
+
+
+# ---------------------------------------------------------------------------
+# Rotation: atom-coord normalisation
+# ---------------------------------------------------------------------------
+
+# Unrotated Letter page; one glyph near the visual top-left in PDF coords.
+_TEST_PAGE_W, _TEST_PAGE_H = 612.0, 792.0
+_GLYPH_X, _GLYPH_Y = 50.0, 740.0  # bottom-left of the 'X' bbox in PDF user space
+
+
+def _make_single_glyph_pdf(rotation: int) -> bytes:
+    """Build a Letter-portrait PDF containing one glyph 'X' at PDF (50, 740).
+
+    ``rotation`` is the /Rotate value to set (0, 90, 180, 270).  The glyph
+    sits near the visual top-left of the unrotated page; the test asserts
+    that after extraction the atom lands in the expected quadrant of the
+    displayed frame for each rotation.
+    """
+    doc = pdfium.PdfDocument.new()
+    page = doc.new_page(_TEST_PAGE_W, _TEST_PAGE_H)
+    text_obj = pdfium_c.FPDFPageObj_NewTextObj(doc.raw, b"Helvetica", 12.0)
+    buf = (ctypes.c_ushort * 2)(ord("X"), 0)
+    pdfium_c.FPDFText_SetText(text_obj, buf)
+    matrix = pdfium_c.FS_MATRIX(1.0, 0.0, 0.0, 1.0, _GLYPH_X, _GLYPH_Y)
+    pdfium_c.FPDFPageObj_SetMatrix(text_obj, ctypes.byref(matrix))
+    pdfium_c.FPDFPage_InsertObject(page, text_obj)
+    pdfium_c.FPDFPage_GenerateContent(page)
+    if rotation:
+        pdfium_c.FPDFPage_SetRotation(page, rotation // 90)
+    out = io.BytesIO()
+    doc.save(out)
+    return out.getvalue()
+
+
+class TestExtractRotation:
+    def test_unrotated_page_keeps_native_coords(self) -> None:
+        doc = pdfium.PdfDocument(_make_single_glyph_pdf(rotation=0))
+        pd = extract_page_data(doc)[0]
+        assert pd.rotation == 0
+        assert pd.width == _TEST_PAGE_W
+        assert pd.height == _TEST_PAGE_H
+        assert len(pd.atoms) == 1
+        atom = pd.atoms[0]
+        # No rotation, no mediabox offset: atom keeps its native bbox
+        # (with a small side-bearing offset PDFium applies to the glyph).
+        assert abs(atom.x0 - _GLYPH_X) < 1.0
+        assert abs(atom.y0 - _GLYPH_Y) < 1.0
+
+    def test_rotate_90_maps_top_left_to_top_right_displayed(self) -> None:
+        doc = pdfium.PdfDocument(_make_single_glyph_pdf(rotation=90))
+        pd = extract_page_data(doc)[0]
+        assert pd.rotation == 90
+        # /Rotate=90 swaps dims: displayed W = unrotated H, displayed H = unrotated W.
+        assert pd.width == _TEST_PAGE_H  # 792
+        assert pd.height == _TEST_PAGE_W  # 612
+        atom = pd.atoms[0]
+        # Visual top-left of the unrotated page → top-right of the displayed frame.
+        # Displayed x ≈ unrotated y (≈ 740 → near pd.width=792).
+        assert atom.x0 > pd.width * 0.9
+        assert atom.x1 <= pd.width
+        # Displayed y ≈ unrotated (W − x) (≈ 612 − 50 = 562 → near pd.height=612).
+        assert atom.y0 > pd.height * 0.9
+        assert atom.y1 <= pd.height
+
+    def test_rotate_180_maps_top_left_to_bottom_right_displayed(self) -> None:
+        doc = pdfium.PdfDocument(_make_single_glyph_pdf(rotation=180))
+        pd = extract_page_data(doc)[0]
+        assert pd.rotation == 180
+        # /Rotate=180 preserves dims.
+        assert pd.width == _TEST_PAGE_W
+        assert pd.height == _TEST_PAGE_H
+        atom = pd.atoms[0]
+        # 180° flip: top-left unrotated → bottom-right displayed.
+        assert atom.x0 > pd.width * 0.9
+        assert atom.y0 < pd.height * 0.1
+
+    def test_rotate_270_maps_top_left_to_bottom_left_displayed(self) -> None:
+        doc = pdfium.PdfDocument(_make_single_glyph_pdf(rotation=270))
+        pd = extract_page_data(doc)[0]
+        assert pd.rotation == 270
+        assert pd.width == _TEST_PAGE_H  # 792
+        assert pd.height == _TEST_PAGE_W  # 612
+        atom = pd.atoms[0]
+        # 270° CW: top-left unrotated → bottom-left displayed.
+        assert atom.x0 < pd.width * 0.1
+        assert atom.y0 < pd.height * 0.1
+
+    def test_rotation_keeps_coords_in_page_box(self) -> None:
+        # The atom must always sit inside [0, pd.width] × [0, pd.height] —
+        # the pre-fix bug produced atom coords outside this box for /Rotate=90.
+        for rot in (0, 90, 180, 270):
+            doc = pdfium.PdfDocument(_make_single_glyph_pdf(rotation=rot))
+            pd = extract_page_data(doc)[0]
+            atom = pd.atoms[0]
+            assert 0.0 <= atom.x0 <= pd.width
+            assert 0.0 <= atom.x1 <= pd.width
+            assert 0.0 <= atom.y0 <= pd.height
+            assert 0.0 <= atom.y1 <= pd.height
