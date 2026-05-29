@@ -377,7 +377,42 @@ def resolve(
     return {quote: _fuzzy_resolve_quote(norm_text, text_mapping, stripped.validation_map, quote) for quote in quotes}
 
 
-def is_quote_grounded(  # noqa: C901
+@dataclasses.dataclass(frozen=True)
+class _LocalAlignment:
+    """Best local alignment of two normalised byte sequences, as char spans.
+
+    ``a_span`` / ``b_span`` are half-open byte ranges into the first / second
+    sequence passed to ``_local_align`` — sequence A (the reference) and B (the
+    query), matching seq_smith's ``sa`` / ``sb`` naming. ``b``'s consumed range
+    is contiguous (gaps in ``b`` don't advance its index), so
+    ``b_span[1] - b_span[0]`` is the matched-byte count the coverage gates use.
+    Both spans are ``(0, 0)`` when nothing aligned.
+    """
+
+    score: int
+    a_span: tuple[int, int]
+    b_span: tuple[int, int]
+
+
+def _local_align(norm_a: bytes, norm_b: bytes) -> _LocalAlignment:
+    """Smith-Waterman local-align two normalised byte sequences.
+
+    A local alignment never begins or ends with a gap, so each sequence's span
+    runs from the first fragment's start to the last fragment's end. See
+    ``_LocalAlignment``.
+    """
+    alignment = seq_smith.local_align(norm_a, norm_b, _SCORE_MATRIX, _GAP_OPEN, _GAP_EXTEND)
+    frags = alignment.fragments
+    if not frags:
+        return _LocalAlignment(alignment.score, (0, 0), (0, 0))
+    return _LocalAlignment(
+        score=alignment.score,
+        a_span=(frags[0].sa_start, frags[-1].sa_start + frags[-1].len),
+        b_span=(frags[0].sb_start, frags[-1].sb_start + frags[-1].len),
+    )
+
+
+def is_quote_grounded(
     text: str,
     quote: str,
     *,
@@ -408,36 +443,27 @@ def is_quote_grounded(  # noqa: C901
     if not norm_text:
         return False
 
+    # Iterate, masking each matched query run, so a quote scattered across the
+    # text still accumulates coverage. The consumed query range is contiguous,
+    # so masking the whole b_span covers exactly the bytes the alignment used.
     current = bytearray(norm_quote)
     matched_len = 0
     total_len = len(norm_quote)
     for _ in range(10):
         if all(b == _MASK_BYTE for b in current):
             break
-        alignment = seq_smith.local_align(
-            norm_text,
-            bytes(current),
-            _SCORE_MATRIX,
-            _GAP_OPEN,
-            _GAP_EXTEND,
-        )
-        if alignment.score < min_score:
+        aln = _local_align(norm_text, bytes(current))
+        q_start, q_end = aln.b_span
+        if aln.score < min_score or q_start >= q_end:
             break
-        progressed = False
-        for frag in alignment.fragments:
-            if frag.fragment_type == seq_smith.FragmentType.BGap:
-                continue
-            for j in range(frag.sb_start, frag.sb_start + frag.len):
-                current[j] = _MASK_BYTE
-            matched_len += frag.len
-            progressed = True
-        if not progressed:
-            break
+        for j in range(q_start, q_end):
+            current[j] = _MASK_BYTE
+        matched_len += q_end - q_start
 
     return matched_len >= total_len * fail_coverage
 
 
-def locate_quote_span(  # noqa: C901, PLR0911, PLR0912
+def locate_quote_span(
     text: str,
     quote: str,
     *,
@@ -497,47 +523,23 @@ def locate_quote_span(  # noqa: C901, PLR0911, PLR0912
     if not norm_text:
         return None
 
-    alignment = seq_smith.local_align(norm_text, norm_quote, _SCORE_MATRIX, _GAP_OPEN, _GAP_EXTEND)
-    if alignment.score < min_score:
+    aln = _local_align(norm_text, norm_quote)
+    ref_start, ref_end = aln.a_span
+    if aln.score < min_score or ref_start >= ref_end:
         return None
 
-    span_start: int | None = None
-    span_end: int | None = None
-    matched_len = 0
-    for frag in alignment.fragments:
-        if frag.fragment_type == seq_smith.FragmentType.BGap:
-            # Insertion in the reference relative to the query — consumes no
-            # query bytes, contributes no coverage, and isn't part of the span.
-            continue
-        if frag.fragment_type == seq_smith.FragmentType.Match:
-            # Trim leading / trailing space bytes from the matched reference
-            # run before mapping to char positions.  ``normalize_strict``
-            # collapses each non-alnum run to a single space byte keyed at the
-            # run's *first* original char, so a boundary-space match would push
-            # the span into the neighbouring token.  (Same trim resolve_quote
-            # applies.)
-            ms, me = frag.sa_start, frag.sa_start + frag.len
-            while ms < me and norm_text[ms] == _SPACE_BYTE:
-                ms += 1
-            while me > ms and norm_text[me - 1] == _SPACE_BYTE:
-                me -= 1
-            if ms < me:
-                if span_start is None:
-                    span_start = text_mapping[ms]
-                span_end = text_mapping[me]
-        # Match and AGap both consume query bytes, so both count toward coverage.
-        matched_len += frag.len
-
-    if span_start is None or span_end is None:
-        return None
-
+    q_start, q_end = aln.b_span
+    matched_len = q_end - q_start
     total_len = len(norm_quote)
     if matched_len < total_len * warn_coverage:
         logger.warning("Low coverage for quote location: %d/%d for quote %r", matched_len, total_len, quote)
         if matched_len < total_len * fail_coverage:
             return None
 
-    return (span_start, span_end)
+    # Map the aligned reference range back to source-char offsets. text_mapping
+    # carries a sentinel at len(norm_text), so ref_end (one past the last matched
+    # byte) looks up safely.
+    return text_mapping[ref_start], text_mapping[ref_end]
 
 
 @dataclasses.dataclass(frozen=True)
