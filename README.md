@@ -22,7 +22,7 @@ Most pipelines have abundant *content* but no coordinates, or precise *coordinat
 - **OCR anchors → Markdown:** align a list of OCR-derived `Anchor` objects to a Markdown string and inject coordinate spans (`align`, `annotate`).
 - **Markdown → PDF char layer:** align Markdown segments back to per-character bounding boxes extracted directly from a PDF (`md_association.associate`).
 
-Both produce the same `Anchor` data shape, so downstream resolution (`resolve`, `resolve_quote`, `quote_locates`) is identical regardless of which path produced the anchors.
+Both produce the same `Anchor` data shape, so downstream resolution (`resolve`, `resolve_quote`, `is_quote_grounded`, `locate_quote_span`) is identical regardless of which path produced the anchors.
 
 ---
 
@@ -111,11 +111,15 @@ locations = anchorite.resolve(annotated, quotes=["Observations of a Nebula"])
 
 Both use the same fuzzy iterative Smith-Waterman pipeline and the same shared normaliser used during anchor generation, so a quote that aligned cleanly at ingest aligns cleanly here too. Each quote maps to a sorted list of `(page, BBox)` pairs — one per distinct anchor the quote overlaps.
 
-For callers that only need to know whether a quote can be grounded (LLM tool-call validation, "did the model hallucinate this?"), `quote_locates(markdown, quote) -> bool` skips the span-overlap step:
+For callers that only need to know whether a quote can be grounded (LLM tool-call validation, "did the model hallucinate this?"), `is_quote_grounded(text, quote) -> bool` skips the span-overlap step. `locate_quote_span(text, quote) -> (start, end) | None` returns *where* it grounds, as a half-open char span — for splicing a highlight directly into the source text:
 
 ```python
-if anchorite.quote_locates(markdown, quote):
-    ...  # the LLM's quote actually appears in the source
+if anchorite.is_quote_grounded(text, quote):
+    ...  # the LLM's quote is grounded in the source
+
+span = anchorite.locate_quote_span(text, quote)
+if span is not None:
+    start, end = span  # text[start:end] is the matched region
 ```
 
 **`PdfIndex`** — when you have raw PDF bytes and a list of quotes and want to skip the Markdown / Anchor pipeline entirely (e.g. the upstream LLM emitted citations against a PDF you already have on disk):
@@ -248,9 +252,20 @@ The bbox-records variant of `resolve`. Locates `quote` in `markdown` via the sam
 | `warn_coverage` | `0.5` | Log a warning when matched coverage falls below this fraction. |
 | `fail_coverage` | `0.3` | Return `[]` when matched coverage falls below this fraction. |
 
-### `anchorite.quote_locates(markdown, quote, *, min_score, fail_coverage)`
+### `anchorite.is_quote_grounded(text, quote, *, min_score, fail_coverage, strip_html=True)`
 
-Boolean variant of `resolve_quote` for grounding checks. Returns `True` iff the quote aligns with sufficient confidence; no span list required.
+Boolean variant of `resolve_quote` for grounding checks. Returns `True` iff the quote aligns to `text` with sufficient confidence; no span list required. A *fuzzy* check (the shared SW pipeline), not exact-substring presence.
+
+### `anchorite.locate_quote_span(text, quote, *, min_score, warn_coverage, fail_coverage, strip_html=True)`
+
+Returns the half-open `(start, end)` character range of `quote` in `text`, or `None` if it can't be located with sufficient confidence. The span-returning sibling of `resolve_quote` (which returns bboxes) and `is_quote_grounded` (which returns a bool): takes the single best local alignment and maps it back to source-char offsets, so the result is one contiguous range suitable for splicing a highlight directly into `text`.
+
+| Parameter | Default | Description |
+|---|---|---|
+| `min_score` | `15` | Reject SW alignments scoring below this threshold. |
+| `warn_coverage` | `0.5` | Log a warning when matched coverage falls below this fraction. |
+| `fail_coverage` | `0.3` | Return `None` when matched coverage falls below this fraction. |
+| `strip_html` | `True` | Treat HTML tags and Markdown-link wrappers as zero-width (pass `False` for PDF-extracted text with literal `<` / `>`). |
 
 ### `anchorite.PdfIndex(pdf_data, *, markdown=None)`
 
@@ -273,7 +288,7 @@ Aligns Markdown segments (sentences, headings, list items, table cells) to per-c
 
 ### `anchorite.normalize`
 
-The shared text-normalisation module that every alignment site in the package routes through — bbox generation (`md_association`, `bbox_alignment`) and quote resolution (`resolve`, `resolve_quote`, `quote_locates`, `PdfIndex.resolve`) all call into it, so a quote produced from a piece of Markdown is guaranteed to align against the same Markdown its bboxes were derived from. See [Normalisation](#normalisation) below for the algorithm.
+The shared text-normalisation module that every alignment site in the package routes through — bbox generation (`md_association`, `bbox_alignment`) and quote resolution (`resolve`, `resolve_quote`, `is_quote_grounded`, `locate_quote_span`, `PdfIndex.resolve`) all call into it, so a quote produced from a piece of Markdown is guaranteed to align against the same Markdown its bboxes were derived from. See [Normalisation](#normalisation) below for the algorithm.
 
 | Symbol | Description |
 |---|---|
@@ -299,7 +314,7 @@ Orchestrates multi-chunk document alignment. Returns `AlignmentResult`.
 
 ### Normalisation
 
-Before any alignment, text is normalised to a reduced alphabet through a single shared pipeline used by every entry point in the package — `align`, `associate`, `resolve`, `resolve_quote`, `quote_locates`, `PdfIndex.resolve`. The pipeline lives in [`anchorite.normalize`](#anchoritenormalize) (`normalize_strict` / `normalize_loose`); sharing it is what guarantees that a quote produced from a piece of Markdown will align against the same Markdown its bboxes were derived from.
+Before any alignment, text is normalised to a reduced alphabet through a single shared pipeline used by every entry point in the package — `align`, `associate`, `resolve`, `resolve_quote`, `is_quote_grounded`, `locate_quote_span`, `PdfIndex.resolve`. The pipeline lives in [`anchorite.normalize`](#anchoritenormalize) (`normalize_strict` / `normalize_loose`); sharing it is what guarantees that a quote produced from a piece of Markdown will align against the same Markdown its bboxes were derived from.
 
 Each input character runs through:
 

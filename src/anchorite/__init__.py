@@ -39,6 +39,8 @@ __all__ = [
     "annotate",
     "chained_alignment",
     "document",
+    "is_quote_grounded",
+    "locate_quote_span",
     "markdown",
     "md_association",
     "md_segments",
@@ -48,7 +50,6 @@ __all__ = [
     "pdf_index",
     "process_document",
     "providers",
-    "quote_locates",
     "range_ops",
     "resolve",
     "resolve_quote",
@@ -376,28 +377,36 @@ def resolve(
     return {quote: _fuzzy_resolve_quote(norm_text, text_mapping, stripped.validation_map, quote) for quote in quotes}
 
 
-def quote_locates(
-    markdown: str,
+def is_quote_grounded(  # noqa: C901
+    text: str,
     quote: str,
     *,
     min_score: int = _MIN_ALIGNMENT_SCORE,
     fail_coverage: float = _FAIL_COVERAGE,
+    strip_html: bool = True,
 ) -> bool:
-    """Return ``True`` iff ``quote`` aligns to ``markdown`` with sufficient confidence.
+    """Return ``True`` iff ``quote`` aligns to ``text`` with sufficient confidence.
 
-    Uses the same SW + masking pipeline as ``resolve_quote`` but skips the
-    span-overlap step.  Suitable for validating that an LLM-emitted quote
-    is grounded in the document before returning it to the user.
+    A *fuzzy* grounding check, not exact-substring presence: uses the same SW +
+    masking pipeline as ``resolve_quote`` but skips the span-overlap step.
+    Suitable for validating that an LLM-emitted quote is grounded in the source
+    ("did the model hallucinate this?") before returning it to the user.
+    ``locate_quote_span`` is the sibling that returns *where* it grounds, as a
+    half-open char span.
+
+    See ``normalize_strict`` for ``strip_html``.
     """
     clean_quote = quote.strip()
     if not clean_quote:
         return False
 
-    norm_quote, _ = normalize_strict(clean_quote, strip_html=True)
+    norm_quote, _ = normalize_strict(clean_quote, strip_html=strip_html)
     if not norm_quote:
         return False
 
-    norm_text, _ = normalize_strict(markdown, strip_html=True)
+    norm_text, _ = normalize_strict(text, strip_html=strip_html)
+    if not norm_text:
+        return False
 
     current = bytearray(norm_quote)
     matched_len = 0
@@ -426,6 +435,109 @@ def quote_locates(
             break
 
     return matched_len >= total_len * fail_coverage
+
+
+def locate_quote_span(  # noqa: C901, PLR0911, PLR0912
+    text: str,
+    quote: str,
+    *,
+    min_score: int = _MIN_ALIGNMENT_SCORE,
+    warn_coverage: float = _WARN_COVERAGE,
+    fail_coverage: float = _FAIL_COVERAGE,
+    strip_html: bool = True,
+) -> tuple[int, int] | None:
+    """Locate ``quote`` in ``text`` and return its ``[start, end)`` char span.
+
+    The span-returning sibling of ``is_quote_grounded`` (which returns a
+    ``bool``) and ``resolve_quote`` (which returns overlapping bbox anchors).
+    Runs a single Smith-Waterman local alignment of the normalised quote
+    against the normalised ``text`` through the *same* ``normalize_strict``
+    pipeline the bbox resolvers use — so a quote that resolves to bboxes
+    elsewhere locates here too — then maps the matched reference run back to
+    character offsets in the *original* ``text`` via the normaliser's index
+    map.
+
+    There is nothing Markdown-specific here: ``text`` may be Markdown, plain
+    prose, or PDF-extracted text.  The only format-aware knob is ``strip_html``
+    (forwarded to ``normalize_strict``), which treats ``<...>`` tags and
+    inline-Markdown-link wrappers as zero-width.  It defaults to ``True``
+    because the common caller locates a quote in rendered Markdown; pass
+    ``False`` for text containing literal ``<`` / ``>`` (e.g. ``p < 0.05`` in
+    PDF-extracted prose).
+
+    Unlike the iterative, masking resolvers, this takes only the single best
+    local alignment: a citation highlight wants one contiguous span, not the
+    union of every scattered re-occurrence.
+
+    Args:
+        text: The text to locate the quote in.
+        quote: A verbatim quote (LLM-extracted, etc.) to locate.
+        min_score: Reject alignments scoring below this.
+        warn_coverage: Log a warning when matched coverage falls below this
+            fraction of the normalised quote.
+        fail_coverage: Return ``None`` when matched coverage falls below this
+            fraction.
+        strip_html: Treat HTML tags and Markdown-link wrappers as zero-width
+            during normalisation (see ``normalize_strict``).
+
+    Returns:
+        ``(start, end)`` half-open char range into ``text``, or ``None`` when
+        the quote is empty, normalises to nothing, scores below ``min_score``,
+        or covers less than ``fail_coverage`` of the normalised quote.
+    """
+    clean_quote = quote.strip()
+    if not clean_quote:
+        return None
+
+    norm_quote, _ = normalize_strict(clean_quote, strip_html=strip_html)
+    if not norm_quote:
+        return None
+
+    norm_text, text_mapping = normalize_strict(text, strip_html=strip_html)
+    if not norm_text:
+        return None
+
+    alignment = seq_smith.local_align(norm_text, norm_quote, _SCORE_MATRIX, _GAP_OPEN, _GAP_EXTEND)
+    if alignment.score < min_score:
+        return None
+
+    span_start: int | None = None
+    span_end: int | None = None
+    matched_len = 0
+    for frag in alignment.fragments:
+        if frag.fragment_type == seq_smith.FragmentType.BGap:
+            # Insertion in the reference relative to the query — consumes no
+            # query bytes, contributes no coverage, and isn't part of the span.
+            continue
+        if frag.fragment_type == seq_smith.FragmentType.Match:
+            # Trim leading / trailing space bytes from the matched reference
+            # run before mapping to char positions.  ``normalize_strict``
+            # collapses each non-alnum run to a single space byte keyed at the
+            # run's *first* original char, so a boundary-space match would push
+            # the span into the neighbouring token.  (Same trim resolve_quote
+            # applies.)
+            ms, me = frag.sa_start, frag.sa_start + frag.len
+            while ms < me and norm_text[ms] == _SPACE_BYTE:
+                ms += 1
+            while me > ms and norm_text[me - 1] == _SPACE_BYTE:
+                me -= 1
+            if ms < me:
+                if span_start is None:
+                    span_start = text_mapping[ms]
+                span_end = text_mapping[me]
+        # Match and AGap both consume query bytes, so both count toward coverage.
+        matched_len += frag.len
+
+    if span_start is None or span_end is None:
+        return None
+
+    total_len = len(norm_quote)
+    if matched_len < total_len * warn_coverage:
+        logger.warning("Low coverage for quote location: %d/%d for quote %r", matched_len, total_len, quote)
+        if matched_len < total_len * fail_coverage:
+            return None
+
+    return (span_start, span_end)
 
 
 @dataclasses.dataclass(frozen=True)
