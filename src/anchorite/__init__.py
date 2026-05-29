@@ -378,8 +378,8 @@ def resolve(
 
 
 @dataclasses.dataclass(frozen=True)
-class _LocalAlignment:
-    """Best local alignment of two normalised byte sequences, as char spans.
+class _AlignedRegion:
+    """The region two normalised byte sequences locally align over, as char spans.
 
     ``a_span`` / ``b_span`` are half-open byte ranges into the first / second
     sequence passed to ``_local_align`` — sequence A (the reference) and B (the
@@ -394,18 +394,18 @@ class _LocalAlignment:
     b_span: tuple[int, int]
 
 
-def _local_align(norm_a: bytes, norm_b: bytes) -> _LocalAlignment:
+def _local_align(norm_a: bytes, norm_b: bytes) -> _AlignedRegion:
     """Smith-Waterman local-align two normalised byte sequences.
 
     A local alignment never begins or ends with a gap, so each sequence's span
     runs from the first fragment's start to the last fragment's end. See
-    ``_LocalAlignment``.
+    ``_AlignedRegion``.
     """
     alignment = seq_smith.local_align(norm_a, norm_b, _SCORE_MATRIX, _GAP_OPEN, _GAP_EXTEND)
     frags = alignment.fragments
     if not frags:
-        return _LocalAlignment(alignment.score, (0, 0), (0, 0))
-    return _LocalAlignment(
+        return _AlignedRegion(alignment.score, (0, 0), (0, 0))
+    return _AlignedRegion(
         score=alignment.score,
         a_span=(frags[0].sa_start, frags[-1].sa_start + frags[-1].len),
         b_span=(frags[0].sb_start, frags[-1].sb_start + frags[-1].len),
