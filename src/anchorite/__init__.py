@@ -39,6 +39,8 @@ __all__ = [
     "annotate",
     "chained_alignment",
     "document",
+    "is_quote_grounded",
+    "locate_quote_span",
     "markdown",
     "md_association",
     "md_segments",
@@ -48,7 +50,6 @@ __all__ = [
     "pdf_index",
     "process_document",
     "providers",
-    "quote_locates",
     "range_ops",
     "resolve",
     "resolve_quote",
@@ -376,56 +377,169 @@ def resolve(
     return {quote: _fuzzy_resolve_quote(norm_text, text_mapping, stripped.validation_map, quote) for quote in quotes}
 
 
-def quote_locates(
-    markdown: str,
+@dataclasses.dataclass(frozen=True)
+class _AlignedRegion:
+    """The region two normalised byte sequences locally align over, as char spans.
+
+    ``a_span`` / ``b_span`` are half-open byte ranges into the first / second
+    sequence passed to ``_local_align`` — sequence A (the reference) and B (the
+    query), matching seq_smith's ``sa`` / ``sb`` naming. ``b``'s consumed range
+    is contiguous (gaps in ``b`` don't advance its index), so
+    ``b_span[1] - b_span[0]`` is the matched-byte count the coverage gates use.
+    Both spans are ``(0, 0)`` when nothing aligned.
+    """
+
+    score: int
+    a_span: tuple[int, int]
+    b_span: tuple[int, int]
+
+
+def _local_align(norm_a: bytes, norm_b: bytes) -> _AlignedRegion:
+    """Smith-Waterman local-align two normalised byte sequences.
+
+    A local alignment never begins or ends with a gap, so each sequence's span
+    runs from the first fragment's start to the last fragment's end. See
+    ``_AlignedRegion``.
+    """
+    alignment = seq_smith.local_align(norm_a, norm_b, _SCORE_MATRIX, _GAP_OPEN, _GAP_EXTEND)
+    frags = alignment.fragments
+    if not frags:
+        return _AlignedRegion(alignment.score, (0, 0), (0, 0))
+    return _AlignedRegion(
+        score=alignment.score,
+        a_span=(frags[0].sa_start, frags[-1].sa_start + frags[-1].len),
+        b_span=(frags[0].sb_start, frags[-1].sb_start + frags[-1].len),
+    )
+
+
+def is_quote_grounded(
+    text: str,
     quote: str,
     *,
     min_score: int = _MIN_ALIGNMENT_SCORE,
     fail_coverage: float = _FAIL_COVERAGE,
+    strip_html: bool = True,
 ) -> bool:
-    """Return ``True`` iff ``quote`` aligns to ``markdown`` with sufficient confidence.
+    """Return ``True`` iff ``quote`` aligns to ``text`` with sufficient confidence.
 
-    Uses the same SW + masking pipeline as ``resolve_quote`` but skips the
-    span-overlap step.  Suitable for validating that an LLM-emitted quote
-    is grounded in the document before returning it to the user.
+    A *fuzzy* grounding check, not exact-substring presence: uses the same SW +
+    masking pipeline as ``resolve_quote`` but skips the span-overlap step.
+    Suitable for validating that an LLM-emitted quote is grounded in the source
+    ("did the model hallucinate this?") before returning it to the user.
+    ``locate_quote_span`` is the sibling that returns *where* it grounds, as a
+    half-open char span.
+
+    See ``normalize_strict`` for ``strip_html``.
     """
     clean_quote = quote.strip()
     if not clean_quote:
         return False
 
-    norm_quote, _ = normalize_strict(clean_quote, strip_html=True)
+    norm_quote, _ = normalize_strict(clean_quote, strip_html=strip_html)
     if not norm_quote:
         return False
 
-    norm_text, _ = normalize_strict(markdown, strip_html=True)
+    norm_text, _ = normalize_strict(text, strip_html=strip_html)
+    if not norm_text:
+        return False
 
+    # Iterate, masking each matched query run, so a quote scattered across the
+    # text still accumulates coverage. The consumed query range is contiguous,
+    # so masking the whole b_span covers exactly the bytes the alignment used.
     current = bytearray(norm_quote)
     matched_len = 0
     total_len = len(norm_quote)
     for _ in range(10):
         if all(b == _MASK_BYTE for b in current):
             break
-        alignment = seq_smith.local_align(
-            norm_text,
-            bytes(current),
-            _SCORE_MATRIX,
-            _GAP_OPEN,
-            _GAP_EXTEND,
-        )
-        if alignment.score < min_score:
+        aln = _local_align(norm_text, bytes(current))
+        q_start, q_end = aln.b_span
+        if aln.score < min_score or q_start >= q_end:
             break
-        progressed = False
-        for frag in alignment.fragments:
-            if frag.fragment_type == seq_smith.FragmentType.BGap:
-                continue
-            for j in range(frag.sb_start, frag.sb_start + frag.len):
-                current[j] = _MASK_BYTE
-            matched_len += frag.len
-            progressed = True
-        if not progressed:
-            break
+        for j in range(q_start, q_end):
+            current[j] = _MASK_BYTE
+        matched_len += q_end - q_start
 
     return matched_len >= total_len * fail_coverage
+
+
+def locate_quote_span(
+    text: str,
+    quote: str,
+    *,
+    min_score: int = _MIN_ALIGNMENT_SCORE,
+    warn_coverage: float = _WARN_COVERAGE,
+    fail_coverage: float = _FAIL_COVERAGE,
+    strip_html: bool = True,
+) -> tuple[int, int] | None:
+    """Locate ``quote`` in ``text`` and return its ``[start, end)`` char span.
+
+    The span-returning sibling of ``is_quote_grounded`` (which returns a
+    ``bool``) and ``resolve_quote`` (which returns overlapping bbox anchors).
+    Runs a single Smith-Waterman local alignment of the normalised quote
+    against the normalised ``text`` through the *same* ``normalize_strict``
+    pipeline the bbox resolvers use — so a quote that resolves to bboxes
+    elsewhere locates here too — then maps the matched reference run back to
+    character offsets in the *original* ``text`` via the normaliser's index
+    map.
+
+    There is nothing Markdown-specific here: ``text`` may be Markdown, plain
+    prose, or PDF-extracted text.  The only format-aware knob is ``strip_html``
+    (forwarded to ``normalize_strict``), which treats ``<...>`` tags and
+    inline-Markdown-link wrappers as zero-width.  It defaults to ``True``
+    because the common caller locates a quote in rendered Markdown; pass
+    ``False`` for text containing literal ``<`` / ``>`` (e.g. ``p < 0.05`` in
+    PDF-extracted prose).
+
+    Unlike the iterative, masking resolvers, this takes only the single best
+    local alignment: a citation highlight wants one contiguous span, not the
+    union of every scattered re-occurrence.
+
+    Args:
+        text: The text to locate the quote in.
+        quote: A verbatim quote (LLM-extracted, etc.) to locate.
+        min_score: Reject alignments scoring below this.
+        warn_coverage: Log a warning when matched coverage falls below this
+            fraction of the normalised quote.
+        fail_coverage: Return ``None`` when matched coverage falls below this
+            fraction.
+        strip_html: Treat HTML tags and Markdown-link wrappers as zero-width
+            during normalisation (see ``normalize_strict``).
+
+    Returns:
+        ``(start, end)`` half-open char range into ``text``, or ``None`` when
+        the quote is empty, normalises to nothing, scores below ``min_score``,
+        or covers less than ``fail_coverage`` of the normalised quote.
+    """
+    clean_quote = quote.strip()
+    if not clean_quote:
+        return None
+
+    norm_quote, _ = normalize_strict(clean_quote, strip_html=strip_html)
+    if not norm_quote:
+        return None
+
+    norm_text, text_mapping = normalize_strict(text, strip_html=strip_html)
+    if not norm_text:
+        return None
+
+    aln = _local_align(norm_text, norm_quote)
+    ref_start, ref_end = aln.a_span
+    if aln.score < min_score or ref_start >= ref_end:
+        return None
+
+    q_start, q_end = aln.b_span
+    matched_len = q_end - q_start
+    total_len = len(norm_quote)
+    if matched_len < total_len * warn_coverage:
+        logger.warning("Low coverage for quote location: %d/%d for quote %r", matched_len, total_len, quote)
+        if matched_len < total_len * fail_coverage:
+            return None
+
+    # Map the aligned reference range back to source-char offsets. text_mapping
+    # carries a sentinel at len(norm_text), so ref_end (one past the last matched
+    # byte) looks up safely.
+    return text_mapping[ref_start], text_mapping[ref_end]
 
 
 @dataclasses.dataclass(frozen=True)

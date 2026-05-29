@@ -2,7 +2,7 @@
 
 Exposes the strict and loose normalisers used across the package — the
 bbox-generation side (``md_association``, ``bbox_alignment``) and the
-quote-resolution side (``resolve``, ``resolve_quote``, ``quote_locates``,
+quote-resolution side (``resolve``, ``resolve_quote``, ``is_quote_grounded``, ``locate_quote_span``,
 ``PdfIndex.resolve``) all funnel through the same code, so a quote
 produced from a piece of Markdown is guaranteed to align against the
 same Markdown its bboxes were derived from.
