@@ -38,13 +38,25 @@ ALIGN_ALPHABET_LOOSE = string.ascii_lowercase + string.digits
 SCORE_MATRIX_LOOSE = seq_smith.make_score_matrix(ALIGN_ALPHABET_LOOSE, +1, -1)
 
 
-# HTML tags that survive into Markdown (e.g. ``<sup>`` from JATS-derived
-# articles, ``<a id="...">`` anchors) must not contribute alphanum bytes to
-# the alignment string — otherwise ``<sup>1</sup>`` becomes the letters
-# ``sup1sup`` and the matching PDF text ``1`` aligns nowhere near it.  Both
-# normalisers detect tag spans in advance and skip past them, leaving the
-# index map pointing at the original text offsets.
-_HTML_TAG_RE = re.compile(r"<[^>]+>")
+# HTML constructs that survive into Markdown — comments (``<!--page-->`` and
+# similar layout markers) and tags (``<sup>`` from JATS-derived articles,
+# ``<a id="...">`` anchors) — must not contribute alphanum bytes to the
+# alignment string; otherwise ``<sup>1</sup>`` becomes the letters ``sup1sup``
+# and the matching PDF text ``1`` aligns nowhere near it.  Both normalisers
+# detect these spans in advance and skip past them, leaving the index map
+# pointing at the original text offsets.
+#
+# A tag name must begin with a letter right after ``<`` / ``</``, so the
+# literal angle brackets that pervade scientific prose — ``p < 0.05``,
+# ``<4 mmol/mol``, the variant ``c.1935C>A`` — are not read as tags.  Pairing
+# any ``<`` with the next ``>`` (a permissive ``<[^>]+>``) would instead splice
+# a stray ``<`` to a far-off ``>`` and drop the (often large) run of real text
+# between them out of the alignment.
+_HTML_TAG_RE = re.compile(
+    r"<!--.*?-->"  # comment (non-greedy: a comment may not contain ``--``)
+    r"|</?[A-Za-z][A-Za-z0-9:-]*(?:\s[^<>]*)?/?>",  # opening / closing / self-closing tag
+    re.DOTALL,  # a comment may span newlines
+)
 
 # Inline Markdown links ``[text](url)``.  Renders as just ``text`` in the PDF,
 # but a naïve normalisation contributes both the visible text *and* the URL
@@ -62,7 +74,8 @@ _MD_LINK_RE = re.compile(r"\[([^\]\n]+)\]\(([^)\n]*)\)")
 
 def strip_spans(text: str) -> list[tuple[int, int]]:
     """Return sorted, merged character spans whose content is zero-width for
-    alignment: HTML tags and the wrapper portions of inline Markdown links.
+    alignment: HTML comments and tags, and the wrapper portions of inline
+    Markdown links.
     """
     spans: list[tuple[int, int]] = [(m.start(), m.end()) for m in _HTML_TAG_RE.finditer(text)]
     for m in _MD_LINK_RE.finditer(text):
