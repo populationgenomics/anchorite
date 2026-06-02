@@ -265,7 +265,7 @@ Returns the half-open `(start, end)` character range of `quote` in `text`, or `N
 | `min_score` | `15` | Reject SW alignments scoring below this threshold. |
 | `warn_coverage` | `0.5` | Log a warning when matched coverage falls below this fraction. |
 | `fail_coverage` | `0.3` | Return `None` when matched coverage falls below this fraction. |
-| `strip_html` | `True` | Treat HTML tags and Markdown-link wrappers as zero-width (pass `False` for PDF-extracted text with literal `<` / `>`). |
+| `strip_html` | `True` | Treat HTML comments/tags and Markdown-link wrappers as zero-width; a literal `<`/`>` that isn't a tag is kept (pass `False` for PDF-extracted text). |
 
 ### `anchorite.PdfIndex(pdf_data, *, markdown=None)`
 
@@ -322,7 +322,7 @@ Each input character runs through:
 2. **ASCII-alphanumeric filter.** Decomposed characters that aren't `[a-z0-9]` (case-folded) are dropped — combining marks, punctuation, and unmapped Unicode all fall away.
 3. **Combining-mark guard.** Unicode `M*`-category characters (the residual combining marks from the previous step) are zero-width: they emit no alphanum output *and* don't trigger the punctuation-collapses-to-space branch in strict mode. This makes precomposed (`ö`) and decomposed (`o` + U+0308) input produce identical alignment bytes.
 4. **Strict vs. loose alphabet.** Strict normalisation collapses non-alphanumeric runs to a single space; loose normalisation drops spaces entirely. Loose is the fallback when strict can't recover the segment text (e.g. letter-spaced display headings — `C A S E  R E P O R T` aligns to `CASEREPORT` only when spaces are dropped).
-5. **HTML-tag stripping (Markdown side only).** When `strip_html=True` is set — automatically the case for every Markdown call site — `<…>` tag spans are zero-width, so `Author<sup>1</sup>` aligns as `author1` rather than `authorsup1sup`. PDF-side text never strips tags: a literal `<` or `>` extracted from the PDF is real content (`p < 0.05`, `Vol < 100`).
+5. **HTML-comment and -tag stripping (Markdown side only).** When `strip_html=True` is set — automatically the case for every Markdown call site — HTML comments (`<!--page-->`) and tag spans whose name starts with a letter (`<sup>`, `<a id="…">`) are zero-width, so `Author<sup>1</sup>` aligns as `author1` rather than `authorsup1sup`. A literal `<`/`>` that doesn't open a tag is kept as real content, so a stray `<` (`p < 0.05`) is never spliced to a far-off `>` (the variant `c.1935C>A`). PDF-side text strips nothing: every `<`/`>` extracted from the PDF is real content.
 
 PDF char extraction adds two more steps before normalisation:
 

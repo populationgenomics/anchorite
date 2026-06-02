@@ -66,6 +66,38 @@ class TestHtmlTagsInNormalisation:
         norm_bytes, _ = normalize.normalize_strict("a < b", strip_html=True)
         assert norm_bytes == normalize.normalize_strict("a   b", strip_html=True)[0]
 
+    def test_literal_angle_brackets_not_spliced_into_a_tag(self) -> None:
+        # Scientific prose pairs a stray ``<`` (``p<0.05``) with a far-off ``>``
+        # (the variant ``c.1935C>A``).  A tag name must start with a letter, so
+        # neither bracket opens a tag: enabling strip_html is a no-op here
+        # rather than stripping the whole clause between them out of alignment.
+        text = "p<0.05 was significant; the c.1935C>A variant in five subjects"
+        assert (
+            normalize.normalize_strict(text, strip_html=True)[0]
+            == normalize.normalize_strict(text, strip_html=False)[0]
+        )
+
+    def test_comment_marker_is_zero_width(self) -> None:
+        # Page / figure / supplement markers are HTML comments (``<`` followed
+        # by ``!``, not a letter); they must drop out so a quote spanning a
+        # marker still aligns.
+        text = "first page text\n\n<!--page-->\n\nsecond page text"
+        plain = "first page text\n\nsecond page text"
+        assert (
+            normalize.normalize_strict(text, strip_html=True)[0]
+            == normalize.normalize_strict(plain, strip_html=True)[0]
+        )
+
+    def test_comment_match_is_non_greedy(self) -> None:
+        # Two markers with prose between must not collapse into one span that
+        # swallows the prose — comment matching stops at the first ``-->``.
+        text = "<!--table: 1-->cardiac onset before 12 months<!--page-->"
+        plain = "cardiac onset before 12 months"
+        assert (
+            normalize.normalize_strict(text, strip_html=True)[0]
+            == normalize.normalize_strict(plain, strip_html=True)[0]
+        )
+
 
 # ---------------------------------------------------------------------------
 # Normalisation: inline Markdown link wrappers must be zero-width
