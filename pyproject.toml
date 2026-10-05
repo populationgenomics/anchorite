@@ -79,5 +79,11 @@ known-first-party = ["anchorite"]
     "RUF003",
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# An unrecognised key in this table is an error, not a warning: a misspelled option would
+# otherwise leave the guard it was meant to set switched off, silently.
+strict_config = true
+
 [tool.mypy]
 python_version = "3.11"
