@@ -1,68 +1,62 @@
-name: Release
+name: release
 
+# A `v*` tag builds, tests, publishes to PyPI through the trusted publisher registered for this
+# workflow (environment `pypi`), and creates the GitHub release with the built distributions.
+# The trusted publisher names this file: renaming it breaks publishing until PyPI is updated.
 on:
-  release:
-    types: [created]
+  push:
+    tags: ["v*"]
 
 jobs:
   build:
-    name: Build distribution
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
-          python-version: '3.10'
-
-      - name: Update uv lock
-        run: uv lock
-
-      - name: Build package
-        run: uv build
-
-      - uses: actions/upload-artifact@v4
+          enable-cache: true
+      # The tag is the release's name; the wheel's version comes from pyproject.toml. They must agree,
+      # or PyPI shows one version and the repo another.
+      - name: Check the tag matches the package version
+        run: |
+          set -euo pipefail
+          version="$(uv version --short)"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match pyproject version ${version}"
+            exit 1
+          fi
+      - run: uv sync --locked --python 3.13
+      - run: uv run pytest
+      - run: uv build
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
-          path: dist/*
+          path: dist/
+          if-no-files-found: error
 
-  upload_release_assets:
-    name: Upload Assets to Release
+  publish:
+    needs: build
     runs-on: ubuntu-latest
-    needs: [build]
-    permissions:
-      contents: write
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-      - name: Upload Wheels and sdist
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: artifacts/*
-          overwrite_files: true
-
-  publish-to-pypi:
-    name: Publish to PyPI
-    runs-on: ubuntu-latest
-    needs: [build]
     environment:
       name: pypi
       url: https://pypi.org/p/anchorite
     permissions:
-      id-token: write # Required for trusted publishing
+      # OIDC token for PyPI trusted publishing; contents for the GitHub release.
+      id-token: write
+      contents: write
     steps:
-      - name: Download all wheels and sdist
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
-          path: dist
-          merge-multiple: true
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@v1.14.2
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |-
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
