@@ -35,6 +35,11 @@ dev = [
     "ruff>=0.14.6",
 ]
 
+[tool.uv]
+# Supply-chain age gate: resolve only releases at least a week old. A project setting, so every
+# contributor's lock and CI's `uv sync --locked` agree.
+exclude-newer = "7 days"
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"
