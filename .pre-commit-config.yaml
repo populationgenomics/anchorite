@@ -1,5 +1,7 @@
+# `pre-commit run --all-files` is the lint gate, locally and in CI. A hook added here is gated with no
+# separate workflow edit. pytest stays a separate job (too slow for the per-commit path).
 default_language_version:
-    python: python3.13
+  python: python3.13
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -48,3 +50,7 @@ repos:
         language: system
         files: \.py$
         pass_filenames: false
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.21.0
+    hooks:
+      - id: yamlfmt
