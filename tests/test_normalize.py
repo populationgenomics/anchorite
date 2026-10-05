@@ -14,10 +14,10 @@ from anchorite import normalize
 
 
 class TestHtmlTagsInNormalisation:
-    """HTML tags surviving into Markdown (`<sup>`, `<a id="...">`, etc.) must
-    not contribute alphanum bytes to the alignment string when *strip_html*
-    is True — otherwise their tag names line up with letters in the PDF and
-    trash the alignment.  *strip_html* defaults to False because pdfium-
+    """HTML tags surviving into Markdown contribute no alphanum bytes when *strip_html* is True.
+
+    Tags such as `<sup>` and `<a id="...">` would otherwise line up their tag
+    names with letters in the PDF and trash the alignment.  *strip_html* defaults to False because pdfium-
     extracted PDF text contains literal ``<`` / ``>`` characters when those
     glyphs appear in the document (e.g. ``p < 0.05``); stripping them would
     silently drop real content.
@@ -105,8 +105,9 @@ class TestHtmlTagsInNormalisation:
 
 
 class TestMarkdownLinksInNormalisation:
-    """Inline Markdown links ``[text](url)`` render as just ``text`` in the
-    PDF.  A naïve normalisation contributes both ``text`` *and* the URL,
+    """Inline Markdown links ``[text](url)`` normalise to their ``text`` alone.
+
+    They render as just ``text`` in the PDF.  A naïve normalisation contributes both ``text`` *and* the URL,
     which doubles the autolink footprint (``[https://x.org](https://x.org)``
     becomes two copies of ``httpsxorg``) and silently inflates the segment
     far beyond what the PDF holds.  When *strip_html* is True the wrapper
@@ -170,8 +171,9 @@ class TestMarkdownLinksInNormalisation:
 
 
 class TestNfkdNormalisation:
-    """Each input character is NFKD-decomposed before classification, so
-    accented letters keep their base form, ligatures expand, superscript
+    """Each input character is NFKD-decomposed before classification.
+
+    Accented letters keep their base form, ligatures expand, superscript
     digits become plain digits, and Mathematical Alphanumeric Symbols map
     back to ASCII.  Without NFKD these all dropped out as non-ASCII and
     shrank the alignable sequence — short segments hit the phase-1

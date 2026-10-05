@@ -9,7 +9,7 @@ from collections.abc import Mapping, Sequence
 
 import seq_smith
 
-from . import (
+from anchorite import (
     bbox_alignment,
     chained_alignment,
     document,
@@ -22,11 +22,11 @@ from . import (
     providers,
     range_ops,
 )
-from .anchors import Anchor, BBox
-from .md_segments import MarkdownSegment, parse_markdown_segments
-from .normalize import normalize_strict
-from .orchestrator import AlignmentResult, process_document
-from .pdf_index import PdfIndex
+from anchorite.anchors import Anchor, BBox
+from anchorite.md_segments import MarkdownSegment, parse_markdown_segments
+from anchorite.normalize import normalize_strict
+from anchorite.orchestrator import AlignmentResult, process_document
+from anchorite.pdf_index import PdfIndex
 
 __all__ = [
     "AlignmentResult",
@@ -559,7 +559,7 @@ class SpanAnchor:
     """Bounding box on that page."""
 
 
-def resolve_quote(  # noqa: C901, PLR0912
+def resolve_quote(
     markdown: str,
     spans: Sequence[SpanAnchor],
     quote: str,

@@ -5,8 +5,8 @@ import dataclasses
 
 @dataclasses.dataclass(frozen=True, order=True)
 class BBox:
-    """
-    A bounding box tuple (top, left, bottom, right).
+    """A bounding box tuple (top, left, bottom, right).
+
     Coordinates are typically 0-1000 normalized.
     """
 

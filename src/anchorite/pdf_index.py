@@ -26,14 +26,14 @@ from typing import TYPE_CHECKING
 import pypdfium2 as pdfium
 import seq_smith
 
-from .chained_alignment import chained_alignment
-from .normalize import SCORE_MATRIX_STRICT, normalize_strict
-from .pdf_atoms import Atom, PageData, build_atom_index, extract_page_data, line_bboxes
+from anchorite.chained_alignment import chained_alignment
+from anchorite.normalize import SCORE_MATRIX_STRICT, normalize_strict
+from anchorite.pdf_atoms import Atom, PageData, build_atom_index, extract_page_data, line_bboxes
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from .anchors import BBox
+    from anchorite.anchors import BBox
 
 logger = logging.getLogger(__name__)
 

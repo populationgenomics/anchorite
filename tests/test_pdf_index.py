@@ -377,7 +377,9 @@ def _make_rotated_row_pdf() -> bytes:
 
 
 def test_rotated_page_clusters_screen_row_into_single_bbox() -> None:
-    """Pre-fix: line_bboxes would y-cluster the screen-row's atoms by their
+    """A rotated page's screen row clusters into a single bbox.
+
+    Pre-fix: line_bboxes would y-cluster the screen-row's atoms by their
     varying raw-PDF-y and shatter them into one bbox per glyph.  Post-fix:
     atoms are already in the displayed frame, so y-clustering correctly
     groups the whole screen-row into a single bbox.
@@ -401,8 +403,9 @@ def test_rotated_page_clusters_screen_row_into_single_bbox() -> None:
 
 
 def test_rotated_page_bbox_coords_stay_in_range() -> None:
-    """Independent of clustering: every BBox field for a /Rotate=90 page
-    must sit in [0, 1000].  Pre-fix, ``bbox_from_atoms`` produced negative
+    """Every BBox field for a /Rotate=90 page sits in [0, 1000], independent of clustering.
+
+    Pre-fix, ``bbox_from_atoms`` produced negative
     ``top`` values because it divided unrotated atom coords by rotated page
     dims; this test pins the regression.
     """

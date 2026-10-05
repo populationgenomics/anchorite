@@ -31,19 +31,10 @@ from typing import TYPE_CHECKING, Literal, overload
 import pypdfium2 as pdfium
 import seq_smith
 
-from .anchors import Anchor
-from .md_segments import MarkdownSegment, parse_markdown_segments
-from .normalize import (
-    SCORE_MATRIX_LOOSE,
-    SCORE_MATRIX_STRICT,
-    normalize_loose,
-    normalize_strict,
-)
-from .pdf_atoms import (
-    PageData,
-    extract_page_data,
-    line_bboxes,
-)
+from anchorite.anchors import Anchor
+from anchorite.md_segments import MarkdownSegment, parse_markdown_segments
+from anchorite.normalize import SCORE_MATRIX_LOOSE, SCORE_MATRIX_STRICT, normalize_loose, normalize_strict
+from anchorite.pdf_atoms import PageData, extract_page_data, line_bboxes
 
 if TYPE_CHECKING:
     import pathlib
@@ -193,7 +184,7 @@ class _AlignmentOutcome:
     """Parallel to ``anchors``: 1 = phase 1, 2 = phase 2."""
 
 
-def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
+def _align_markdown_to_pages(
     page_data: list[PageData],
     markdown: str,
     min_score: int = _MIN_SCORE,
@@ -227,7 +218,7 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
             indices.update(flat_to_atom[j] for j in range(fs, min(fe, len(flat_to_atom))))
         return sorted(indices)
 
-    def _try_page_residual(  # noqa: C901
+    def _try_page_residual(
         page_idx: int,
         seg: MarkdownSegment,
         threshold: int,
@@ -374,7 +365,7 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
 
         # Uniqueness: best score must beat second-best by the configured
         # ratio.  Score-only comparison; the runner-up's page doesn't matter.
-        if len(pooled) >= 2 and pooled[1][0] * _PHASE1_UNIQUENESS_RATIO > best_score:  # noqa: PLR2004
+        if len(pooled) >= 2 and pooled[1][0] * _PHASE1_UNIQUENESS_RATIO > best_score:
             continue
 
         phase1_page[i] = best_page
