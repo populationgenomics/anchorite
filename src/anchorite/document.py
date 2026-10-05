@@ -35,7 +35,7 @@ def _split_pdf_bytes(file_bytes: bytes, page_count: int | None = None) -> Iterat
     doc_page_count = len(doc)
     document_sha256 = hashlib.sha256(file_bytes).hexdigest()
     if page_count is None:
-        yield DocumentChunk(document_sha256, 0, doc_page_count, file_bytes, "application/pdf")
+        yield DocumentChunk(document_sha256, 0, doc_page_count, file_bytes, 'application/pdf')
         return
 
     for start_page in range(0, doc_page_count, page_count):
@@ -44,7 +44,7 @@ def _split_pdf_bytes(file_bytes: bytes, page_count: int | None = None) -> Iterat
         new_doc.import_pages(doc, list(range(start_page, end_page)))
         buf = io.BytesIO()
         new_doc.save(buf)
-        yield DocumentChunk(document_sha256, start_page, end_page, buf.getvalue(), "application/pdf")
+        yield DocumentChunk(document_sha256, start_page, end_page, buf.getvalue(), 'application/pdf')
 
 
 def _resolve_input(input_source: DocumentInput, mime_type: str | None) -> tuple[bytes, str | None]:
@@ -52,8 +52,8 @@ def _resolve_input(input_source: DocumentInput, mime_type: str | None) -> tuple[
     file_bytes: bytes
 
     match input_source:
-        case str() if "://" in input_source:
-            with fsspec.open(input_source, "rb") as f:
+        case str() if '://' in input_source:
+            with fsspec.open(input_source, 'rb') as f:
                 file_bytes = f.read()  # type: ignore[attr-defined]
             if mime_type is None:
                 mime_type, _ = mimetypes.guess_type(input_source)
@@ -64,10 +64,10 @@ def _resolve_input(input_source: DocumentInput, mime_type: str | None) -> tuple[
                 mime_type, _ = mimetypes.guess_type(path_obj)
         case bytes():
             file_bytes = input_source
-        case _ if hasattr(input_source, "read"):
+        case _ if hasattr(input_source, 'read'):
             file_bytes = input_source.read()
         case _:
-            raise ValueError(f"Unsupported input source: {input_source}")
+            raise ValueError(f'Unsupported input source: {input_source}')
 
     return file_bytes, mime_type
 
@@ -99,20 +99,20 @@ def chunks(
 
     # Auto-detect PDF if mime_type is unknown
     if mime_type is None:
-        if file_bytes.startswith(b"%PDF"):
-            mime_type = "application/pdf"
-        elif file_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
-            mime_type = "image/png"
-        elif file_bytes.startswith(b"\xff\xd8"):
-            mime_type = "image/jpeg"
-        elif file_bytes.startswith(b"RIFF") and file_bytes[8:12] == b"WEBP":
-            mime_type = "image/webp"
+        if file_bytes.startswith(b'%PDF'):
+            mime_type = 'application/pdf'
+        elif file_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
+            mime_type = 'image/png'
+        elif file_bytes.startswith(b'\xff\xd8'):
+            mime_type = 'image/jpeg'
+        elif file_bytes.startswith(b'RIFF') and file_bytes[8:12] == b'WEBP':
+            mime_type = 'image/webp'
 
-    if mime_type and mime_type.startswith("image/"):
+    if mime_type and mime_type.startswith('image/'):
         yield DocumentChunk(hashlib.sha256(file_bytes).hexdigest(), 0, 1, file_bytes, mime_type)
         return
 
-    if mime_type != "application/pdf":
-        raise ValueError(f"Unsupported file type: {mime_type}")
+    if mime_type != 'application/pdf':
+        raise ValueError(f'Unsupported file type: {mime_type}')
 
     yield from _split_pdf_bytes(file_bytes, page_count)

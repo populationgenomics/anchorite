@@ -44,52 +44,52 @@ class TestBuildAtomIndex:
         # ``we`` at the end of one line, ``identified`` at the start of the
         # next.  Without the line-break space the flat string would read
         # ``weidentified``.
-        atoms = _line("we", baseline=100.0) + _line("identified", baseline=80.0)
+        atoms = _line('we', baseline=100.0) + _line('identified', baseline=80.0)
         ai = build_atom_index(atoms)
-        assert ai.flat_str == "we identified"
+        assert ai.flat_str == 'we identified'
 
     def test_horizontal_word_gap_inserts_space(self) -> None:
         # Two words on the same line with a horizontal gap > 20 % of font size.
-        atoms_a = _line("hello", baseline=100.0)
-        atoms_b = _line("world", baseline=100.0, x0=atoms_a[-1].x1 + 5.0)
+        atoms_a = _line('hello', baseline=100.0)
+        atoms_b = _line('world', baseline=100.0, x0=atoms_a[-1].x1 + 5.0)
         ai = build_atom_index(atoms_a + atoms_b)
-        assert ai.flat_str == "hello world"
+        assert ai.flat_str == 'hello world'
 
     def test_soft_hyphen_at_line_break_reconnects(self) -> None:
         # Typeset ``induc-`` at the end of one line, ``tion`` at the start of
         # the next — this is a soft-hyphenated word that should reconnect to
         # ``induction`` (matching the Markdown's un-hyphenated form).
-        atoms = _line("induc-", baseline=100.0) + _line("tion", baseline=80.0)
+        atoms = _line('induc-', baseline=100.0) + _line('tion', baseline=80.0)
         ai = build_atom_index(atoms)
-        assert ai.flat_str == "induction"
+        assert ai.flat_str == 'induction'
 
     def test_hyphen_at_line_break_after_digit_keeps_hyphen(self) -> None:
         # Numeric range ``2009-`` followed by ``2010`` on the next line.  The
         # surrounding atoms aren't alphabetic, so the hyphen-suppression
         # heuristic must NOT fire — a space is inserted as for any line break.
-        atoms = _line("2009-", baseline=100.0) + _line("2010", baseline=80.0)
+        atoms = _line('2009-', baseline=100.0) + _line('2010', baseline=80.0)
         ai = build_atom_index(atoms)
-        assert ai.flat_str == "2009- 2010"
+        assert ai.flat_str == '2009- 2010'
 
     def test_hyphen_at_line_break_before_digit_keeps_hyphen(self) -> None:
         # Hyphenated identifier ``cohort-`` followed by ``38`` on the next
         # line.  The next atom isn't alphabetic, so we keep the hyphen.
-        atoms = _line("cohort-", baseline=100.0) + _line("38", baseline=80.0)
+        atoms = _line('cohort-', baseline=100.0) + _line('38', baseline=80.0)
         ai = build_atom_index(atoms)
-        assert ai.flat_str == "cohort- 38"
+        assert ai.flat_str == 'cohort- 38'
 
     def test_mid_line_hyphen_unaffected(self) -> None:
         # ``e-mail`` on a single line: the hyphen stays even though it sits
         # between two letters, because it isn't at a line break.
-        atoms = _line("e-mail", baseline=100.0)
+        atoms = _line('e-mail', baseline=100.0)
         ai = build_atom_index(atoms)
-        assert ai.flat_str == "e-mail"
+        assert ai.flat_str == 'e-mail'
 
 
 class TestBboxFromAtomsOrigin:
     def test_zero_origin_matches_no_origin(self) -> None:
         # Default origin (0, 0) reproduces the unshifted result.
-        atoms = _line("hello", baseline=100.0, x0=50.0)
+        atoms = _line('hello', baseline=100.0, x0=50.0)
         bbox = bbox_from_atoms(atoms, page_width=600.0, page_height=800.0)
         bbox_zero = bbox_from_atoms(
             atoms,
@@ -104,7 +104,7 @@ class TestBboxFromAtomsOrigin:
         # PDFs with non-zero mediabox origin must subtract that origin so the
         # 0-1000 normalised coords are relative to the page, not the
         # absolute PDF coordinate space.
-        atoms = _line("hello", baseline=100.0, x0=50.0)
+        atoms = _line('hello', baseline=100.0, x0=50.0)
         unshifted = bbox_from_atoms(atoms, page_width=600.0, page_height=800.0)
         shifted = bbox_from_atoms(
             atoms,
@@ -115,7 +115,7 @@ class TestBboxFromAtomsOrigin:
         )
         # The shifted bbox should equal the unshifted bbox computed against
         # atoms whose absolute coords were already pre-subtracted.
-        atoms_pre = _line("hello", baseline=0.0, x0=0.0)
+        atoms_pre = _line('hello', baseline=0.0, x0=0.0)
         expected = bbox_from_atoms(atoms_pre, page_width=600.0, page_height=800.0)
         assert shifted == expected
         assert shifted != unshifted
@@ -123,7 +123,7 @@ class TestBboxFromAtomsOrigin:
     def test_line_bboxes_threads_origin(self) -> None:
         # ``line_bboxes`` must propagate the origin to ``bbox_from_atoms``
         # for each line cluster.
-        atoms = _line("a", baseline=100.0, x0=50.0) + _line("b", baseline=80.0, x0=50.0)
+        atoms = _line('a', baseline=100.0, x0=50.0) + _line('b', baseline=80.0, x0=50.0)
         boxes = line_bboxes(
             atoms,
             page_width=600.0,
@@ -138,14 +138,14 @@ class TestBboxFromAtomsOrigin:
 
 def test_module_exports_public_surface() -> None:
     # Paranoia: the names the README and other modules import must exist.
-    assert hasattr(pdf_atoms, "Atom")
-    assert hasattr(pdf_atoms, "AtomIndex")
-    assert hasattr(pdf_atoms, "PageData")
-    assert hasattr(pdf_atoms, "extract_page_data")
-    assert hasattr(pdf_atoms, "extract_page_atoms")
-    assert hasattr(pdf_atoms, "build_atom_index")
-    assert hasattr(pdf_atoms, "bbox_from_atoms")
-    assert hasattr(pdf_atoms, "line_bboxes")
+    assert hasattr(pdf_atoms, 'Atom')
+    assert hasattr(pdf_atoms, 'AtomIndex')
+    assert hasattr(pdf_atoms, 'PageData')
+    assert hasattr(pdf_atoms, 'extract_page_data')
+    assert hasattr(pdf_atoms, 'extract_page_atoms')
+    assert hasattr(pdf_atoms, 'build_atom_index')
+    assert hasattr(pdf_atoms, 'bbox_from_atoms')
+    assert hasattr(pdf_atoms, 'line_bboxes')
 
 
 # ---------------------------------------------------------------------------
@@ -167,8 +167,8 @@ def _make_single_glyph_pdf(rotation: int) -> bytes:
     """
     doc = pdfium.PdfDocument.new()
     page = doc.new_page(_TEST_PAGE_W, _TEST_PAGE_H)
-    text_obj = pdfium_c.FPDFPageObj_NewTextObj(doc.raw, b"Helvetica", 12.0)
-    buf = (ctypes.c_ushort * 2)(ord("X"), 0)
+    text_obj = pdfium_c.FPDFPageObj_NewTextObj(doc.raw, b'Helvetica', 12.0)
+    buf = (ctypes.c_ushort * 2)(ord('X'), 0)
     pdfium_c.FPDFText_SetText(text_obj, buf)
     matrix = pdfium_c.FS_MATRIX(1.0, 0.0, 0.0, 1.0, _GLYPH_X, _GLYPH_Y)
     pdfium_c.FPDFPageObj_SetMatrix(text_obj, ctypes.byref(matrix))
@@ -259,32 +259,32 @@ def _make_pdf_with_tounicode(text: bytes, cmap_entries: dict[int, str]) -> bytes
     Real PDFs carry malformed text layers this way, e.g. a code mapped to an
     unpaired surrogate, which PDFium's own text API would never write.
     """
-    bfchar = "\n".join(f"<{code:02X}> <{target}>" for code, target in cmap_entries.items())
+    bfchar = '\n'.join(f'<{code:02X}> <{target}>' for code, target in cmap_entries.items())
     cmap = (
-        "/CIDInit /ProcSet findresource begin 12 dict begin begincmap\n"
-        "/CMapName /Test def 1 begincodespacerange <00> <FF> endcodespacerange\n"
-        f"{len(cmap_entries)} beginbfchar\n{bfchar}\nendbfchar\n"
-        "endcmap CMapName currentdict /CMap defineresource pop end end"
+        '/CIDInit /ProcSet findresource begin 12 dict begin begincmap\n'
+        '/CMapName /Test def 1 begincodespacerange <00> <FF> endcodespacerange\n'
+        f'{len(cmap_entries)} beginbfchar\n{bfchar}\nendbfchar\n'
+        'endcmap CMapName currentdict /CMap defineresource pop end end'
     ).encode()
-    content = b"BT /F1 12 Tf %d %d Td (" % (int(_GLYPH_X), int(_GLYPH_Y)) + text + b") Tj ET"
+    content = b'BT /F1 12 Tf %d %d Td (' % (int(_GLYPH_X), int(_GLYPH_Y)) + text + b') Tj ET'
     objects = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-        b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /ToUnicode 6 0 R >>",
-        b"<< /Length %d >>\nstream\n" % len(content) + content + b"\nendstream",
-        b"<< /Length %d >>\nstream\n" % len(cmap) + cmap + b"\nendstream",
+        b'<< /Type /Catalog /Pages 2 0 R >>',
+        b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] '
+        b'/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+        b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /ToUnicode 6 0 R >>',
+        b'<< /Length %d >>\nstream\n' % len(content) + content + b'\nendstream',
+        b'<< /Length %d >>\nstream\n' % len(cmap) + cmap + b'\nendstream',
     ]
-    out = bytearray(b"%PDF-1.4\n")
+    out = bytearray(b'%PDF-1.4\n')
     offsets = []
     for number, body in enumerate(objects, start=1):
         offsets.append(len(out))
-        out += b"%d 0 obj\n" % number + body + b"\nendobj\n"
+        out += b'%d 0 obj\n' % number + body + b'\nendobj\n'
     xref = len(out)
-    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
-    out += b"".join(b"%010d 00000 n \n" % offset for offset in offsets)
-    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objects) + 1, xref)
+    out += b'xref\n0 %d\n0000000000 65535 f \n' % (len(objects) + 1)
+    out += b''.join(b'%010d 00000 n \n' % offset for offset in offsets)
+    out += b'trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n' % (len(objects) + 1, xref)
     return bytes(out)
 
 
@@ -292,6 +292,6 @@ class TestMalformedTextLayer:
     def test_unpaired_surrogate_keeps_surrounding_glyphs(self) -> None:
         # A lone high surrogate between two glyphs must not fail extraction,
         # and the glyphs on either side keep their atoms.
-        doc = pdfium.PdfDocument(_make_pdf_with_tounicode(b"ABC", {0x42: "D800"}))
+        doc = pdfium.PdfDocument(_make_pdf_with_tounicode(b'ABC', {0x42: 'D800'}))
         pd = extract_page_data(doc)[0]
-        assert "".join(atom.text for atom in pd.atoms) == "AC"
+        assert ''.join(atom.text for atom in pd.atoms) == 'AC'

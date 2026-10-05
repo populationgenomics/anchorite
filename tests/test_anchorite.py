@@ -2,10 +2,10 @@ import anchorite
 
 
 def test_anchorite_align_and_annotate() -> None:
-    markdown = "The quick brown fox jumps over the lazy dog."
+    markdown = 'The quick brown fox jumps over the lazy dog.'
     anchors = [
-        anchorite.Anchor("quick brown fox", 0, (anchorite.BBox(10, 10, 20, 100),)),
-        anchorite.Anchor("lazy dog", 0, (anchorite.BBox(50, 50, 60, 150),)),
+        anchorite.Anchor('quick brown fox', 0, (anchorite.BBox(10, 10, 20, 100),)),
+        anchorite.Anchor('lazy dog', 0, (anchorite.BBox(50, 50, 60, 150),)),
     ]
 
     alignment = anchorite.align(anchors, markdown)
@@ -17,10 +17,10 @@ def test_anchorite_align_and_annotate() -> None:
 
 
 def test_anchorite_math_snapping() -> None:
-    markdown = "The formula is $E=mc^2$ and it is famous."
+    markdown = 'The formula is $E=mc^2$ and it is famous.'
     anchors = [
         # Anchor points inside the math
-        anchorite.Anchor("mc^2", 0, (anchorite.BBox(100, 100, 110, 200),)),
+        anchorite.Anchor('mc^2', 0, (anchorite.BBox(100, 100, 110, 200),)),
     ]
 
     alignment = anchorite.align(anchors, markdown)
@@ -35,12 +35,12 @@ def test_anchorite_resolve() -> None:
         'The <span data-bbox="10,10,20,20" data-page="0">quick brown fox jumps over</span> the '
         '<span data-bbox="30,30,40,40" data-page="1">lazy dog that slept all day</span>.'
     )
-    quotes = ["quick brown fox jumps over", "lazy dog that slept all day"]
+    quotes = ['quick brown fox jumps over', 'lazy dog that slept all day']
 
     results = anchorite.resolve(annotated, quotes)
 
-    assert results["quick brown fox jumps over"] == [(0, anchorite.BBox(10, 10, 20, 20))]
-    assert results["lazy dog that slept all day"] == [(1, anchorite.BBox(30, 30, 40, 40))]
+    assert results['quick brown fox jumps over'] == [(0, anchorite.BBox(10, 10, 20, 20))]
+    assert results['lazy dog that slept all day'] == [(1, anchorite.BBox(30, 30, 40, 40))]
 
 
 def test_anchorite_strip_and_nested_resolve() -> None:
@@ -51,13 +51,13 @@ def test_anchorite_strip_and_nested_resolve() -> None:
     )
 
     stripped = anchorite.strip(annotated)
-    assert stripped.plain_text == "The quick brown fox jumps over the lazy dog"
+    assert stripped.plain_text == 'The quick brown fox jumps over the lazy dog'
 
-    results = anchorite.resolve(annotated, ["jumps over the lazy"])
+    results = anchorite.resolve(annotated, ['jumps over the lazy'])
     # "jumps over the lazy" should be mapped to both bboxes
-    assert len(results["jumps over the lazy"]) == 2
-    assert (0, anchorite.BBox(0, 0, 100, 100)) in results["jumps over the lazy"]
-    assert (0, anchorite.BBox(10, 10, 20, 20)) in results["jumps over the lazy"]
+    assert len(results['jumps over the lazy']) == 2
+    assert (0, anchorite.BBox(0, 0, 100, 100)) in results['jumps over the lazy']
+    assert (0, anchorite.BBox(10, 10, 20, 20)) in results['jumps over the lazy']
 
 
 def test_anchorite_resolve_partial_quote() -> None:
@@ -68,7 +68,7 @@ def test_anchorite_resolve_partial_quote() -> None:
     )
     # plain text is "The quick brown fox jumps over the lazy dog that slept"
 
-    quote = "fox jumps over the lazy dog"
+    quote = 'fox jumps over the lazy dog'
     results = anchorite.resolve(annotated, [quote])
     # Should find both bboxes because both contribute to the quote
     assert len(results[quote]) == 2
@@ -82,23 +82,23 @@ def test_anchorite_resolve_partial_quote() -> None:
 
 
 def test_resolve_quote_basic() -> None:
-    markdown = "The quick brown fox jumps over the lazy dog."
+    markdown = 'The quick brown fox jumps over the lazy dog.'
     spans = [
         anchorite.SpanAnchor(span=(0, 25), page=0, box=anchorite.BBox(10, 10, 20, 20)),
         anchorite.SpanAnchor(span=(25, 44), page=1, box=anchorite.BBox(30, 30, 40, 40)),
     ]
-    out = anchorite.resolve_quote(markdown, spans, "quick brown fox jumps")
+    out = anchorite.resolve_quote(markdown, spans, 'quick brown fox jumps')
     assert out == [(0, anchorite.BBox(10, 10, 20, 20))]
 
 
 def test_resolve_quote_overlapping_spans() -> None:
     # A quote that crosses span boundaries returns boxes from both spans.
-    markdown = "The quick brown fox jumps over the lazy dog that slept."
+    markdown = 'The quick brown fox jumps over the lazy dog that slept.'
     spans = [
         anchorite.SpanAnchor(span=(0, 25), page=0, box=anchorite.BBox(1, 1, 1, 1)),
         anchorite.SpanAnchor(span=(34, 55), page=0, box=anchorite.BBox(2, 2, 2, 2)),
     ]
-    quote = "fox jumps over the lazy dog"
+    quote = 'fox jumps over the lazy dog'
     out = anchorite.resolve_quote(markdown, spans, quote)
     assert (0, anchorite.BBox(1, 1, 1, 1)) in out
     assert (0, anchorite.BBox(2, 2, 2, 2)) in out
@@ -109,7 +109,7 @@ def test_resolve_quote_returns_all_boxes_for_duplicate_starts() -> None:
     # visual line, all sharing the same span start/end.  Every box must be
     # returned — earlier implementations relied on ``bisect_right - 1`` and
     # silently dropped all but the last record at a given start position.
-    markdown = "A very long sentence that wraps across three visual lines on the page."
+    markdown = 'A very long sentence that wraps across three visual lines on the page.'
     line1 = anchorite.BBox(10, 10, 20, 100)
     line2 = anchorite.BBox(22, 10, 32, 100)
     line3 = anchorite.BBox(34, 10, 44, 200)
@@ -129,40 +129,40 @@ def test_resolve_quote_uses_html_aware_normalisation() -> None:
     # The Markdown carries ``<sup>1</sup>`` markup; the LLM-extracted quote
     # comes from rendered text and has plain digits.  They must align via
     # the shared normalisation, so the bbox is returned.
-    markdown = "Author<sup>1</sup> reported the variant."
+    markdown = 'Author<sup>1</sup> reported the variant.'
     spans = [
         anchorite.SpanAnchor(span=(0, 39), page=0, box=anchorite.BBox(50, 100, 60, 400)),
     ]
-    out = anchorite.resolve_quote(markdown, spans, "Author1 reported the variant")
+    out = anchorite.resolve_quote(markdown, spans, 'Author1 reported the variant')
     assert out == [(0, anchorite.BBox(50, 100, 60, 400))]
 
 
 def test_resolve_quote_uses_nfkd_normalisation() -> None:
     # Markdown has the precomposed accent; the LLM-extracted quote has the
     # accent stripped.  NFKD decomposition + ASCII filter aligns them.
-    markdown = "Töpf et al. described the cohort."
+    markdown = 'Töpf et al. described the cohort.'
     spans = [
         anchorite.SpanAnchor(span=(0, 33), page=0, box=anchorite.BBox(50, 100, 60, 400)),
     ]
-    out = anchorite.resolve_quote(markdown, spans, "Topf et al. described the cohort")
+    out = anchorite.resolve_quote(markdown, spans, 'Topf et al. described the cohort')
     assert out == [(0, anchorite.BBox(50, 100, 60, 400))]
 
 
 def test_resolve_quote_low_coverage_returns_empty() -> None:
-    markdown = "The quick brown fox jumps over the lazy dog."
+    markdown = 'The quick brown fox jumps over the lazy dog.'
     spans = [
         anchorite.SpanAnchor(span=(0, 44), page=0, box=anchorite.BBox(1, 1, 1, 1)),
     ]
     # Mostly content that doesn't appear in the markdown.
-    out = anchorite.resolve_quote(markdown, spans, "vienna sausage tetragrammaton mendelevium recombinant")
+    out = anchorite.resolve_quote(markdown, spans, 'vienna sausage tetragrammaton mendelevium recombinant')
     assert out == []
 
 
 def test_resolve_quote_empty_inputs() -> None:
     spans = [anchorite.SpanAnchor(span=(0, 5), page=0, box=anchorite.BBox(0, 0, 0, 0))]
-    assert anchorite.resolve_quote("hello", spans, "") == []
-    assert anchorite.resolve_quote("hello", spans, "   ") == []
-    assert anchorite.resolve_quote("hello", [], "hello") == []
+    assert anchorite.resolve_quote('hello', spans, '') == []
+    assert anchorite.resolve_quote('hello', spans, '   ') == []
+    assert anchorite.resolve_quote('hello', [], 'hello') == []
 
 
 # ---------------------------------------------------------------------------
@@ -171,28 +171,28 @@ def test_resolve_quote_empty_inputs() -> None:
 
 
 def test_is_quote_grounded_basic() -> None:
-    text = "The quick brown fox jumps over the lazy dog."
-    assert anchorite.is_quote_grounded(text, "quick brown fox jumps over") is True
-    assert anchorite.is_quote_grounded(text, "vienna sausage tetragrammaton mendelevium") is False
+    text = 'The quick brown fox jumps over the lazy dog.'
+    assert anchorite.is_quote_grounded(text, 'quick brown fox jumps over') is True
+    assert anchorite.is_quote_grounded(text, 'vienna sausage tetragrammaton mendelevium') is False
 
 
 def test_is_quote_grounded_empty_inputs() -> None:
-    assert anchorite.is_quote_grounded("hello world", "") is False
-    assert anchorite.is_quote_grounded("hello world", "   ") is False
-    assert anchorite.is_quote_grounded("", "hello") is False
+    assert anchorite.is_quote_grounded('hello world', '') is False
+    assert anchorite.is_quote_grounded('hello world', '   ') is False
+    assert anchorite.is_quote_grounded('', 'hello') is False
 
 
 def test_is_quote_grounded_html_aware() -> None:
     # Markup digits in the source align with the rendered plain digits.
-    text = "Author<sup>1</sup> reported the variant."
-    assert anchorite.is_quote_grounded(text, "Author1 reported the variant") is True
+    text = 'Author<sup>1</sup> reported the variant.'
+    assert anchorite.is_quote_grounded(text, 'Author1 reported the variant') is True
 
 
 def test_quote_locates_renamed_away() -> None:
     # Guard the rename: the old public name is gone, the new pair is present.
-    assert not hasattr(anchorite, "quote_locates")
-    assert hasattr(anchorite, "is_quote_grounded")
-    assert hasattr(anchorite, "locate_quote_span")
+    assert not hasattr(anchorite, 'quote_locates')
+    assert hasattr(anchorite, 'is_quote_grounded')
+    assert hasattr(anchorite, 'locate_quote_span')
 
 
 # ---------------------------------------------------------------------------
@@ -201,73 +201,73 @@ def test_quote_locates_renamed_away() -> None:
 
 
 def test_locate_quote_span_exact_offsets() -> None:
-    text = "The quick brown fox jumps over the lazy dog."
-    span = anchorite.locate_quote_span(text, "quick brown fox")
+    text = 'The quick brown fox jumps over the lazy dog.'
+    span = anchorite.locate_quote_span(text, 'quick brown fox')
     assert span == (4, 19)
-    assert text[4:19] == "quick brown fox"
+    assert text[4:19] == 'quick brown fox'
 
 
 def test_locate_quote_span_midspan_punctuation() -> None:
     # The matched run spans an internal sentence boundary; the returned span
     # is the contiguous source region from first to last matched char.
-    text = "Onset was neonatal. Two siblings were affected."
-    span = anchorite.locate_quote_span(text, "neonatal Two siblings")
+    text = 'Onset was neonatal. Two siblings were affected.'
+    span = anchorite.locate_quote_span(text, 'neonatal Two siblings')
     assert span is not None
     s, e = span
-    assert text[s:e].startswith("neonatal")
-    assert text[s:e].endswith("siblings")
+    assert text[s:e].startswith('neonatal')
+    assert text[s:e].endswith('siblings')
 
 
 def test_locate_quote_span_html_aware() -> None:
     # The <sup>...</sup> wrapper is zero-width for alignment but lives *inside*
     # the matched region, so the raw source span includes the markup.
-    text = "Author<sup>1</sup> reported the variant."
-    span = anchorite.locate_quote_span(text, "Author1 reported the variant")
+    text = 'Author<sup>1</sup> reported the variant.'
+    span = anchorite.locate_quote_span(text, 'Author1 reported the variant')
     assert span is not None
     s, e = span
-    assert text[s:e].startswith("Author")
-    assert text[s:e].endswith("variant")
-    assert "<sup>1</sup>" in text[s:e]
+    assert text[s:e].startswith('Author')
+    assert text[s:e].endswith('variant')
+    assert '<sup>1</sup>' in text[s:e]
 
 
 def test_locate_quote_span_nfkd() -> None:
-    text = "Töpf et al. described the cohort."
-    span = anchorite.locate_quote_span(text, "Topf et al described the cohort")
+    text = 'Töpf et al. described the cohort.'
+    span = anchorite.locate_quote_span(text, 'Topf et al described the cohort')
     assert span is not None
     s, e = span
-    assert text[s:e].startswith("Töpf")
-    assert "cohort" in text[s:e]
+    assert text[s:e].startswith('Töpf')
+    assert 'cohort' in text[s:e]
 
 
 def test_locate_quote_span_markdown_link_wrapper() -> None:
     # Inline-link wrapper [..](url) is zero-width; the span still bridges the
     # link text and the following prose, markup included.
-    text = "See [the registry](https://example.org/db) for further details here."
-    span = anchorite.locate_quote_span(text, "the registry for further details")
+    text = 'See [the registry](https://example.org/db) for further details here.'
+    span = anchorite.locate_quote_span(text, 'the registry for further details')
     assert span is not None
     s, e = span
-    assert text[s:e].startswith("the registry")
-    assert text[s:e].endswith("details")
-    assert "https://example.org/db" in text[s:e]
+    assert text[s:e].startswith('the registry')
+    assert text[s:e].endswith('details')
+    assert 'https://example.org/db' in text[s:e]
 
 
 def test_locate_quote_span_no_match_returns_none() -> None:
-    text = "The quick brown fox jumps over the lazy dog."
-    assert anchorite.locate_quote_span(text, "vienna sausage tetragrammaton mendelevium recombinant") is None
+    text = 'The quick brown fox jumps over the lazy dog.'
+    assert anchorite.locate_quote_span(text, 'vienna sausage tetragrammaton mendelevium recombinant') is None
 
 
 def test_locate_quote_span_empty_inputs() -> None:
-    assert anchorite.locate_quote_span("hello world", "") is None
-    assert anchorite.locate_quote_span("hello world", "   ") is None
-    assert anchorite.locate_quote_span("", "hello") is None
+    assert anchorite.locate_quote_span('hello world', '') is None
+    assert anchorite.locate_quote_span('hello world', '   ') is None
+    assert anchorite.locate_quote_span('', 'hello') is None
 
 
 def test_locate_quote_span_strip_html_false_keeps_literal_angle_brackets() -> None:
     # With strip_html=False, <...> is not treated as a tag; the quote locates
     # against the literal text (the PDF-extracted-prose case).
-    text = "Expression of <i>GAA</i> was reduced in all patients tested."
-    span = anchorite.locate_quote_span(text, "Expression of <i>GAA</i> was reduced", strip_html=False)
+    text = 'Expression of <i>GAA</i> was reduced in all patients tested.'
+    span = anchorite.locate_quote_span(text, 'Expression of <i>GAA</i> was reduced', strip_html=False)
     assert span is not None
     s, e = span
-    assert text[s:e].startswith("Expression")
-    assert "<i>GAA</i>" in text[s:e]
+    assert text[s:e].startswith('Expression')
+    assert '<i>GAA</i>' in text[s:e]

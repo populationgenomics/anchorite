@@ -42,26 +42,26 @@ if TYPE_CHECKING:
 # before NFKC.  Implementation detail of ``extract_page_atoms``; not part of
 # the public surface.
 _CHAR_NORM: dict[str, str] = {
-    "\ufb00": "ff",
-    "\ufb01": "fi",
-    "\ufb02": "fl",
-    "\ufb03": "ffi",
-    "\ufb04": "ffl",
-    "\ufb05": "st",
-    "\ufb06": "st",
-    "\u2018": "'",
-    "\u2019": "'",
-    "\u201c": '"',
-    "\u201d": '"',
-    "\u201a": ",",
-    "\u2013": "-",
-    "\u2014": "--",
-    "\u2212": "-",
-    "\u2010": "-",
-    "\u2011": "-",
-    "\u00ad": "",
-    "\u00a0": " ",
-    "\ufffe": "",
+    '\ufb00': 'ff',
+    '\ufb01': 'fi',
+    '\ufb02': 'fl',
+    '\ufb03': 'ffi',
+    '\ufb04': 'ffl',
+    '\ufb05': 'st',
+    '\ufb06': 'st',
+    '\u2018': "'",
+    '\u2019': "'",
+    '\u201c': '"',
+    '\u201d': '"',
+    '\u201a': ',',
+    '\u2013': '-',
+    '\u2014': '--',
+    '\u2212': '-',
+    '\u2010': '-',
+    '\u2011': '-',
+    '\u00ad': '',
+    '\u00a0': ' ',
+    '\ufffe': '',
 }
 
 # UTF-16 surrogate ranges for non-BMP code points returned by PDFium.
@@ -201,7 +201,7 @@ def extract_page_atoms(page: pdfium.PdfPage) -> list[Atom]:
         # turns each into one U+FFFD, so the length still counts one position
         # per code point, as the loop below expects (it skips unpaired
         # surrogates by advancing obj_pos once).
-        obj_text = bytes(buf).decode("utf-16-le", errors="replace").rstrip("\x00")
+        obj_text = bytes(buf).decode('utf-16-le', errors='replace').rstrip('\x00')
 
         m = obj.get_matrix()
         font_size = obj.get_font_size() * math.sqrt(m.a**2 + m.b**2)
@@ -238,7 +238,7 @@ def extract_page_atoms(page: pdfium.PdfPage) -> list[Atom]:
                 char_index += 1
 
             text = chr(cp)
-            if text in ("\r", "\n"):
+            if text in ('\r', '\n'):
                 # Line-break markers inserted by PDFium are absent from obj_text.
                 continue  # char_index already advanced; do NOT advance obj_pos
             obj_pos += 1
@@ -247,7 +247,7 @@ def extract_page_atoms(page: pdfium.PdfPage) -> list[Atom]:
                 normalized = _CHAR_NORM.get(text, text)
                 # Map Mathematical Alphanumeric Symbols and other compatibility
                 # characters to ASCII equivalents (e.g. 𝑆𝑒𝑛𝑠𝑖𝑡𝑖𝑣𝑖𝑡𝑦 → Sensitivity).
-                normalized = unicodedata.normalize("NFKC", normalized)
+                normalized = unicodedata.normalize('NFKC', normalized)
                 if normalized:
                     left, bottom, right, top = textpage.get_charbox(ci_for_box, loose=False)
                     if right > left and top > bottom:
@@ -308,7 +308,7 @@ def build_atom_index(atoms: Sequence[Atom]) -> AtomIndex:
             if (
                 line_break
                 and len(parts) >= 2
-                and parts[-1] == "-"
+                and parts[-1] == '-'
                 and parts[-2].isalpha()
                 and nxt.text
                 and nxt.text[0].isalpha()
@@ -320,10 +320,10 @@ def build_atom_index(atoms: Sequence[Atom]) -> AtomIndex:
                 flat_to_atom.pop()
                 continue
             if x_gap > ch.font_size * 0.2 or line_break:
-                parts.append(" ")
+                parts.append(' ')
                 flat_to_atom.append(i)
 
-    return AtomIndex("".join(parts), flat_to_atom)
+    return AtomIndex(''.join(parts), flat_to_atom)
 
 
 # ---------------------------------------------------------------------------

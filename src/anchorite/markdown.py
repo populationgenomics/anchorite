@@ -15,6 +15,6 @@ def renumber_markers(markdown_chunks: Sequence[str]) -> list[str]:
     def _renumber(match: re.Match) -> str:
         kind = match.group(1)
         counters[kind] += 1
-        return f"<!--{kind}: {counters[kind]}-->"
+        return f'<!--{kind}: {counters[kind]}-->'
 
-    return [re.sub(r"<!--(table|figure)-->", _renumber, chunk_text) for chunk_text in markdown_chunks]
+    return [re.sub(r'<!--(table|figure)-->', _renumber, chunk_text) for chunk_text in markdown_chunks]

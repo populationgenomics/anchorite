@@ -101,7 +101,7 @@ def _residual_string(
         parts.append(flat_str[prev:])
         pos_map.extend(range(prev, len(flat_str)))
     pos_map.append(len(flat_str))  # sentinel
-    return "".join(parts), pos_map
+    return ''.join(parts), pos_map
 
 
 def _aln_to_flat_ranges(
@@ -387,7 +387,7 @@ def _align_markdown_to_pages(
 
     phase1_count = sum(1 for r in results if r is not None)
     logger.info(
-        "Phase 1 (conservative HSP): %d/%d segments matched (%d%%)",
+        'Phase 1 (conservative HSP): %d/%d segments matched (%d%%)',
         phase1_count,
         len(segments),
         100 * phase1_count // max(len(segments), 1),

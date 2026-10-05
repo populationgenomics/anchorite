@@ -16,15 +16,15 @@ the molecular diversity of cancer a realistic possibility (Liu et al.,
 """
 
     bbox_texts = [
-        "set of cell lines encompassing the molecular diversity of cancer",
-        "lines with high efficiency and thus make derivation of a larger",
-        "are active in small molecularly defined subgroups of patients",
-        "we enter an era of precision cancer medicine, where many drugs",
-        "models for many cancer genotypes and tissues is a limitation.",
-        "tizing EML4-ALK gene fusion [Soda et al., 2007]), the scarcity of",
-        "(e.g., only 3%-7% of lung cancer patients harbor the drug sensi-",
-        "a realistic possibility (Liu et al., 2012; Sato et al., 2011).",
-        "New cell culturing technologies enable derivation of patient cell",
+        'set of cell lines encompassing the molecular diversity of cancer',
+        'lines with high efficiency and thus make derivation of a larger',
+        'are active in small molecularly defined subgroups of patients',
+        'we enter an era of precision cancer medicine, where many drugs',
+        'models for many cancer genotypes and tissues is a limitation.',
+        'tizing EML4-ALK gene fusion [Soda et al., 2007]), the scarcity of',
+        '(e.g., only 3%-7% of lung cancer patients harbor the drug sensi-',
+        'a realistic possibility (Liu et al., 2012; Sato et al., 2011).',
+        'New cell culturing technologies enable derivation of patient cell',
     ]
 
     dummy_rect = anchorite.BBox(0, 0, 0, 0)
@@ -43,8 +43,8 @@ the molecular diversity of cancer a realistic possibility (Liu et al.,
 
 def test_hyphen_match_simple() -> None:
     # A simpler unit test for the hyphen logic specifically via Gapped Alignment
-    markdown = "hyphen- ated"
-    bbox_text = "hyphenated"
+    markdown = 'hyphen- ated'
+    bbox_text = 'hyphenated'
 
     anchors = [anchorite.Anchor(text=bbox_text, page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))]
 
@@ -62,7 +62,7 @@ def test_align_table_cell() -> None:
 | Histone modifier | 5 | 29 |
 | OTHER GROWTH/PROLIFERATION SIGNALING | | |
 """
-    anchor = anchorite.Anchor(text="Histone modifier", page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))
+    anchor = anchorite.Anchor(text='Histone modifier', page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))
     assignments = anchorite.align([anchor], markdown)
     assert anchor in assignments
 
@@ -72,7 +72,7 @@ def test_align_special_characters() -> None:
 | Trametinib | MEK1/2 | BRAF | SKCM |
 | Vemurafenib | BRAF | BRAF | SKCM |
 """
-    anchor = anchorite.Anchor(text="MEK1/2", page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))
+    anchor = anchorite.Anchor(text='MEK1/2', page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))
     assignments = anchorite.align([anchor], markdown)
     assert anchor in assignments
 
@@ -82,7 +82,7 @@ def test_align_duplicate_text_assigns_once() -> None:
 Here is duplicate.
 Here is duplicate.
 """
-    anchor = anchorite.Anchor(text="duplicate", page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))
+    anchor = anchorite.Anchor(text='duplicate', page=1, boxes=(anchorite.BBox(0, 0, 0, 0),))
     assignments = anchorite.align([anchor], markdown)
     assert anchor in assignments
     assert len(assignments) == 1

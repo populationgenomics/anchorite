@@ -67,7 +67,7 @@ def _sweep_operation(
         elif was_active and not is_active:
             # Stopped satisfying predicate
             if start_pos == -1:
-                raise RuntimeError("sweep-line state error: active interval ended without a recorded start")
+                raise RuntimeError('sweep-line state error: active interval ended without a recorded start')
             result.append((start_pos, pos))
             start_pos = -1
 
