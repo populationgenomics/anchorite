@@ -48,7 +48,6 @@ indent-width = 4
 [tool.ruff.lint]
 select = ["A", "B", "C",  "E", "F", "G", "I", "N", "Q", "S", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "ERA", "EXE", "ICN", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "UP", "YTT"]
 ignore = [
-    "ANN101",
     "PD011",
     "PLC0415",
     "PLR0913",
