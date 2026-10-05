@@ -15,11 +15,17 @@ repos:
       - id: debug-statements
       - id: check-added-large-files
 
-  - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.45.0
+  # Markdown formatter. CommonMark-strict, so intraword `_` (snake_case) stays literal and fenced
+  # code is untouched. gfm = tables/task-lists/autolinks; frontmatter = YAML headers. Wrap at 120.
+  - repo: https://github.com/hukkin/mdformat
+    rev: 1.0.0
     hooks:
-      - id: markdownlint
+      - id: mdformat
+        args: ["--wrap", "120"]
         exclude: 'tests/fixtures'
+        additional_dependencies:
+          - mdformat-gfm==1.0.0
+          - mdformat-frontmatter==2.1.2
 
   - repo: https://github.com/populationgenomics/pre-commits
     rev: "e37928f761f17d54aca5cedf93848b40ec7cff26"
