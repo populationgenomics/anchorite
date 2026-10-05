@@ -8,8 +8,8 @@ from collections.abc import Iterator, Sequence
 
 import seq_smith
 
-from . import anchors, range_ops
-from .normalize import ALIGN_ALPHABET_STRICT, SCORE_MATRIX_STRICT, normalize_strict
+from anchorite import anchors, range_ops
+from anchorite.normalize import ALIGN_ALPHABET_STRICT, SCORE_MATRIX_STRICT, normalize_strict
 
 _NON_WORD_CHARS = seq_smith.encode(" ", ALIGN_ALPHABET_STRICT)
 _GAP_OPEN, _GAP_EXTEND = -2, -2
@@ -363,7 +363,6 @@ def align_anchors(
         Mapping of Anchor -> (start, end) character offsets in markdown_content.
         Anchors that could not be matched with sufficient confidence are omitted.
     """
-
     # Create initial spans (just the full content)
     anchor_spans: set[_AnchorFragment] = {span for span in [_make_anchor_fragment(a) for a in anchor_seq] if len(span)}
     if not anchor_spans:

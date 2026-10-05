@@ -6,8 +6,7 @@ from collections.abc import Sequence
 
 
 def renumber_markers(markdown_chunks: Sequence[str]) -> list[str]:
-    """
-    Renumbers <!--table--> and <!--figure--> markers across multiple chunks.
+    """Renumbers <!--table--> and <!--figure--> markers across multiple chunks.
 
     Transforms e.g. <!--table--> into <!--table: 1-->.
     """

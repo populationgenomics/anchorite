@@ -2,7 +2,7 @@
 
 from typing import Protocol, runtime_checkable
 
-from . import anchors, document
+from anchorite import anchors, document
 
 
 class MarkdownProvider(Protocol):

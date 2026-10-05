@@ -1,10 +1,10 @@
-import os
+import pathlib
 import sys
 
-sys.path.insert(0, os.path.abspath("../../src"))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 project = "anchorite"
-copyright = "2026, Centre for Population Genomics"  # noqa: A001
+copyright = "2026, Centre for Population Genomics"
 author = "Tobias Sargeant"
 
 extensions = [

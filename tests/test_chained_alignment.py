@@ -143,8 +143,10 @@ def test_a_has_noise_b_anchors_full_content() -> None:
 
 
 def test_two_disjoint_regions_both_get_matched() -> None:
-    """A pair of widely-separated matching regions should both end up in
-    the chain — neither is dropped in favour of the other."""
+    """A pair of widely-separated matching regions both end up in the chain.
+
+    Neither is dropped in favour of the other.
+    """
     a = _enc(
         "first interesting region appears here "
         "then a lot of irrelevant filler content nobody asked for "
@@ -166,8 +168,10 @@ def test_two_disjoint_regions_both_get_matched() -> None:
 
 
 def test_order_reversal_picks_one_branch() -> None:
-    """If *B* presents two regions in opposite order from *A*, the chain
-    has to drop one — SW alignment is monotonic."""
+    """If *B* presents two regions in opposite order from *A*, the chain drops one.
+
+    SW alignment is monotonic.
+    """
     a = _enc("alpha bravo charlie delta echo foxtrot golf hotel india")
     # B has the regions reversed: "india ... hotel ... alpha bravo".
     b = _enc("india hotel alpha bravo")
@@ -267,8 +271,9 @@ def test_output_indices_within_bounds() -> None:
 
 
 def test_chain_respects_b_monotonicity() -> None:
-    """The chain must be non-decreasing on the B axis too — even though
-    the output is sorted on A, B indices for matched bytes should
+    """The chain must be non-decreasing on the B axis too.
+
+    Even though the output is sorted on A, B indices for matched bytes should
     almost always be non-decreasing across the trace.
 
     Strictly: SW within a single gap can produce locally non-monotonic

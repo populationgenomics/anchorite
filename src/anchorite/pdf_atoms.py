@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, NamedTuple
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
 
-from .anchors import BBox
+from anchorite.anchors import BBox
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -167,16 +167,16 @@ def _to_displayed_bbox(
     downstream consumer already assumes.
     """
     bl, bb, br, bt = bbox
-    if rotation == 90:  # noqa: PLR2004
+    if rotation == 90:
         return (bottom - bb, br - right, top - bb, br - left)
-    if rotation == 180:  # noqa: PLR2004
+    if rotation == 180:
         return (br - right, bt - top, br - left, bt - bottom)
-    if rotation == 270:  # noqa: PLR2004
+    if rotation == 270:
         return (bt - top, left - bl, bt - bottom, right - bl)
     return (left - bl, bottom - bb, right - bl, top - bb)
 
 
-def extract_page_atoms(page: pdfium.PdfPage) -> list[Atom]:  # noqa: C901, PLR0912, PLR0915
+def extract_page_atoms(page: pdfium.PdfPage) -> list[Atom]:
     """Extract non-whitespace glyphs with bboxes from a single PDF page.
 
     Atom coords come out in the page's **displayed** frame (origin at the
@@ -307,7 +307,7 @@ def build_atom_index(atoms: Sequence[Atom]) -> AtomIndex:
             line_break = nxt.x0 < ch.x0 or y_drop > ch.font_size * 0.5
             if (
                 line_break
-                and len(parts) >= 2  # noqa: PLR2004
+                and len(parts) >= 2
                 and parts[-1] == "-"
                 and parts[-2].isalpha()
                 and nxt.text

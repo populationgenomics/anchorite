@@ -102,10 +102,10 @@ def test_no_markers_matches_marker_assignments(
     pdf_path: pathlib.Path,
     md_path: pathlib.Path,
 ) -> None:
-    """No-marker associate() should assign each segment to the same page as
-    the marker'd associate() does.  Bbox shapes need not be byte-identical
-    (masking order can differ when the search window changes), but the page
-    each segment lands on must agree.
+    """No-marker associate() assigns each segment the same page as the marker'd associate() does.
+
+    Bbox shapes need not be byte-identical (masking order can differ when the
+    search window changes), but the page each segment lands on must agree.
     """
     marked_md = md_path.read_text()
     # Strip markers to simulate JATS-derived markdown.

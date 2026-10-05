@@ -4,8 +4,8 @@ import asyncio
 import dataclasses
 from collections.abc import Iterable
 
-from . import anchors, bbox_alignment, document, providers
-from .markdown import renumber_markers
+from anchorite import anchors, bbox_alignment, document, providers
+from anchorite.markdown import renumber_markers
 
 
 @dataclasses.dataclass
@@ -22,12 +22,12 @@ class AlignmentResult:
     def annotate(self) -> str:
         """Annotates the markdown content with anchor spans."""
         # Import here to avoid circular import
-        from . import annotate as annotate_fn
+        from anchorite import annotate as annotate_fn
 
         return annotate_fn(self.markdown_content, self.anchor_spans)
 
 
-async def process_document(  # noqa: C901, PLR0912
+async def process_document(
     chunks: Iterable[document.DocumentChunk],
     markdown_provider: providers.MarkdownProvider | None = None,
     anchor_provider: providers.AnchorProvider | providers.MarkdownAnchorProvider | None = None,
@@ -141,7 +141,7 @@ async def process_document(  # noqa: C901, PLR0912
     # Calculate coverage
     coverage_percent = 0.0
     if markdown_content:
-        from . import range_ops
+        from anchorite import range_ops
 
         spans = sorted(anchor_spans.values())
         covered_ranges = range_ops.union_ranges(spans, [])

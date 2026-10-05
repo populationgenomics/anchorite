@@ -80,7 +80,7 @@ def main(pdf_path: pathlib.Path, md_path: pathlib.Path) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:  # noqa: PLR2004
+    if len(sys.argv) != 3:
         print(f"usage: {sys.argv[0]} <pdf> <markdown>")
         sys.exit(1)
     main(pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]))

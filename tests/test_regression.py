@@ -39,10 +39,10 @@ class MockAnchorProvider:
 @pytest.mark.asyncio
 async def test_hubble_regression() -> None:
     # Load fixtures
-    with open(FIXTURES_DIR / "hubble_markdown_chunks.json") as f:
+    with (FIXTURES_DIR / "hubble_markdown_chunks.json").open() as f:
         gemini_responses = json.load(f)
 
-    with open(FIXTURES_DIR / "hubble_anchors.json") as f:
+    with (FIXTURES_DIR / "hubble_anchors.json").open() as f:
         docai_bboxes = json.load(f)
 
     markdown_provider = MockMarkdownProvider(gemini_responses)

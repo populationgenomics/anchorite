@@ -73,9 +73,9 @@ _MD_LINK_RE = re.compile(r"\[([^\]\n]+)\]\(([^)\n]*)\)")
 
 
 def strip_spans(text: str) -> list[tuple[int, int]]:
-    """Return sorted, merged character spans whose content is zero-width for
-    alignment: HTML comments and tags, and the wrapper portions of inline
-    Markdown links.
+    """Return the sorted, merged character spans whose content is zero-width for alignment.
+
+    Those are HTML comments and tags, and the wrapper portions of inline Markdown links.
     """
     spans: list[tuple[int, int]] = [(m.start(), m.end()) for m in _HTML_TAG_RE.finditer(text)]
     for m in _MD_LINK_RE.finditer(text):
