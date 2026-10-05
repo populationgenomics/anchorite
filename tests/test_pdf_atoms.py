@@ -245,3 +245,53 @@ class TestExtractRotation:
             assert 0.0 <= atom.x1 <= pd.width
             assert 0.0 <= atom.y0 <= pd.height
             assert 0.0 <= atom.y1 <= pd.height
+
+
+# ---------------------------------------------------------------------------
+# Malformed text layers
+# ---------------------------------------------------------------------------
+
+
+def _make_pdf_with_tounicode(text: bytes, cmap_entries: dict[int, str]) -> bytes:
+    """Build a one-page PDF that shows ``text`` in Helvetica with a ``ToUnicode`` CMap.
+
+    ``cmap_entries`` maps a character code to the hex UTF-16 the CMap gives it.
+    Real PDFs carry malformed text layers this way, e.g. a code mapped to an
+    unpaired surrogate, which PDFium's own text API would never write.
+    """
+    bfchar = "\n".join(f"<{code:02X}> <{target}>" for code, target in cmap_entries.items())
+    cmap = (
+        "/CIDInit /ProcSet findresource begin 12 dict begin begincmap\n"
+        "/CMapName /Test def 1 begincodespacerange <00> <FF> endcodespacerange\n"
+        f"{len(cmap_entries)} beginbfchar\n{bfchar}\nendbfchar\n"
+        "endcmap CMapName currentdict /CMap defineresource pop end end"
+    ).encode()
+    content = b"BT /F1 12 Tf %d %d Td (" % (int(_GLYPH_X), int(_GLYPH_Y)) + text + b") Tj ET"
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /ToUnicode 6 0 R >>",
+        b"<< /Length %d >>\nstream\n" % len(content) + content + b"\nendstream",
+        b"<< /Length %d >>\nstream\n" % len(cmap) + cmap + b"\nendstream",
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % number + body + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    out += b"".join(b"%010d 00000 n \n" % offset for offset in offsets)
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objects) + 1, xref)
+    return bytes(out)
+
+
+class TestMalformedTextLayer:
+    def test_unpaired_surrogate_keeps_surrounding_glyphs(self) -> None:
+        # A lone high surrogate between two glyphs must not fail extraction,
+        # and the glyphs on either side keep their atoms.
+        doc = pdfium.PdfDocument(_make_pdf_with_tounicode(b"ABC", {0x42: "D800"}))
+        pd = extract_page_data(doc)[0]
+        assert "".join(atom.text for atom in pd.atoms) == "AC"
