@@ -191,6 +191,9 @@ def extract_page_atoms(page: pdfium.PdfPage) -> list[Atom]:  # noqa: C901, PLR09
     char_index = 0
 
     for obj in page.get_objects(filter=[pdfium_c.FPDF_PAGEOBJ_TEXT]):
+        # The filter yields only text objects; the check narrows the type.
+        if not isinstance(obj, pdfium.PdfTextObj):
+            continue
         buf_size = pdfium_c.FPDFTextObj_GetText(obj, textpage, None, 0)
         buf = (pdfium_c.FPDF_WCHAR * buf_size)()
         pdfium_c.FPDFTextObj_GetText(obj, textpage, buf, buf_size)

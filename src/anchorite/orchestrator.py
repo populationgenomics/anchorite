@@ -80,9 +80,6 @@ async def process_document(  # noqa: C901, PLR0912
     """
     chunk_list = list(chunks)
 
-    if markdown is None and markdown_provider is None:
-        raise ValueError("process_document requires either markdown or markdown_provider")
-
     if markdown is not None:
         markdown_content = markdown
         if isinstance(anchor_provider, providers.MarkdownAnchorProvider):
@@ -97,6 +94,8 @@ async def process_document(  # noqa: C901, PLR0912
             flat_anchors = [a for chunk_anchors in all_anchors for a in chunk_anchors]
         else:
             return AlignmentResult(markdown_content, {}, 0.0)
+    elif markdown_provider is None:
+        raise ValueError("process_document requires either markdown or markdown_provider")
     else:
         markdown_tasks = [markdown_provider.generate_markdown(chunk) for chunk in chunk_list]
 

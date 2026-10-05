@@ -32,19 +32,13 @@ repos:
       - id: ruff
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.2
+  - repo: local
     hooks:
-      - id: mypy
-        exclude: "docs/"
-        args:
-          [
-            --pretty,
-            --show-error-codes,
-            --no-strict-optional,
-            --ignore-missing-imports,
-            --install-types,
-            --non-interactive,
-            --config-file=./pyproject.toml
-          ]
-        additional_dependencies: [types-PyYAML==6.0.4, types-toml]
+      # pyright needs the project deps to resolve imports, so it runs in the project env via `uv run`.
+      # Whole-project (pass_filenames: false); fires on any staged .py.
+      - id: pyright
+        name: pyright
+        entry: uv run pyright
+        language: system
+        files: \.py$
+        pass_filenames: false
