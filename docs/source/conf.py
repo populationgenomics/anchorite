@@ -14,6 +14,9 @@ extensions = [
     "myst_parser",
 ]
 
+# Slug ids for h1-h3, so the README's in-page links (#normalisation) resolve.
+myst_heading_anchors = 3
+
 templates_path = ["_templates"]
 exclude_patterns: list[str] = []
 
