@@ -1,0 +1,28 @@
+name: tests
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+  push:
+    branches: [main]
+
+jobs:
+  pytest:
+    # Skips draft PRs.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # The requires-python floor and the latest supported release.
+        python: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+      - run: uv sync --locked --python ${{ matrix.python }}
+      # No path arg: collect the testpaths configured in pyproject.toml.
+      - run: uv run pytest
