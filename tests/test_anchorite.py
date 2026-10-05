@@ -204,7 +204,7 @@ def test_locate_quote_span_exact_offsets() -> None:
     text = "The quick brown fox jumps over the lazy dog."
     span = anchorite.locate_quote_span(text, "quick brown fox")
     assert span == (4, 19)
-    assert text[span[0] : span[1]] == "quick brown fox"
+    assert text[4:19] == "quick brown fox"
 
 
 def test_locate_quote_span_midspan_punctuation() -> None:

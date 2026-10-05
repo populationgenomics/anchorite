@@ -30,6 +30,7 @@ dependencies = [
 dev = [
     "pillow>=12.2.0",
     "pre-commit",
+    "pyright>=1.1.400",
     "pytest",
     "pytest-asyncio",
     "ruff>=0.14.6",
@@ -89,5 +90,11 @@ testpaths = ["tests"]
 # otherwise leave the guard it was meant to set switched off, silently.
 strict_config = true
 
-[tool.mypy]
-python_version = "3.11"
+[tool.pyright]
+pythonVersion = "3.11"
+# Resolve imports from the uv-managed venv, so editor pyright sees installed deps the same way
+# `uv run pyright` does.
+venvPath = "."
+venv = ".venv"
+include = ["src", "tests"]
+typeCheckingMode = "standard"

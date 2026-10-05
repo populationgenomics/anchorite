@@ -21,11 +21,12 @@ richer semantic structure of the Markdown drives anchor granularity rather than
 the accidents of PDF typesetting.
 """
 
+from __future__ import annotations
+
 import dataclasses
 import logging
-import pathlib
 from collections.abc import Callable
-from typing import Literal, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import pypdfium2 as pdfium
 import seq_smith
@@ -43,6 +44,12 @@ from .pdf_atoms import (
     extract_page_data,
     line_bboxes,
 )
+
+if TYPE_CHECKING:
+    import pathlib
+
+    import numpy as np
+    import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +134,7 @@ def _align_against(
     reference: bytes,
     ref_to_flat: tuple[int, ...],
     norm_seg: bytes,
-    score_matrix: object,
+    score_matrix: npt.NDArray[np.int32],
     min_score: int,
 ) -> tuple[int, list[tuple[int, int]]] | None:
     """Run Smith-Waterman and return (score, flat_ranges) or None if below threshold.
@@ -242,7 +249,7 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
 
         def _align(
             norm_fn: _NormFn,
-            score_matrix: object,
+            score_matrix: npt.NDArray[np.int32],
         ) -> tuple[int, list[tuple[int, int]]] | None:
             res_norm, res_to_res = norm_fn(residual)  # PDF
             seg_norm, _ = norm_fn(seg.text, strip_html=True)  # markdown
@@ -411,16 +418,8 @@ def _align_markdown_to_pages(  # noqa: C901, PLR0912, PLR0915
         )
         threshold = max(5, min(min_score, norm_len))
 
-        prev_page: int | None = None
-        for j in range(i - 1, -1, -1):
-            if results[j] is not None:
-                prev_page = results[j].page
-                break
-        next_page: int | None = None
-        for j in range(i + 1, len(results)):
-            if results[j] is not None:
-                next_page = results[j].page
-                break
+        prev_page = next((a.page for a in reversed(results[:i]) if a is not None), None)
+        next_page = next((a.page for a in results[i + 1 :] if a is not None), None)
         p2_lo = prev_page if prev_page is not None else 0
         p2_hi = next_page if next_page is not None else num_pages - 1
 
