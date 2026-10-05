@@ -7,7 +7,7 @@ import pytest
 import anchorite
 from anchorite import Anchor, BBox, document
 
-FIXTURES_DIR = pathlib.Path(__file__).parent / "fixtures"
+FIXTURES_DIR = pathlib.Path(__file__).parent / 'fixtures'
 
 
 class MockMarkdownProvider:
@@ -28,9 +28,9 @@ class MockAnchorProvider:
         chunk_data = self.bboxes_data[idx]
         return [
             Anchor(
-                text=b["text"],
-                page=b["page"],
-                boxes=(BBox(**b["box"]),),
+                text=b['text'],
+                page=b['page'],
+                boxes=(BBox(**b['box']),),
             )
             for b in chunk_data
         ]
@@ -39,10 +39,10 @@ class MockAnchorProvider:
 @pytest.mark.asyncio
 async def test_hubble_regression() -> None:
     # Load fixtures
-    with (FIXTURES_DIR / "hubble_markdown_chunks.json").open() as f:
+    with (FIXTURES_DIR / 'hubble_markdown_chunks.json').open() as f:
         gemini_responses = json.load(f)
 
-    with (FIXTURES_DIR / "hubble_anchors.json").open() as f:
+    with (FIXTURES_DIR / 'hubble_anchors.json').open() as f:
         docai_bboxes = json.load(f)
 
     markdown_provider = MockMarkdownProvider(gemini_responses)
@@ -51,11 +51,11 @@ async def test_hubble_regression() -> None:
     # Mock chunks so we don't need a real PDF
     mock_chunks = [
         document.DocumentChunk(
-            document_sha256="fake",
+            document_sha256='fake',
             start_page=i * 10,
             end_page=(i + 1) * 10,
-            data=b"",
-            mime_type="application/pdf",
+            data=b'',
+            mime_type='application/pdf',
         )
         for i in range(len(gemini_responses))
     ]
@@ -69,9 +69,9 @@ async def test_hubble_regression() -> None:
 
     output_md = result.annotate()
 
-    golden_path = FIXTURES_DIR / "hubble_golden.md"
+    golden_path = FIXTURES_DIR / 'hubble_golden.md'
 
-    if os.environ.get("UPDATE_GOLDEN"):
+    if os.environ.get('UPDATE_GOLDEN'):
         golden_path.write_text(output_md)
 
     expected = golden_path.read_text()

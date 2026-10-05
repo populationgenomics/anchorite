@@ -23,14 +23,14 @@ from anchorite.md_association import (
 
 class TestParseMarkdownSegments:
     def test_with_markers_assigns_integer_pages(self) -> None:
-        md = "<!--page-->\n\nFirst page sentence.\n\n<!--page-->\n\nSecond page sentence.\n"
+        md = '<!--page-->\n\nFirst page sentence.\n\n<!--page-->\n\nSecond page sentence.\n'
         segs = parse_markdown_segments(md)
         pages = [s.page for s in segs]
         assert pages == [0, 1]
         assert all(isinstance(s.page, int) for s in segs)
 
     def test_without_markers_yields_none_pages(self) -> None:
-        md = "First sentence.\n\nSecond sentence.\n\nThird sentence.\n"
+        md = 'First sentence.\n\nSecond sentence.\n\nThird sentence.\n'
         segs = parse_markdown_segments(md)
         assert len(segs) == 3
         assert all(s.page is None for s in segs)
@@ -38,22 +38,22 @@ class TestParseMarkdownSegments:
     def test_without_markers_preserves_pre_marker_content(self) -> None:
         # The marker'd path drops content before the first marker (it isn't
         # pinned to any page).  The no-marker path must keep it.
-        md = "Leading sentence.\n\nFollowing sentence.\n"
+        md = 'Leading sentence.\n\nFollowing sentence.\n'
         segs = parse_markdown_segments(md)
-        assert [s.text for s in segs] == ["Leading sentence.", "Following sentence."]
+        assert [s.text for s in segs] == ['Leading sentence.', 'Following sentence.']
 
     def test_with_markers_drops_pre_marker_content(self) -> None:
         # Content before the first marker has no page assignment, so it's
         # excluded.  This is existing behaviour; the test pins the contract.
-        md = "Stray pre-marker text.\n\n<!--page-->\n\nReal page content.\n"
+        md = 'Stray pre-marker text.\n\n<!--page-->\n\nReal page content.\n'
         segs = parse_markdown_segments(md)
-        assert [s.text for s in segs] == ["Real page content."]
+        assert [s.text for s in segs] == ['Real page content.']
 
     def test_no_markers_segment_structure_matches_marked_structure(self) -> None:
         # Stripping markers must not change segment granularity (heading,
         # sentences, list items) — only the page assignment changes.
-        body = "# Heading\n\nFirst sentence. Second sentence.\n\n- item one\n- item two\n"
-        with_markers = "<!--page-->\n\n" + body
+        body = '# Heading\n\nFirst sentence. Second sentence.\n\n- item one\n- item two\n'
+        with_markers = '<!--page-->\n\n' + body
         without_markers = body
 
         marked_segs = parse_markdown_segments(with_markers)
@@ -67,12 +67,12 @@ class TestParseMarkdownSegments:
         # Existing behaviour: a marker that follows a paragraph without a
         # blank line is moved into its own block.  Pin it so the no-marker
         # change doesn't regress it.
-        md = "Paragraph one.<!--page-->\n\nPage two content.\n"
+        md = 'Paragraph one.<!--page-->\n\nPage two content.\n'
         segs = parse_markdown_segments(md)
         # "Paragraph one." is pre-marker content, dropped.  "Page two content."
         # is on page 0.
         assert len(segs) == 1
-        assert segs[0].text == "Page two content."
+        assert segs[0].text == 'Page two content.'
         assert segs[0].page == 0
 
 
@@ -85,19 +85,19 @@ class TestParseMarkdownSegments:
 # under ``tests/fixtures/<stem>.{pdf,md}``, this asserts the no-marker path
 # produces a page assignment substantively equivalent to the marked path.
 
-_FIXTURE_DIR = pathlib.Path(__file__).parent / "fixtures"
+_FIXTURE_DIR = pathlib.Path(__file__).parent / 'fixtures'
 
 
 def _pairs() -> list[tuple[pathlib.Path, pathlib.Path]]:
     pairs = []
-    for pdf in sorted(_FIXTURE_DIR.glob("*.pdf")):
-        md = pdf.with_suffix(".md")
+    for pdf in sorted(_FIXTURE_DIR.glob('*.pdf')):
+        md = pdf.with_suffix('.md')
         if md.exists():
             pairs.append((pdf, md))
     return pairs
 
 
-@pytest.mark.parametrize(("pdf_path", "md_path"), _pairs())
+@pytest.mark.parametrize(('pdf_path', 'md_path'), _pairs())
 def test_no_markers_matches_marker_assignments(
     pdf_path: pathlib.Path,
     md_path: pathlib.Path,
@@ -109,7 +109,7 @@ def test_no_markers_matches_marker_assignments(
     """
     marked_md = md_path.read_text()
     # Strip markers to simulate JATS-derived markdown.
-    bare_md = marked_md.replace("<!--page-->", "")
+    bare_md = marked_md.replace('<!--page-->', '')
 
     marked_anchors = associate(pdf_path, marked_md)
     bare_anchors = associate(pdf_path, bare_md)
@@ -131,9 +131,9 @@ def test_no_markers_matches_marker_assignments(
     # Page assignments for shared segments must agree.
     disagreements = [t for t in common if marked_pages[t] != bare_pages[t]]
     assert not disagreements, (
-        f"page assignments disagree for {len(disagreements)} segments; "
-        f"first: {disagreements[0]!r} marker={marked_pages[disagreements[0]]} "
-        f"bare={bare_pages[disagreements[0]]}"
+        f'page assignments disagree for {len(disagreements)} segments; '
+        f'first: {disagreements[0]!r} marker={marked_pages[disagreements[0]]} '
+        f'bare={bare_pages[disagreements[0]]}'
     )
 
 
@@ -144,5 +144,5 @@ def test_no_markers_matches_marker_assignments(
 
 def test_segment_page_can_be_none() -> None:
     """``MarkdownSegment.page`` accepts ``None`` (frozen-dataclass type-check)."""
-    seg = MarkdownSegment(text="hello", page=None, md_start=0, md_end=5)
+    seg = MarkdownSegment(text='hello', page=None, md_start=0, md_end=5)
     assert seg.page is None

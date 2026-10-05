@@ -10,64 +10,64 @@ from collections.abc import Callable
 # Sentence splitting
 # ---------------------------------------------------------------------------
 
-_SUPERSCRIPT_DIGITS = "⁰¹²³⁴⁵⁶⁷⁸⁹"
+_SUPERSCRIPT_DIGITS = '⁰¹²³⁴⁵⁶⁷⁸⁹'
 
 _ABBREVIATIONS: frozenset[str] = frozenset(
     {
-        "al",
-        "fig",
-        "figs",
-        "eq",
-        "eqs",
-        "vs",
-        "etc",
-        "dr",
-        "mr",
-        "mrs",
-        "ms",
-        "prof",
-        "inc",
-        "ltd",
-        "co",
-        "jr",
-        "sr",
-        "jan",
-        "feb",
-        "mar",
-        "apr",
-        "jun",
-        "jul",
-        "aug",
-        "sep",
-        "oct",
-        "nov",
-        "dec",
-        "vol",
-        "no",
-        "pp",
-        "p",
-        "ed",
-        "eds",
-        "ref",
-        "refs",
-        "approx",
-        "dept",
-        "est",
-        "max",
-        "min",
-        "cf",
-        "viz",
+        'al',
+        'fig',
+        'figs',
+        'eq',
+        'eqs',
+        'vs',
+        'etc',
+        'dr',
+        'mr',
+        'mrs',
+        'ms',
+        'prof',
+        'inc',
+        'ltd',
+        'co',
+        'jr',
+        'sr',
+        'jan',
+        'feb',
+        'mar',
+        'apr',
+        'jun',
+        'jul',
+        'aug',
+        'sep',
+        'oct',
+        'nov',
+        'dec',
+        'vol',
+        'no',
+        'pp',
+        'p',
+        'ed',
+        'eds',
+        'ref',
+        'refs',
+        'approx',
+        'dept',
+        'est',
+        'max',
+        'min',
+        'cf',
+        'viz',
     },
 )
 
 # Sentence boundary: terminal punctuation, optional reference markers
 # (superscripts or a space-separated digit run), then whitespace, then uppercase.
 _SENT_END_RE = re.compile(
-    r"[.!?]"
-    r"[" + _SUPERSCRIPT_DIGITS + r"]*"  # optional superscript refs directly after punct
-    r"(?:\s+\d[\d,\-]*)?"  # optional space + numeric refs (e.g. ". 1,2")
-    r"\s+"  # required whitespace before next sentence
-    r"(?=[A-Z])",  # lookahead: next char is uppercase
+    r'[.!?]'
+    r'[' + _SUPERSCRIPT_DIGITS + r']*'  # optional superscript refs directly after punct
+    r'(?:\s+\d[\d,\-]*)?'  # optional space + numeric refs (e.g. ". 1,2")
+    r'\s+'  # required whitespace before next sentence
+    r'(?=[A-Z])',  # lookahead: next char is uppercase
 )
 
 
@@ -81,7 +81,7 @@ def _split_sentences(text: str) -> list[str]:
     prev = 0
     for m in _SENT_END_RE.finditer(text):
         before = text[prev : m.start()]
-        word_m = re.search(r"([a-zA-Z]+)[" + _SUPERSCRIPT_DIGITS + r"0-9,\-]*$", before)
+        word_m = re.search(r'([a-zA-Z]+)[' + _SUPERSCRIPT_DIGITS + r'0-9,\-]*$', before)
         if word_m:
             word = word_m.group(1).lower()
             if len(word) == 1 or word in _ABBREVIATIONS:
@@ -117,13 +117,13 @@ class MarkdownSegment:
     """End character offset of the enclosing block in the original Markdown."""
 
 
-_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-_PAGE_MARKER_RE = re.compile(r"<!--page-->")
+_COMMENT_RE = re.compile(r'<!--.*?-->', re.DOTALL)
+_PAGE_MARKER_RE = re.compile(r'<!--page-->')
 
 # Ordered and unordered list item prefixes.
-_LIST_ITEM_RE = re.compile(r"^(\s{0,3}(?:[-*+]|\d+[.)]) )")
+_LIST_ITEM_RE = re.compile(r'^(\s{0,3}(?:[-*+]|\d+[.)]) )')
 # Lines starting with superscript digits → affiliation / footnote entries.
-_SUPER_PREFIX_RE = re.compile(r"^[" + _SUPERSCRIPT_DIGITS + r"]")
+_SUPER_PREFIX_RE = re.compile(r'^[' + _SUPERSCRIPT_DIGITS + r']')
 
 _Seg = Callable[[str], MarkdownSegment]
 
@@ -137,7 +137,7 @@ def _segments_from_heading(
 ) -> list[MarkdownSegment]:
     lines = text.splitlines()
     heading_seg = seg(lines[0])
-    rest = "\n".join(lines[1:]).strip()
+    rest = '\n'.join(lines[1:]).strip()
     if not rest:
         return [heading_seg]
     return [heading_seg, *_segments_from_block(rest, page, md_start, md_end)]
@@ -146,7 +146,7 @@ def _segments_from_heading(
 def _segments_from_blockquote(text: str, seg: _Seg) -> list[MarkdownSegment]:
     results: list[MarkdownSegment] = []
     for raw_line in text.splitlines():
-        stripped = re.sub(r"^>\s?", "", raw_line).strip()
+        stripped = re.sub(r'^>\s?', '', raw_line).strip()
         if not stripped:
             continue
         if _LIST_ITEM_RE.match(stripped):
@@ -162,21 +162,21 @@ def _segments_from_list(lines: list[str], seg: _Seg) -> list[MarkdownSegment]:
     for line in lines:
         if _LIST_ITEM_RE.match(line):
             if current:
-                items.append(" ".join(current))
+                items.append(' '.join(current))
             current = [line]
         elif line.strip():
             current.append(line.strip())
     if current:
-        items.append(" ".join(current))
+        items.append(' '.join(current))
     return [seg(item) for item in items if item.strip()]
 
 
 def _segments_from_table(lines: list[str], seg: _Seg) -> list[MarkdownSegment]:
     results: list[MarkdownSegment] = []
     for line in lines:
-        if re.match(r"^\s*\|[-:\s|]+\|\s*$", line):
+        if re.match(r'^\s*\|[-:\s|]+\|\s*$', line):
             continue  # separator row
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        cells = [c.strip() for c in line.strip().strip('|').split('|')]
         results.extend(seg(c) for c in cells if c)
     return results
 
@@ -202,15 +202,15 @@ def _segments_from_block(
         and sum(1 for line in non_empty if _SUPER_PREFIX_RE.match(line.strip())) >= len(non_empty) * 0.5
     )
 
-    if re.match(r"^#{1,6}\s", text):
+    if re.match(r'^#{1,6}\s', text):
         result = _segments_from_heading(text, page, md_start, md_end, seg)
-    elif text.startswith(">"):
+    elif text.startswith('>'):
         result = _segments_from_blockquote(text, seg)
     elif _LIST_ITEM_RE.match(lines[0]):
         result = _segments_from_list(lines, seg)
     elif is_affiliation:
         result = [seg(line) for line in non_empty]
-    elif "|" in lines[0]:
+    elif '|' in lines[0]:
         result = _segments_from_table(lines, seg)
     else:
         result = [seg(s) for s in _split_sentences(text)]
@@ -241,8 +241,8 @@ def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
     # Without this, a marker that immediately follows a paragraph (no blank line)
     # ends up in the same block as that paragraph; after comment-stripping the
     # subsequent content (tables, etc.) is concatenated onto the last sentence.
-    markdown = re.sub(r"(?<!\n\n)(<!--page-->)", r"\n\n\1", markdown)
-    markdown = re.sub(r"(<!--page-->)(?!\n)", r"\1\n\n", markdown)
+    markdown = re.sub(r'(?<!\n\n)(<!--page-->)', r'\n\n\1', markdown)
+    markdown = re.sub(r'(<!--page-->)(?!\n)', r'\1\n\n', markdown)
 
     has_markers = _PAGE_MARKER_RE.search(markdown) is not None
 
@@ -252,7 +252,7 @@ def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
     marker_page = -1
 
     block_start = 0
-    for m in re.finditer(r"\n{2,}|\Z", markdown, re.MULTILINE):
+    for m in re.finditer(r'\n{2,}|\Z', markdown, re.MULTILINE):
         block_raw = markdown[block_start : m.start()]
         md_start = block_start
         md_end = m.start()
@@ -269,7 +269,7 @@ def parse_markdown_segments(markdown: str) -> list[MarkdownSegment]:
         else:
             page = None
 
-        text = _COMMENT_RE.sub("", block_raw).strip()
+        text = _COMMENT_RE.sub('', block_raw).strip()
         segments.extend(_segments_from_block(text, page, md_start, md_end))
 
     return segments

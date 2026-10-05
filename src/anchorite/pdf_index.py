@@ -85,7 +85,7 @@ def _build_index_from_atoms(
     flat_to_page_atom: list[int] = []
     for page_idx, pd in enumerate(page_data):
         if flat_parts:
-            flat_parts.append(" ")
+            flat_parts.append(' ')
             flat_to_page.append(page_idx)
             flat_to_page_atom.append(-1)
         ai = pd.atom_index
@@ -93,7 +93,7 @@ def _build_index_from_atoms(
             flat_parts.append(c)
             flat_to_page.append(page_idx)
             flat_to_page_atom.append(ai.flat_to_atom[i])
-    return "".join(flat_parts), flat_to_page, flat_to_page_atom
+    return ''.join(flat_parts), flat_to_page, flat_to_page_atom
 
 
 def _claimed_atoms_per_page(
@@ -184,7 +184,7 @@ def _build_index_from_alignment(
             continue
 
         if flat_parts:
-            flat_parts.append(" ")
+            flat_parts.append(' ')
             flat_to_page.append(page_idx)
             flat_to_page_atom.append(-1)
 
@@ -202,7 +202,7 @@ def _build_index_from_alignment(
             # rather than vanishing.
             flat_to_page_atom.append(atom_indices[sub_ai.flat_to_atom[i]])
 
-    return "".join(flat_parts), flat_to_page, flat_to_page_atom
+    return ''.join(flat_parts), flat_to_page, flat_to_page_atom
 
 
 class PdfIndex:

@@ -29,31 +29,31 @@ from anchorite.orchestrator import AlignmentResult, process_document
 from anchorite.pdf_index import PdfIndex
 
 __all__ = [
-    "AlignmentResult",
-    "Anchor",
-    "BBox",
-    "MarkdownSegment",
-    "PdfIndex",
-    "SpanAnchor",
-    "align",
-    "annotate",
-    "chained_alignment",
-    "document",
-    "is_quote_grounded",
-    "locate_quote_span",
-    "markdown",
-    "md_association",
-    "md_segments",
-    "normalize",
-    "orchestrator",
-    "parse_markdown_segments",
-    "pdf_index",
-    "process_document",
-    "providers",
-    "range_ops",
-    "resolve",
-    "resolve_quote",
-    "strip",
+    'AlignmentResult',
+    'Anchor',
+    'BBox',
+    'MarkdownSegment',
+    'PdfIndex',
+    'SpanAnchor',
+    'align',
+    'annotate',
+    'chained_alignment',
+    'document',
+    'is_quote_grounded',
+    'locate_quote_span',
+    'markdown',
+    'md_association',
+    'md_segments',
+    'normalize',
+    'orchestrator',
+    'parse_markdown_segments',
+    'pdf_index',
+    'process_document',
+    'providers',
+    'range_ops',
+    'resolve',
+    'resolve_quote',
+    'strip',
 ]
 
 logger = logging.getLogger(__name__)
@@ -63,18 +63,18 @@ logger = logging.getLogger(__name__)
 # Sentinel character used to mask already-matched portions of the query.
 # It must not appear in normalised text. Its row and column in the score matrix
 # are set to a large negative value so the aligner never matches through it.
-_MASK_CHAR = "#"
+_MASK_CHAR = '#'
 
 # Alignment alphabet used by the resolvers: the strict normaliser's alphabet
 # (lowercase ASCII + digits + space) plus the mask sentinel ``#``.  Bytes 0..36
 # round-trip identically against ``normalize.ALIGN_ALPHABET_STRICT`` so the
 # resolver's score matrix accepts directly-normalised quotes without
 # re-encoding.
-_ALIGN_ALPHABET = string.ascii_lowercase + string.digits + " " + _MASK_CHAR
-_NON_WORD_CHARS = seq_smith.encode(" ", _ALIGN_ALPHABET)
+_ALIGN_ALPHABET = string.ascii_lowercase + string.digits + ' ' + _MASK_CHAR
+_NON_WORD_CHARS = seq_smith.encode(' ', _ALIGN_ALPHABET)
 _SCORE_MATRIX = seq_smith.make_score_matrix(_ALIGN_ALPHABET, +1, -1)
 _MASK_BYTE: int = seq_smith.encode(_MASK_CHAR, _ALIGN_ALPHABET)[0]
-_SPACE_BYTE: int = seq_smith.encode(" ", _ALIGN_ALPHABET)[0]
+_SPACE_BYTE: int = seq_smith.encode(' ', _ALIGN_ALPHABET)[0]
 _SCORE_MATRIX[_MASK_BYTE, :] = -100
 _SCORE_MATRIX[:, _MASK_BYTE] = -100
 
@@ -138,7 +138,7 @@ def annotate(
     """
     math_ranges = []
     # Pattern matches $$...$$ (DOTALL) or $...$ (inline, allowing newlines for wrapped text)
-    pattern = re.compile(r"(\$\$[\s\S]+?\$\$|\$[^$]+?\$)")
+    pattern = re.compile(r'(\$\$[\s\S]+?\$\$|\$[^$]+?\$)')
     for m in pattern.finditer(markdown):
         math_ranges.append((m.start(), m.end()))
 
@@ -156,9 +156,9 @@ def annotate(
                 break
 
         length = end - start
-        box_str = ";".join(f"{b.top},{b.left},{b.bottom},{b.right}" for b in anchor.boxes)
+        box_str = ';'.join(f'{b.top},{b.left},{b.bottom},{b.right}' for b in anchor.boxes)
         start_tag = f'<span data-bbox="{box_str}" data-page="{anchor.page}">'
-        end_tag = "</span>"
+        end_tag = '</span>'
 
         insertions.append((start, False, length, i, start_tag))
         insertions.append((end, True, length, i, end_tag))
@@ -189,7 +189,7 @@ def annotate(
     for index, _, _, _, text in insertions:
         chars.insert(index, text)
 
-    return "".join(chars)
+    return ''.join(chars)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -233,11 +233,11 @@ def strip(annotated_md: str) -> StrippedMarkdown:
         plain_chars.append(before)
         current_plain_pos += len(before)
 
-        if match.group("start"):
-            bbox_str = match.group("bbox")
-            page = int(match.group("page"))
-            boxes = tuple(BBox(*[int(x) for x in group.split(",")]) for group in bbox_str.split(";"))
-            anchor = Anchor(text="", page=page, boxes=boxes)
+        if match.group('start'):
+            bbox_str = match.group('bbox')
+            page = int(match.group('page'))
+            boxes = tuple(BBox(*[int(x) for x in group.split(',')]) for group in bbox_str.split(';'))
+            anchor = Anchor(text='', page=page, boxes=boxes)
             stack.append((current_plain_pos, anchor))
         elif stack:
             start_plain_pos, anchor = stack.pop()
@@ -247,7 +247,7 @@ def strip(annotated_md: str) -> StrippedMarkdown:
 
     plain_chars.append(annotated_md[last_pos:])
     return StrippedMarkdown(
-        plain_text="".join(plain_chars),
+        plain_text=''.join(plain_chars),
         validation_map=sorted(validation_map),
     )
 
@@ -532,7 +532,7 @@ def locate_quote_span(
     matched_len = q_end - q_start
     total_len = len(norm_quote)
     if matched_len < total_len * warn_coverage:
-        logger.warning("Low coverage for quote location: %d/%d for quote %r", matched_len, total_len, quote)
+        logger.warning('Low coverage for quote location: %d/%d for quote %r', matched_len, total_len, quote)
         if matched_len < total_len * fail_coverage:
             return None
 
@@ -699,7 +699,7 @@ def resolve_quote(
 
     if matched_len < total_len * warn_coverage:
         logger.warning(
-            "Low coverage for quote alignment: %d/%d for quote %r",
+            'Low coverage for quote alignment: %d/%d for quote %r',
             matched_len,
             total_len,
             quote,

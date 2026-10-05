@@ -45,6 +45,9 @@ exclude-newer = "7 days"
 line-length = 120
 target-version = "py311"
 
+[tool.ruff.format]
+quote-style = "single"
+
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "B", "UP", "S", "ANN", "BLE", "RET", "SIM", "PT", "PTH", "RUF", "D", "TID252"]
 # D1xx is docstring *presence* — policy, not lint. Format is enforced when one exists.

@@ -126,7 +126,7 @@ def test_adjacent_ranges() -> None:
 
 
 @pytest.mark.parametrize(
-    ("val", "test_range", "expected"),
+    ('val', 'test_range', 'expected'),
     [
         (5, (0, 10), True),
         (0, (0, 10), True),
@@ -141,7 +141,7 @@ def test_in_range(val: int, test_range: tuple[int, int], expected: bool) -> None
 
 
 @pytest.mark.parametrize(
-    ("r1", "r2", "expected"),
+    ('r1', 'r2', 'expected'),
     [
         # Overlapping cases
         ((0, 10), (5, 15), True),
@@ -160,7 +160,7 @@ def test_overlaps(r1: tuple[int, int], r2: tuple[int, int], expected: bool) -> N
 
 
 @pytest.mark.parametrize(
-    ("r1", "r2", "expected"),
+    ('r1', 'r2', 'expected'),
     [
         # Contained
         ((5, 10), (0, 20), True),

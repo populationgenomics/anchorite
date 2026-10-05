@@ -32,7 +32,7 @@ import unicodedata
 
 import seq_smith
 
-ALIGN_ALPHABET_STRICT = string.ascii_lowercase + string.digits + " "
+ALIGN_ALPHABET_STRICT = string.ascii_lowercase + string.digits + ' '
 SCORE_MATRIX_STRICT = seq_smith.make_score_matrix(ALIGN_ALPHABET_STRICT, +1, -1)
 ALIGN_ALPHABET_LOOSE = string.ascii_lowercase + string.digits
 SCORE_MATRIX_LOOSE = seq_smith.make_score_matrix(ALIGN_ALPHABET_LOOSE, +1, -1)
@@ -53,8 +53,8 @@ SCORE_MATRIX_LOOSE = seq_smith.make_score_matrix(ALIGN_ALPHABET_LOOSE, +1, -1)
 # a stray ``<`` to a far-off ``>`` and drop the (often large) run of real text
 # between them out of the alignment.
 _HTML_TAG_RE = re.compile(
-    r"<!--.*?-->"  # comment (non-greedy: a comment may not contain ``--``)
-    r"|</?[A-Za-z][A-Za-z0-9:-]*(?:\s[^<>]*)?/?>",  # opening / closing / self-closing tag
+    r'<!--.*?-->'  # comment (non-greedy: a comment may not contain ``--``)
+    r'|</?[A-Za-z][A-Za-z0-9:-]*(?:\s[^<>]*)?/?>',  # opening / closing / self-closing tag
     re.DOTALL,  # a comment may span newlines
 )
 
@@ -69,7 +69,7 @@ _HTML_TAG_RE = re.compile(
 # The regex is deliberately conservative: link text and URL must each be
 # single-line and contain no nested ``]`` / ``)``.  Edge cases (URLs with
 # balanced parens, nested brackets) fall through to the existing behaviour.
-_MD_LINK_RE = re.compile(r"\[([^\]\n]+)\]\(([^)\n]*)\)")
+_MD_LINK_RE = re.compile(r'\[([^\]\n]+)\]\(([^)\n]*)\)')
 
 
 def strip_spans(text: str) -> list[tuple[int, int]]:
@@ -106,11 +106,11 @@ def nfkd_alnum(c: str) -> str:
     discarded.  The empty string is returned when nothing alphanumeric remains.
     """
     out = []
-    for d in unicodedata.normalize("NFKD", c):
+    for d in unicodedata.normalize('NFKD', c):
         ld = d.lower()
         if ld in _ASCII_ALNUM:
             out.append(ld)
-    return "".join(out)
+    return ''.join(out)
 
 
 def normalize_strict(text: str, *, strip_html: bool = False) -> tuple[bytes, tuple[int, ...]]:
@@ -151,14 +151,14 @@ def normalize_strict(text: str, *, strip_html: bool = False) -> tuple[bytes, tup
             for d in emitted:
                 normalized.append(d)
                 idx_map.append(i)
-        elif unicodedata.category(c).startswith("M"):
+        elif unicodedata.category(c).startswith('M'):
             pass  # combining mark — zero-width, neither letter nor separator
-        elif normalized and normalized[-1] != " ":
-            normalized.append(" ")
+        elif normalized and normalized[-1] != ' ':
+            normalized.append(' ')
             idx_map.append(i)
         i += 1
     idx_map.append(len(text))
-    return seq_smith.encode("".join(normalized), ALIGN_ALPHABET_STRICT), tuple(idx_map)
+    return seq_smith.encode(''.join(normalized), ALIGN_ALPHABET_STRICT), tuple(idx_map)
 
 
 def normalize_loose(text: str, *, strip_html: bool = False) -> tuple[bytes, tuple[int, ...]]:
@@ -190,4 +190,4 @@ def normalize_loose(text: str, *, strip_html: bool = False) -> tuple[bytes, tupl
             idx_map.append(i)
         i += 1
     idx_map.append(len(text))
-    return seq_smith.encode("".join(normalized), ALIGN_ALPHABET_LOOSE), tuple(idx_map)
+    return seq_smith.encode(''.join(normalized), ALIGN_ALPHABET_LOOSE), tuple(idx_map)

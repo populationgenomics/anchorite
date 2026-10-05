@@ -11,7 +11,7 @@ import seq_smith
 from anchorite import anchors, range_ops
 from anchorite.normalize import ALIGN_ALPHABET_STRICT, SCORE_MATRIX_STRICT, normalize_strict
 
-_NON_WORD_CHARS = seq_smith.encode(" ", ALIGN_ALPHABET_STRICT)
+_NON_WORD_CHARS = seq_smith.encode(' ', ALIGN_ALPHABET_STRICT)
 _GAP_OPEN, _GAP_EXTEND = -2, -2
 _SCORE_MATRIX = SCORE_MATRIX_STRICT
 _UNIQUENESS_THRESHOLD = 0.5
@@ -41,8 +41,8 @@ class _NormalizedSpan:
             normalized_to_source = self.normalized_to_source[left_trimmed:]
         else:
             normalized_to_source = self.normalized_to_source[left_trimmed:-right_trimmed]
-        object.__setattr__(self, "normalized", normalized)
-        object.__setattr__(self, "normalized_to_source", normalized_to_source)
+        object.__setattr__(self, 'normalized', normalized)
+        object.__setattr__(self, 'normalized_to_source', normalized_to_source)
 
     def __post_init__(self) -> None:
         self._trim()
@@ -99,7 +99,7 @@ def _aligned_range(alignment: seq_smith.Alignment) -> tuple[int, int]:
 
 def _make_document_fragments(markdown_content: str, page_range: tuple[int, int]) -> Iterator[_DocumentFragment]:
     start = 0
-    for m in re.finditer(r"<!-{2,3}.*?-->", markdown_content):
+    for m in re.finditer(r'<!-{2,3}.*?-->', markdown_content):
         span = _make_document_fragment(markdown_content, page_range, (start, m.start()))
         if len(span):
             yield span
@@ -117,7 +117,7 @@ def _slice_document_fragment(
     page_range: tuple[int, int],
 ) -> _DocumentFragment:
     if start >= end:
-        return _DocumentFragment(span.source, b"", (), page_range)
+        return _DocumentFragment(span.source, b'', (), page_range)
 
     n_sub = span.normalized[start:end]
     # normalized_to_source has length len(normalized) + 1.
@@ -292,8 +292,8 @@ def _process_alignment_iteration(
     uniqueness_threshold: float,
     min_overlap: float = 0.9,
 ) -> tuple[list[_DocumentFragment], list[tuple[_AnchorFragment, tuple[int, int]]]]:
-    logging.debug("--- Iteration %d (Threshold: %f, Overlap: %f) ---", iteration_num, uniqueness_threshold, min_overlap)
-    logging.debug("%d spans, %d anchor spans.", len(spans), len(anchor_spans))
+    logging.debug('--- Iteration %d (Threshold: %f, Overlap: %f) ---', iteration_num, uniqueness_threshold, min_overlap)
+    logging.debug('%d spans, %d anchor spans.', len(spans), len(anchor_spans))
 
     candidates = list(
         _assign_high_confidence_spans(
@@ -329,12 +329,12 @@ def _process_alignment_iteration(
         if id(s) not in matched_span_ids:
             new_spans.append(s)
 
-    logging.debug("Assigned in this iteration: %s", bool(all_assigned_ranges_in_iteration))
+    logging.debug('Assigned in this iteration: %s', bool(all_assigned_ranges_in_iteration))
     logging.debug(
-        "Remaining anchors: %d",
+        'Remaining anchors: %d',
         len(anchor_spans) - len({anchor for anchor, _ in all_assigned_ranges_in_iteration}),
     )
-    logging.debug("New span count (holes + unvisited): %d", len(new_spans))
+    logging.debug('New span count (holes + unvisited): %d', len(new_spans))
     return new_spans, all_assigned_ranges_in_iteration
 
 
@@ -371,7 +371,7 @@ def align_anchors(
     max_page = max(a.page for a in anchor_seq)
     spans = list(_make_document_fragments(markdown_content, (0, max_page + 1)))
 
-    logging.debug("initial span count %d; initial anchor count %d", len(spans), len(anchor_spans))
+    logging.debug('initial span count %d; initial anchor count %d', len(spans), len(anchor_spans))
 
     iteration = 0
     all_assigned_ranges: list[tuple[int, tuple[_AnchorFragment, tuple[int, int]]]] = []
@@ -395,7 +395,7 @@ def align_anchors(
         if not anchor_spans or (iteration > 1 and not assigned_ranges):
             break
 
-    logging.debug("Final remaining anchor count %d assigned count %d", len(anchor_spans), len(all_assigned_ranges))
+    logging.debug('Final remaining anchor count %d assigned count %d', len(anchor_spans), len(all_assigned_ranges))
 
     # Apply replacements for debugging
     # Sort ranges by start index descending to apply safely
