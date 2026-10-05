@@ -1,0 +1,10 @@
+# YAML formatter config; the YAML analogue of ruff-format / biome.
+# retain_line_breaks_single: yamlfmt can't selectively strip blank lines
+# between block-sequence items, so the no-blank-line-between-steps layout in
+# .github/workflows is kept by hand — this setting only stops yamlfmt from
+# reintroducing or multiplying blank lines elsewhere.
+formatter:
+  type: basic
+  retain_line_breaks_single: true
+  trim_trailing_whitespace: true
+  eof_newline: true
