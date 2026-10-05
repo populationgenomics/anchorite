@@ -194,7 +194,11 @@ def extract_page_atoms(page: pdfium.PdfPage) -> list[Atom]:  # noqa: C901, PLR09
         buf_size = pdfium_c.FPDFTextObj_GetText(obj, textpage, None, 0)
         buf = (pdfium_c.FPDF_WCHAR * buf_size)()
         pdfium_c.FPDFTextObj_GetText(obj, textpage, buf, buf_size)
-        obj_text = bytes(buf).decode("utf-16-le").rstrip("\x00")
+        # A malformed ToUnicode map can yield unpaired surrogates. ``replace``
+        # turns each into one U+FFFD, so the length still counts one position
+        # per code point, as the loop below expects (it skips unpaired
+        # surrogates by advancing obj_pos once).
+        obj_text = bytes(buf).decode("utf-16-le", errors="replace").rstrip("\x00")
 
         m = obj.get_matrix()
         font_size = obj.get_font_size() * math.sqrt(m.a**2 + m.b**2)
